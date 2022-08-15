@@ -190,6 +190,10 @@ impl CPU {
                     self.lda(&AddressingMode::Absolute);
                     self.program_counter += 2;
                 }
+                0xB5 => {
+                    self.lda(&AddressingMode::ZeroPageX);
+                    self.program_counter += 1;
+                }
                 
                 /* STA */
                 0x85 => {
