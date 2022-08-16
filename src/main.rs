@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 #[derive(Debug)]
 pub enum AddressingMode {
     Immediate,
@@ -193,6 +195,10 @@ impl CPU {
                 0xB5 => {
                     self.lda(&AddressingMode::ZeroPageX);
                     self.program_counter += 1;
+                }
+                0xBD => {
+                    self.lda(&AddressingMode::AbsoluteX);
+                    self.program_counter += 2;
                 }
                 
                 /* STA */
