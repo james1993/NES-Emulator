@@ -1,5 +1,3 @@
-use std::ops::Add;
-
 #[derive(Debug)]
 pub enum AddressingMode {
     Immediate,
