@@ -206,6 +206,10 @@ impl CPU {
                     self.lda(&AddressingMode::IndirectX);
                     self.program_counter += 1;
                 }
+                0xB1 => {
+                    self.lda(&AddressingMode::IndirectY);
+                    self.program_counter += 1;
+                }
                 
                 /* STA */
                 0x85 => {
