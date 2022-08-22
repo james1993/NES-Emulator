@@ -216,10 +216,13 @@ impl CPU {
                     self.sta(&AddressingMode::ZeroPage);
                     self.program_counter += 1;
                 }
-
                 0x95 => {
                     self.sta(&AddressingMode::ZeroPageX);
                     self.program_counter += 1;
+                }
+                0x8D => {
+                    self.sta(&AddressingMode::Absolute);
+                    self.program_counter += 2;
                 }
 
                 /* TAX */
