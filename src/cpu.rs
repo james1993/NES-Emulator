@@ -231,6 +231,9 @@ impl CPU {
                 0x99 => {
                     self.sta(&AddressingMode::AbsoluteY);
                     self.program_counter += 2;
+                0x81 => {
+                    self.sta(&AddressingMode::IndirectX);
+                    self.program_counter += 1;
                 }
                 /* TAX */
                 0xAA => self.tax(),
