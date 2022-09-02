@@ -143,6 +143,11 @@ impl CPU {
         self.update_zero_and_negative_flags(self.register_x);
     }
 
+    fn txa(&mut self) {
+        self.register_a = self.register_x;
+        self.update_zero_and_negative_flags(self.register_a);
+    }
+
     fn inx(&mut self) {
         if self.register_x == 0xFF { 
             self.register_x = 0; /* Overflow */
@@ -242,6 +247,9 @@ impl CPU {
                 }
                 /* TAX */
                 0xAA => self.tax(),
+
+                /* TXA */
+                0x8A => self.txa(),
 
                 /* INX */
                 0xE8 => self.inx(),
