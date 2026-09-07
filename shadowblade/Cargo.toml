@@ -1,0 +1,13 @@
+[package]
+name = "shadowblade"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+raylib = "6.0"
+
+[profile.release]
+opt-level = 3
+
+# Standalone package: the parent directory is an unrelated crate.
+[workspace]
