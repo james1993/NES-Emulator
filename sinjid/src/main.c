@@ -167,12 +167,13 @@ void player_recalc(Player *p, Combatant *out)
     out->alive  = true;
     out->level  = p->level;
 
-    int life = p->baseLife * 3 + p->level * 8;
-    int mana = p->baseMana * 2;
+    int life = p->baseLife + p->level * 10;
+    int mana = p->baseMana;
     int str  = p->baseStr;
-    int pdmg = 0, pdef = p->baseDef * 2, mdmg = p->baseMag * 2, mdef = p->baseMagDef * 2;
-    int shd = 0, shdPDef = 0, shdMDef = 0, shdDmg = 0;
-    int spd = p->baseSpeed, avd = p->baseSpeed / 2;
+    int pdmg = p->basePhyDmg, pdef = p->basePhyDef;
+    int mdmg = p->baseMagDmg, mdef = p->baseMagDef;
+    int shd = p->baseShdPts, shdPDef = 0, shdMDef = 0, shdDmg = 0;
+    int spd = p->baseSpeed, avd = 0;
 
     Look lk = p->look;
     lk.weapon = WEAP_NONE; lk.shield = SHLD_NONE; lk.helm = HELM_NONE;
@@ -181,11 +182,11 @@ void player_recalc(Player *p, Combatant *out)
         int id = p->equip[s];
         if (id < 0 || id >= ITEM_COUNT) continue;
         const ItemDef *it = &ITEMS[id];
-        life += it->lifeMax; mana += it->manaMax; str += it->str;
+        life += it->lifeMax; mana += it->manaMax;
         pdmg += it->phyDmg;  pdef += it->phyDef;
         mdmg += it->magDmg;  mdef += it->magDef;
         shd  += it->shdPts;  shdPDef += it->shdPhyDef; shdMDef += it->shdMagDef;
-        shdDmg += it->shdDmg; spd += it->speed; avd += it->avoid;
+        shdDmg += it->shdDmg; spd += it->speed;
         if (it->type == ITEM_WEAPON) { lk.weapon = it->shape; lk.weaponTint = it->tint; }
         if (it->type == ITEM_SHIELD) { lk.shield = it->shape; lk.shieldTint = it->tint; }
         if (it->type == ITEM_HELM)   { lk.helm   = it->shape; }
@@ -193,14 +194,6 @@ void player_recalc(Player *p, Combatant *out)
                                        lk.clothDark = art_shade(it->tint, 0.62f); }
     }
 
-    /* Class flavour on top of gear. */
-    switch (p->cls) {
-    case CLASS_WARRIOR: life += 20 + p->level * 4; shd += 20; pdef += 4; break;
-    case CLASS_SHADOW:  spd += 4; avd += 6; break;
-    case CLASS_MYSTIC:  mana += 20 + p->level * 3; mdef += 4; break;
-    case CLASS_MONK:    life += 10; mana += 10; break;
-    default: break;
-    }
 
     out->lifeMax = life;   out->life = life;
     out->manaMax = mana;   out->mana = mana;
@@ -250,11 +243,19 @@ static void inv_remove(Player *p, int idx, int n)
     }
 }
 
+/* True when the wearer is strong enough for the item. */
+bool player_can_equip(const Player *p, int def)
+{
+    if (def < 0 || def >= ITEM_COUNT) return false;
+    return p->baseStr >= ITEMS[def].strNeed;
+}
+
 void player_equip(Player *p, int invIndex)
 {
     if (invIndex < 0 || invIndex >= p->invCount) return;
     int def = p->inv[invIndex].def;
     const ItemDef *it = &ITEMS[def];
+    if (!player_can_equip(p, def)) return;
     SlotId slot;
     switch (it->type) {
     case ITEM_WEAPON: slot = SLOT_WEAPON; break;
@@ -332,17 +333,19 @@ static void new_player(Game *g, ClassId cls, const char *name)
     p->skillRank[1] = 1;                     /* Guard   */
     if (cls == CLASS_MYSTIC || cls == CLASS_MONK) p->skillRank[10] = 1;
 
+    /* Item indices below are positions in the original's own item table. */
     switch (cls) {
-    case CLASS_WARRIOR: p->equip[SLOT_WEAPON] = 4;  p->equip[SLOT_SHIELD] = 16; break;
-    case CLASS_SHADOW:  p->equip[SLOT_WEAPON] = 2;  p->equip[SLOT_SHIELD] = 15; break;
-    case CLASS_MYSTIC:  p->equip[SLOT_WEAPON] = 3;  p->equip[SLOT_SHIELD] = 15; break;
-    case CLASS_MONK:    p->equip[SLOT_WEAPON] = 0;  p->equip[SLOT_SHIELD] = 15; break;
+    case CLASS_WARRIOR: p->equip[SLOT_WEAPON] = IT_SILVER_KNIFE; break;
+    case CLASS_SHADOW:  p->equip[SLOT_WEAPON] = IT_IRON_KNIFE;   break;
+    case CLASS_MYSTIC:  p->equip[SLOT_WEAPON] = IT_ENERGY_KNIFE; break;
+    case CLASS_MONK:    p->equip[SLOT_WEAPON] = IT_IRON_KNIFE;   break;
     default: break;
     }
-    p->equip[SLOT_ARMOUR] = 24;
-    p->equip[SLOT_HELM]   = 32;
-    player_add_item(p, 44); player_add_item(p, 44); player_add_item(p, 44);
-    player_add_item(p, 47);
+    p->equip[SLOT_SHIELD] = IT_LEATHER_WRIST;
+    p->equip[SLOT_ARMOUR] = IT_LEATHER_ARMOUR;
+    p->equip[SLOT_HELM]   = IT_BANDANA;
+    player_add_item(p, IT_RICE_BALL); player_add_item(p, IT_RICE_BALL);
+    player_add_item(p, IT_RICE_BALL); player_add_item(p, IT_GREEN_TEA);
     p->zone = ZONE_VILLAGE;
     p->tx = 14; p->ty = 12; p->dir = 0;
     p->saveZone = ZONE_VILLAGE; p->saveX = 14; p->saveY = 12;

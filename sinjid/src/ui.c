@@ -83,12 +83,11 @@ void ui_tooltip_item(const ItemDef *it, Rectangle at)
     char b[96];
     struct { const char *tag; int v; } rows[] = {
         { "Life",        it->lifeMax }, { "Mana",       it->manaMax },
-        { "Strength",    it->str },     { "Phys dmg",   it->phyDmg },
+        { "Phys dmg",    it->phyDmg },
         { "Phys def %",  it->phyDef },  { "Magic dmg",  it->magDmg },
         { "Magic def",   it->magDef },  { "Shield pts", it->shdPts },
         { "Shd p.def %", it->shdPhyDef }, { "Shd m.def %", it->shdMagDef },
         { "Shd damage",  it->shdDmg },  { "Speed",      it->speed },
-        { "Avoidance",   it->avoid },
     };
     for (unsigned i = 0; i < sizeof rows / sizeof rows[0]; i++) {
         if (!rows[i].v) continue;
@@ -96,6 +95,12 @@ void ui_tooltip_item(const ItemDef *it, Rectangle at)
         ui_text(b, at.x + 14, y, 17, rows[i].v > 0 ? C_JADE : C_BLOOD2);
         y += 20;
         if (y > at.y + at.height - 46) break;
+    }
+    if (it->strNeed > 0) {
+        char req[64];
+        snprintf(req, sizeof req, "Requires %d Strength", it->strNeed);
+        ui_text(req, at.x + 14, at.y + at.height - 52, 17,
+                G.p.baseStr >= it->strNeed ? C_JADE : C_BLOOD2);
     }
     if (it->note) ui_text(it->note, at.x + 14, at.y + at.height - 30, 15, C_PARCH2);
 }
@@ -147,6 +152,9 @@ void ui_scene_menu(Game *g)
                         p->curLife = c.life;
                         p->curMana = c.mana;
                     }
+                } else if (!player_can_equip(p, p->inv[g->menuIdx].def)) {
+                    ui_toast(g, "%s needs %d Strength; you have %d.",
+                             it->name, it->strNeed, p->baseStr);
                 } else {
                     player_equip(p, g->menuIdx);
                     ui_toast(g, "Equipped %s.", it->name);
@@ -233,8 +241,10 @@ void ui_scene_menu(Game *g)
             if (p->inv[i].count > 1)
                 snprintf(lab, sizeof lab, "%s  x%d", it->name, p->inv[i].count);
             else snprintf(lab, sizeof lab, "%s", it->name);
+            bool wearable = ITEMS[p->inv[i].def].type == ITEM_CONSUMABLE ||
+                            player_can_equip(p, p->inv[i].def);
             ui_button((Rectangle){ left.x + 16, left.y + 44 + (i - top) * 48, left.width - 32, 42 },
-                      lab, g->menuIdx == i, true);
+                      lab, g->menuIdx == i, wearable);
         }
         if (p->invCount > 0 && g->menuIdx < p->invCount)
             ui_tooltip_item(&ITEMS[p->inv[g->menuIdx].def],
@@ -407,11 +417,15 @@ void ui_scene_shop(Game *g)
 void ui_scene_train(Game *g)
 {
     Player *p = &g->p;
-    static const char *STAT_NAMES[7] = { "Life", "Mana", "Strength", "Defence",
-                                         "Magic", "Magic defence", "Speed" };
-    int *statPtr[7] = { &p->baseLife, &p->baseMana, &p->baseStr, &p->baseDef,
-                        &p->baseMag, &p->baseMagDef, &p->baseSpeed };
-    const int STEP[7] = { 6, 5, 1, 1, 1, 1, 1 };
+    /* The trainable list mirrors the original's own stat screen. */
+    static const char *STAT_NAMES[9] = { "Life Points", "Mana Points", "Strength",
+                                         "Physical Damage", "Magic Damage",
+                                         "Physical Defence", "Magic Defence",
+                                         "Shield Points", "Speed" };
+    int *statPtr[9] = { &p->baseLife, &p->baseMana, &p->baseStr,
+                        &p->basePhyDmg, &p->baseMagDmg,
+                        &p->basePhyDef, &p->baseMagDef, &p->baseShdPts, &p->baseSpeed };
+    const int STEP[9] = { 30, 20, 1, 5, 5, 2, 2, 20, 2 };
 
     if (g->fadeDir <= 0) {
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_T)) {
@@ -419,7 +433,7 @@ void ui_scene_train(Game *g)
             return;
         }
         if (IsKeyPressed(KEY_TAB)) { g->menuTab = !g->menuTab; g->menuIdx = 0; }
-        int n = g->menuTab ? MAX_SKILLS : 7;
+        int n = g->menuTab ? MAX_SKILLS : 9;
         if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) g->menuIdx = (g->menuIdx + 1) % n;
         if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) g->menuIdx = (g->menuIdx + n - 1) % n;
         if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
@@ -457,15 +471,15 @@ void ui_scene_train(Game *g)
     Rectangle left = { 40, 100, 520, 560 }, right = { 580, 100, 660, 560 };
     ui_panel(left, g->menuTab ? "SKILLS" : "ATTRIBUTES");
     if (!g->menuTab) {
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < 9; i++) {
             char lab[96];
-            snprintf(lab, sizeof lab, "%-16s %4d   (+%d)", STAT_NAMES[i], *statPtr[i], STEP[i]);
-            ui_button((Rectangle){ left.x + 16, left.y + 46 + i * 56, left.width - 32, 46 },
+            snprintf(lab, sizeof lab, "%-17s %4d  (+%d)", STAT_NAMES[i], *statPtr[i], STEP[i]);
+            ui_button((Rectangle){ left.x + 16, left.y + 44 + i * 50, left.width - 32, 42 },
                       lab, g->menuIdx == i, p->statPts > 0);
         }
         Combatant c;
         player_recalc(p, &c);
-        float y = left.y + 46 + 7 * 56 + 16;
+        float y = left.y + 44 + 9 * 50 + 10;
         snprintf(b, sizeof b, "Life %d    Mana %d    Speed %d", c.lifeMax, c.manaMax, c.speed);
         ui_text(b, left.x + 16, y, 19, C_PARCH);
         snprintf(b, sizeof b, "Damage %d weapon + %d str / %d magic",
@@ -485,14 +499,16 @@ void ui_scene_train(Game *g)
 
     ui_panel(right, "MASTER RENJIRO");
     if (!g->menuTab) {
-        const char *tips[7] = {
+        const char *tips[9] = {
             "Life is the only stat that stops a killing blow.",
             "Mana feeds every ki discipline you know.",
-            "Strength drives every physical strike you land.",
-            "Defence cuts a percentage off every blow that lands.",
-            "Magic raises spell damage and everything you mend.",
+            "Strength decides what gear you are allowed to carry.",
+            "Physical damage is added to every strike you land.",
+            "Magic damage drives spells and everything you mend.",
+            "Physical defence cuts a percentage off each blow.",
             "Magic defence blunts spellwork and shadow.",
-            "Speed decides who moves first, and how often.",
+            "Shield points are spent before your life ever is.",
+            "Speed decides who moves first, and who gets missed.",
         };
         ui_text(STAT_NAMES[g->menuIdx], right.x + 20, right.y + 46, 26, C_GOLD);
         ui_text(tips[g->menuIdx], right.x + 20, right.y + 84, 19, C_PARCH);

@@ -118,10 +118,12 @@ typedef enum {
 typedef struct {
     const char *name;
     ItemType    type;
-    int         price, tier;
-    /* flat bonuses */
-    int lifeMax, manaMax, str, phyDmg, phyDef, magDmg, magDef;
-    int shdPts, shdPhyDef, shdMagDef, shdDmg, speed, avoid;
+    int         price, tier, strNeed;   /* strNeed: Strength the item demands */
+    int lifeMax, manaMax;
+    int phyDmg, phyDef;                 /* defences are percentages           */
+    int magDmg, magDef;
+    int shdPts, shdPhyDef, shdMagDef, shdDmg;
+    int speed;
     int shape;              /* WeaponShape / ShieldShape / HelmShape        */
     Color tint;
     const char *note;
@@ -204,15 +206,17 @@ typedef struct {
     int   expReward, goldReward, dropChance, dropTier;
 } Combatant;
 
-/* ---------------------------------------------------------------- enemies */
+/* ---------------------------------------------------------------- enemies
+   The original defines each encounter's fighters with absolute stats rather
+   than a level curve, so this table does the same.  Defences are percentages. */
 typedef struct {
     const char *name;
-    int minLevel, maxLevel;
-    int lifeBase, lifePer, manaBase;
-    int strBase, strPer, phyDefBase, phyDefPer;
-    int magDmgBase, magDmgPer, magDefBase, magDefPer;
-    int shdBase, shdPer, speedBase, avoidBase;
-    int expBase, goldBase;
+    int life;
+    int phyDmg, magDmg, shdDmg;
+    int phyDef, magDef;              /* percent */
+    int shdPts, shdPhyDef, shdMagDef;
+    int str, speed;
+    int exp, gold;
     int dropChance, dropTier;
     Look look;
     int aiSkill[4], aiSkillCount;
@@ -258,7 +262,9 @@ typedef struct {
     ClassId   cls;
     int       level, exp, expNext, gold;
     int       statPts, skillPts;
-    int       baseLife, baseMana, baseStr, baseDef, baseMag, baseMagDef, baseSpeed;
+    /* Trainable stats, mirroring the original's own stat list. */
+    int       baseLife, baseMana, baseStr, baseSpeed;
+    int       basePhyDmg, baseMagDmg, basePhyDef, baseMagDef, baseShdPts;
     int       skillRank[MAX_SKILLS];
     ItemStack inv[MAX_INVENTORY];
     int       invCount;
@@ -393,6 +399,17 @@ void  ui_toast(Game *g, const char *fmt, ...);
 void  player_recalc(Player *p, Combatant *out);
 int   player_add_item(Player *p, int def);
 void  player_equip(Player *p, int invIndex);
+bool  player_can_equip(const Player *p, int def);
+
+/* Indices into the original's item table, for starting gear. */
+#define IT_IRON_KNIFE     0
+#define IT_ENERGY_KNIFE   1
+#define IT_SILVER_KNIFE   2
+#define IT_LEATHER_WRIST  25
+#define IT_BANDANA        42
+#define IT_LEATHER_ARMOUR 52
+#define IT_RICE_BALL      63
+#define IT_GREEN_TEA      66
 void  player_gain_exp(Game *g, int exp);
 int   player_exp_for_level(int lvl);
 bool  save_write(const Game *g);

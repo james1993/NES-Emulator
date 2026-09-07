@@ -105,34 +105,28 @@ static void build_enemy(Combatant *c, const EnemyDef *d, int level)
 {
     memset(c, 0, sizeof *c);
     snprintf(c->name, sizeof c->name, "%s", d->name);
-    if (level < d->minLevel) level = d->minLevel;
-    if (level > d->maxLevel) level = d->maxLevel;
-    int l = level;
-    c->level   = l;
-    c->lifeMax = c->life = d->lifeBase + d->lifePer * l;
-    c->manaMax = c->mana = d->manaBase + l * 4;
-    c->engMax  = 100; c->eng = 60; c->engRate = 20 + l;
-    c->str     = d->strBase + d->strPer * l;
-    c->strDmg  = c->str * 2;
-    c->phyDmg  = c->str;
-    /* defences are percentages: the table stores a base plus a slow climb */
-    c->phyDef  = d->phyDefBase + d->phyDefPer * l / 4;
-    c->magDef  = d->magDefBase + d->magDefPer * l / 4;
-    if (c->phyDef > DEF_CAP) c->phyDef = DEF_CAP;
-    if (c->magDef > DEF_CAP) c->magDef = DEF_CAP;
-    c->magDmg  = d->magDmgBase + d->magDmgPer * l;
-    c->shdMax  = c->shd = d->shdBase + d->shdPer * l;
-    c->shdPhyDef = c->phyDef * 3 / 4;
-    c->shdMagDef = c->magDef * 3 / 4;
-    c->shdDmg  = l / 2;
-    c->speed   = d->speedBase + l / 3 + d->avoidBase / 2;
-    c->atkSpd  = c->speed;
+    c->level   = level < 1 ? 1 : level;
+    c->lifeMax = c->life = d->life;
+    c->manaMax = c->mana = 200;
+    c->engMax  = 100; c->eng = 60; c->engRate = 25;
+    c->str     = d->str;
+    c->strDmg  = d->str * 2;
+    c->phyDmg  = d->phyDmg;
+    c->magDmg  = d->magDmg;
+    c->phyDef  = d->phyDef > DEF_CAP ? DEF_CAP : d->phyDef;
+    c->magDef  = d->magDef > DEF_CAP ? DEF_CAP : d->magDef;
+    c->shdMax  = c->shd = d->shdPts;
+    c->shdPhyDef = d->shdPhyDef;
+    c->shdMagDef = d->shdMagDef;
+    c->shdDmg  = d->shdDmg;
+    c->speed   = d->speed;
+    c->atkSpd  = d->speed;
     c->look    = d->look;
     c->alive   = true;
     c->anim    = ANIM_STAND;
     c->atkBuff = c->defBuff = 1.0f;
-    c->expReward  = d->expBase + d->expBase * l / 6;
-    c->goldReward = d->goldBase + d->goldBase * l / 8;
+    c->expReward  = d->exp;
+    c->goldReward = d->gold;
     c->dropChance = d->dropChance;
     c->dropTier   = d->dropTier;
     c->aiSkillCount = d->aiSkillCount;
@@ -768,18 +762,19 @@ static void stat_row(float x, float y, float w, const char *tag, int cur, int ma
 static void draw_nameplate(Battle *b, Combatant *c, Vector2 at, bool targeted)
 {
     if (!c->alive) return;
+    bool hasGuard = c->shdMax > 5;   /* most enemies carry a token 1 point */
     float w = 200, x = at.x - w / 2, y = at.y - 205;
-    DrawRectangleRounded((Rectangle){ x, y, w, c->shdMax > 0 ? 54.0f : 44.0f }, 0.25f, 8,
+    DrawRectangleRounded((Rectangle){ x, y, w, hasGuard ? 54.0f : 44.0f }, 0.25f, 8,
                          (Color){ 18, 16, 22, 200 });
     if (targeted)
-        DrawRectangleRoundedLines((Rectangle){ x, y, w, c->shdMax > 0 ? 54.0f : 44.0f }, 0.25f, 8,
+        DrawRectangleRoundedLines((Rectangle){ x, y, w, hasGuard ? 54.0f : 44.0f }, 0.25f, 8,
                                   C_GOLD);
     char nm[48];
     snprintf(nm, sizeof nm, "%s  Lv%d", c->name, c->level);
     ui_text(nm, x + 8, y + 4, 16, C_PARCH);
     ui_bar((Rectangle){ x + 8, y + 23, w - 16, 8 }, (float)c->life / c->lifeMax,
            C_BLOOD, (Color){ 40, 20, 20, 255 }, NULL);
-    if (c->shdMax > 0)
+    if (hasGuard)
         ui_bar((Rectangle){ x + 8, y + 34, w - 16, 6 }, (float)c->shd / c->shdMax,
                C_KI, (Color){ 22, 34, 44, 255 }, NULL);
     if (targeted) {
@@ -848,7 +843,7 @@ void battle_draw(Game *g)
     stat_row(hp.x + 16, hp.y + 38, cw, "LIFE", h->life, h->lifeMax, C_BLOOD, 16);
     stat_row(hp.x + 16, hp.y + 76, cw, "MANA", h->mana, h->manaMax, C_KI, 12);
     stat_row(hp.x + 16, hp.y + 110, cw * 0.47f, "ENERGY", h->eng, h->engMax, C_GOLD, 10);
-    if (h->shdMax > 0)
+    if (h->shdMax > 5)
         stat_row(hp.x + 16 + cw * 0.53f, hp.y + 110, cw * 0.47f, "GUARD",
                  h->shd, h->shdMax, C_STEEL, 10);
 

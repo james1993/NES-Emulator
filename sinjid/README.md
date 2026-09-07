@@ -68,8 +68,8 @@ totaldmg = round( (phydmg - ceil(phydmg/100 * target.phydef))
 ```
 
 **The shield layer.** While a fighter has shield points, the entire blow is
-spent on them, using the shield's own percentages and adding the attacker's
-extra shield damage:
+spent on them, using the shield's own percentages plus the attacker's extra
+shield damage:
 
 ```
 shddmg = round( (phydmg - ceil(phydmg/100 * target.shdphydef))
@@ -80,8 +80,8 @@ shddmg = round( (phydmg - ceil(phydmg/100 * target.shdphydef))
 
 If that exceeds the remaining points the guard breaks and the shield drops to
 zero — **the overflow is discarded**, so a broken guard still takes no life
-damage that turn. This is why shield-breaking skills exist and why a heavy
-shield is a genuine wall rather than a damage buffer.
+damage that turn. This is why shield-breaking weapons exist and why a heavy
+shield is a wall rather than a damage buffer.
 
 **Hitting and missing** is a speed roll, not an accuracy stat:
 
@@ -94,31 +94,46 @@ hit if spdran2 < spdran1
 **Turn order** (`speedorder`) sorts the four combatants purely on speed,
 descending — there is no per-round initiative randomness.
 
-Also reproduced: the stat set the original tracks (life, mana, energy,
-physical/magic damage, physical/magic defence, shield points with their own two
-defences, extra shield damage, speed); two fighters a side; the nine animation
-states (`stand, walk, attack, block, blockbreak, hit, heal, die, miss`);
-segmented-puppet fighters; a tile overworld of single-screen zones with random
-encounters; and a village hub of vendors, healer, trainer, save shrine and
-arena.
+**The item table** is the original's own, recovered from its `AddItem()` calls:
+63 items across Weapon / Shield / Head Gear / Suit / Relic / Drink / Herb, with
+their real damage, defence, shield and speed numbers. That includes the
+**Strength requirement** (`strneed`) every item carries — you cannot wear what
+you are not strong enough to hold, which is what makes Strength worth training.
+Weapons like *Shield Breaker* (40 extra shield damage) and *Guard Blade* (90
+physical damage at the cost of 40 mana) behave exactly as their numbers say.
+
+**Enemy stats** are absolute per encounter, not a level curve. Eight encounter
+definitions were recovered exactly (Poison Wasp, Skeleton Mage, Mountain Naga,
+two Mercenary variants, two Undead variants, Anti Ninja) and are marked
+`/* exact */` in `data.c`; the rest of the roster is ours, scaled to sit
+between them.
+
+**The trainable stat list** matches the original's own: Life Points, Mana
+Points, Strength, Physical Damage, Magic Damage, Physical Defence, Magic
+Defence, Shield Points, Speed.
+
+Also reproduced: two fighters a side; the nine animation states (`stand, walk,
+attack, block, blockbreak, hit, heal, die, miss`); segmented-puppet fighters;
+a tile overworld of single-screen zones with random encounters; and a village
+hub of vendors, healer, trainer, save shrine and arena.
 
 `strdmg` is read by both damage functions but assigned outside them, so its
 source is not confirmed; this remake feeds it from Strength.
 
-### Not faithful — original to this remake
+### Still original to this remake
 
-Everything numeric and most content is mine, not the original's:
+* **All art and animation** — every pixel is drawn by `art.c`; no asset from
+  the original is used or redistributed
+* **All writing** — item notes, skill descriptions, NPC dialogue, class blurbs
+* the four classes and their names, and their starting stats
+* all 19 skills, their effects, costs and ranks
+* item prices, and the effects of the three zero-stat rows in the source table
+  (Medicine, White Leaves, Mendo's Ring), plus the trailing food and drink rows
+* twelve of the twenty enemies, every map, the exp curve and level-up rewards
+* the energy economy and the buff / stun / drain mechanics
 
-* all art, animation and audio-free presentation (see `art.c`)
-* the four classes and their names, and all starting stats
-* all 19 skills, their effects, costs and progression
-* all 51 items and their stat lines
-* all 18 enemies and their scaling
-* every map, every line of dialogue, the exp curve and level-up rewards
-* the energy economy and buff/stun/drain mechanics
-
-So: the *systems* are the original's, verified from its bytecode. The
-*content* is a new game built on them.
+So the systems *and* the core numbers are the original's, verified from its
+bytecode; the presentation and the writing are new.
 
 ## Layout
 
