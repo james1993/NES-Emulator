@@ -1,0 +1,4 @@
+*.o
+/sinjid
+sinjid_save.dat
+/*.png
