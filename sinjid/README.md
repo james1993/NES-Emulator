@@ -14,7 +14,8 @@ skills, enemies, maps and writing are all original to this remake.
 
 ## Building
 
-Requires a C99 compiler and raylib 4.x/5.x.
+Requires a C99 compiler and **raylib 6.0 or newer** (developed and tested
+against raylib `6.1-dev`, master @ 2b991b0).
 
 ```sh
 make                      # uses pkg-config to find raylib
@@ -27,6 +28,10 @@ On Debian/Ubuntu, raylib's own build needs the usual GL/X11 headers:
 ```sh
 sudo apt install libgl1-mesa-dev libx11-dev libxrandr-dev \
                  libxinerama-dev libxcursor-dev libxi-dev
+
+git clone --depth 1 https://github.com/raysan5/raylib
+make -C raylib/src PLATFORM=PLATFORM_DESKTOP
+make RAYLIB=./raylib
 ```
 
 ## Controls
@@ -43,29 +48,77 @@ sudo apt install libgl1-mesa-dev libx11-dev libxrandr-dev \
 Talk to the shrine in the village to rest and save; the save file is written to
 `sinjid_save.dat` in the working directory.
 
-## What was taken from the original
+## Fidelity: what is taken from the original, and what is not
 
-The original is a Flash file, so its design is legible from the compiled
-ActionScript symbol table. The systems this remake reproduces:
+The original is a Flash file, so its logic is recoverable: the ActionScript
+bytecode still carries named functions (`heroDamage`, `enemyDamage`,
+`speedorder`, `EnemyMeet`, `ItemRand`, `EquipItem`) and the full variable
+table. The combat maths below was disassembled from it and is reproduced
+faithfully here.
 
-* **Speed-ordered turn combat**, up to two fighters a side, with initiative
-  rerolled every round, so a fast character sometimes acts twice in a row.
-* **A separate shield layer.** Every fighter has shield points with their own
-  physical and magic defence. Blows are spent breaking shields down before they
-  reach life, and only the overflow bleeds through (at half strength). Weapons
-  carry a *shield damage* stat, and skills can triple damage against shields
-  (`Shield Breaker`) or bypass them entirely (`Gut Thrust`, `Frost Nail`).
-* **Split physical/magic damage** with matching defences, plus pure damage that
-  respects neither.
-* **Two resources**: mana for ki disciplines, energy for combat skills. Energy
-  regenerates every round, so the physical tree is sustainable and the magic
-  tree is burst.
-* **Nine animation states** driving segmented puppets — stand, walk, attack,
-  cast, block, block-break, hit, heal and die.
-* **A tile overworld** of single-screen zones joined by road gates, with random
-  encounters rolled per step against a per-zone enemy pool.
-* **A village hub**: blacksmith, general goods, healer, trainer, save shrine and
-  a wave-based arena.
+### Verified against the bytecode, and implemented
+
+**Damage.** Every defence is a *percentage* reduction, not a flat subtraction,
+and a blow is three separate components metered by different defences:
+
+```
+totaldmg = round( (phydmg - ceil(phydmg/100 * target.phydef))
+                + (magdmg - ceil(magdmg/100 * target.magdef))
+                + (strdmg - ceil(strdmg/100 * target.phydef)) ) + ran
+```
+
+**The shield layer.** While a fighter has shield points, the entire blow is
+spent on them, using the shield's own percentages and adding the attacker's
+extra shield damage:
+
+```
+shddmg = round( (phydmg - ceil(phydmg/100 * target.shdphydef))
+              + (magdmg - ceil(magdmg/100 * target.shdmagdef))
+              + (strdmg - ceil(strdmg/100 * target.shdphydef))
+              + dmgtoshd ) + ran
+```
+
+If that exceeds the remaining points the guard breaks and the shield drops to
+zero — **the overflow is discarded**, so a broken guard still takes no life
+damage that turn. This is why shield-breaking skills exist and why a heavy
+shield is a genuine wall rather than a damage buffer.
+
+**Hitting and missing** is a speed roll, not an accuracy stat:
+
+```
+spdran1 = random(atkspd/2) + atkspd/2     // attacker
+spdran2 = random(target.speed/2)          // defender, or -1 when nomiss
+hit if spdran2 < spdran1
+```
+
+**Turn order** (`speedorder`) sorts the four combatants purely on speed,
+descending — there is no per-round initiative randomness.
+
+Also reproduced: the stat set the original tracks (life, mana, energy,
+physical/magic damage, physical/magic defence, shield points with their own two
+defences, extra shield damage, speed); two fighters a side; the nine animation
+states (`stand, walk, attack, block, blockbreak, hit, heal, die, miss`);
+segmented-puppet fighters; a tile overworld of single-screen zones with random
+encounters; and a village hub of vendors, healer, trainer, save shrine and
+arena.
+
+`strdmg` is read by both damage functions but assigned outside them, so its
+source is not confirmed; this remake feeds it from Strength.
+
+### Not faithful — original to this remake
+
+Everything numeric and most content is mine, not the original's:
+
+* all art, animation and audio-free presentation (see `art.c`)
+* the four classes and their names, and all starting stats
+* all 19 skills, their effects, costs and progression
+* all 51 items and their stat lines
+* all 18 enemies and their scaling
+* every map, every line of dialogue, the exp curve and level-up rewards
+* the energy economy and buff/stun/drain mechanics
+
+So: the *systems* are the original's, verified from its bytecode. The
+*content* is a new game built on them.
 
 ## Layout
 

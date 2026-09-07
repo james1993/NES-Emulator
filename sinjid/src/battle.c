@@ -113,16 +113,20 @@ static void build_enemy(Combatant *c, const EnemyDef *d, int level)
     c->manaMax = c->mana = d->manaBase + l * 4;
     c->engMax  = 100; c->eng = 60; c->engRate = 20 + l;
     c->str     = d->strBase + d->strPer * l;
-    c->phyDmg  = c->str * 2;
-    c->phyDef  = d->phyDefBase + d->phyDefPer * l;
+    c->strDmg  = c->str * 2;
+    c->phyDmg  = c->str;
+    /* defences are percentages: the table stores a base plus a slow climb */
+    c->phyDef  = d->phyDefBase + d->phyDefPer * l / 4;
+    c->magDef  = d->magDefBase + d->magDefPer * l / 4;
+    if (c->phyDef > DEF_CAP) c->phyDef = DEF_CAP;
+    if (c->magDef > DEF_CAP) c->magDef = DEF_CAP;
     c->magDmg  = d->magDmgBase + d->magDmgPer * l;
-    c->magDef  = d->magDefBase + d->magDefPer * l;
     c->shdMax  = c->shd = d->shdBase + d->shdPer * l;
-    c->shdPhyDef = c->phyDef / 3;
-    c->shdMagDef = c->magDef / 3;
+    c->shdPhyDef = c->phyDef * 3 / 4;
+    c->shdMagDef = c->magDef * 3 / 4;
     c->shdDmg  = l / 2;
-    c->speed   = d->speedBase + l / 3;
-    c->avoid   = d->avoidBase;
+    c->speed   = d->speedBase + l / 3 + d->avoidBase / 2;
+    c->atkSpd  = c->speed;
     c->look    = d->look;
     c->alive   = true;
     c->anim    = ANIM_STAND;
@@ -142,7 +146,7 @@ static void roll_order(Battle *b)
         if (!slot_live(b, i)) continue;
         Combatant *c = slot(b, i);
         idx[n] = i;
-        key[n] = c->speed * 10 + rnd(0, c->speed * 6 + 20);
+        key[n] = c->speed;      /* the original sorts purely on speed */
         n++;
     }
     for (int i = 0; i < n; i++)
@@ -201,56 +205,63 @@ static int skill_power(const SkillDef *sk, int rank)
     return 0;
 }
 
+/* Percentage damage reduction, exactly as the original applies it:
+   dmg - ceil(dmg / 100 * defence).  Capped so armour never fully negates. */
+static int cut(int dmg, int defPct)
+{
+    if (defPct < 0) defPct = 0;
+    if (defPct > DEF_CAP) defPct = DEF_CAP;
+    return dmg - (int)ceilf(dmg / 100.0f * defPct);
+}
+
 static Hit resolve_hit(Battle *b, Combatant *a, Combatant *t, const SkillDef *sk, int rank)
 {
     Hit h = { 0, 0, false, false, false };
     float power = sk->power + sk->powerPerRank * (rank - 1);
-    int atk = (sk->dmgType == DMG_MAGIC) ? a->magDmg : a->phyDmg;
-    if (sk->dmgType == DMG_PURE) atk = (a->magDmg > a->phyDmg) ? a->magDmg : a->phyDmg;
 
-    /* miss check */
+    /* Hit check: the attacker's attack speed rolled against the target's
+       speed.  A guarding target is harder to catch. */
     if (!(sk->flags & SKF_NEVER_MISS)) {
-        float chance = t->avoid * 0.8f - a->speed * 0.25f;
-        if (t->guarding) chance += 6;
-        if (chance < 2) chance = 2;
-        if (chance > 40) chance = 40;
-        if (frnd(0, 100) < chance) { h.missed = true; return h; }
+        int spdran1 = rnd(0, a->atkSpd / 2) + a->atkSpd / 2;
+        int spdran2 = rnd(0, t->speed / 2);
+        if (t->guarding) spdran2 += t->speed / 4;
+        if (spdran2 >= spdran1) { h.missed = true; return h; }
     }
 
-    float raw = atk * power * a->atkBuff * frnd(0.90f, 1.12f);
-    if (raw < 1) raw = 1;
+    /* Three damage components, scaled by the skill and any attack buff. */
+    int phy = (int)(a->phyDmg * power * a->atkBuff);
+    int str = (int)(a->strDmg * power * a->atkBuff);
+    int mag = (int)(a->magDmg * power * a->atkBuff);
+    if (sk->dmgType == DMG_MAGIC)         { phy = 0; str = 0; }
+    else if (sk->dmgType == DMG_PHYSICAL) { mag = 0; }
+    int ran = rnd(0, 3 + a->level / 2);
 
-    bool shieldLayer = (t->shd > 0) && !(sk->flags & SKF_IGNORE_SHD) && sk->dmgType != DMG_PURE;
+    bool shieldLayer = (t->shd > 0) && !(sk->flags & SKF_IGNORE_SHD) &&
+                       sk->dmgType != DMG_PURE;
     if (shieldLayer) {
-        int sdef = (sk->dmgType == DMG_MAGIC) ? t->shdMagDef : t->shdPhyDef;
-        float d = raw - sdef * t->defBuff;
-        if (d < 1) d = 1;
-        d += a->shdDmg;
+        float d = (float)(cut(phy, t->shdPhyDef) + cut(mag, t->shdMagDef) +
+                          cut(str, t->shdPhyDef) + a->shdDmg);
         if (sk->flags & SKF_SHIELD_DMG) d *= 3.0f;
         if (t->guarding) d *= 0.5f;
-        h.toShield = (int)d;
+        h.toShield = (int)(d + 0.5f) + ran;
+        if (h.toShield < 1) h.toShield = 1;
         if (h.toShield >= t->shd) {
-            int over = h.toShield - t->shd;
             h.toShield = t->shd;
             t->shd = 0;
             h.broke = true;
-            /* overflow bleeds through at half strength, still meeting armour */
-            int def = (sk->dmgType == DMG_MAGIC) ? t->magDef : t->phyDef;
-            float lf = over * 0.5f - def * t->defBuff * 0.5f;
-            if (lf < 0) lf = 0;
-            h.toLife = (int)lf;
+            /* The original spends the whole blow on the guard: once the shield
+               breaks the overflow is discarded rather than carried to life. */
         } else {
             t->shd -= h.toShield;
         }
     } else {
-        float def = 0;
-        if (sk->dmgType == DMG_PHYSICAL) def = t->phyDef * t->defBuff;
-        else if (sk->dmgType == DMG_MAGIC) def = t->magDef * t->defBuff;
-        float d = raw - def;
-        if (d < raw * 0.12f) d = raw * 0.12f;     /* armour never fully negates */
-        if (t->guarding) d *= 0.5f;
-        h.toLife = (int)d;
-        if (h.toLife < 1) h.toLife = 1;
+        int total;
+        if (sk->dmgType == DMG_PURE) total = phy + str + mag;   /* ignores armour */
+        else total = cut(phy, t->phyDef) + cut(mag, t->magDef) + cut(str, t->phyDef);
+        total += ran;
+        if (t->guarding) total /= 2;
+        if (total < 1) total = 1;
+        h.toLife = total;
     }
 
     if (h.toLife > 0) {
@@ -479,7 +490,7 @@ static void start_next_turn(Game *g)
     }
 
     if (b->orderIdx >= b->orderCount) {
-        /* round boundary: regenerate, tick buffs, reroll initiative */
+        /* round boundary: regenerate, tick buffs, rebuild the speed order */
         b->turn++;
         for (int i = 0; i < slot_count(b); i++) {
             if (!slot_live(b, i)) continue;

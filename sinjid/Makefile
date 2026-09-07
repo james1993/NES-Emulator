@@ -1,4 +1,5 @@
 # Sinjid: Shadow of the Warrior -- raylib/C fan remake
+# Requires raylib 6.0 or newer (developed against 6.1-dev).
 # Build:  make            (uses pkg-config raylib, or RAYLIB=/path/to/raylib)
 #         make RAYLIB=../raylib
 CC      ?= cc

@@ -207,14 +207,22 @@ void player_recalc(Player *p, Combatant *out)
     out->engMax  = 100;    out->eng  = 40;
     out->engRate = 18 + p->level + (p->cls == CLASS_MONK ? 10 : 0);
     out->str = str;
-    out->phyDmg = str * 2 + pdmg;
-    out->phyDef = pdef;
+    /* Weapon damage and strength damage are separate components; each defence
+       below is a percentage reduction, so they are capped. */
+    out->phyDmg = pdmg;
+    out->strDmg = str * 2;
     out->magDmg = mdmg;
-    out->magDef = mdef;
+    out->phyDef = pdef > DEF_CAP ? DEF_CAP : pdef;
+    out->magDef = mdef > DEF_CAP ? DEF_CAP : mdef;
     out->shdMax = shd; out->shd = shd;
-    out->shdPhyDef = shdPDef; out->shdMagDef = shdMDef; out->shdDmg = shdDmg;
-    out->speed = spd < 1 ? 1 : spd;
-    out->avoid = avd;
+    out->shdPhyDef = shdPDef > DEF_CAP ? DEF_CAP : shdPDef;
+    out->shdMagDef = shdMDef > DEF_CAP ? DEF_CAP : shdMDef;
+    out->shdDmg = shdDmg;
+    /* Speed decides both turn order and how often blows miss you, so an
+       item's avoidance folds into it. */
+    out->speed = spd + avd / 2;
+    if (out->speed < 1) out->speed = 1;
+    out->atkSpd = out->speed;
     out->look = lk;
     out->atkBuff = out->defBuff = 1.0f;
 }

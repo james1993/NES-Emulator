@@ -24,6 +24,7 @@
 #define MAX_LOG        6
 #define MAX_FLOATERS  24
 #define MAX_PARTICLES 256
+#define DEF_CAP        80    /* defence percentages are capped here */
 #define MAP_W         28
 #define MAP_H         18
 #define MAX_NPCS      24
@@ -181,9 +182,12 @@ typedef struct {
     bool  isHero, alive;
     int   level;
     int   life, lifeMax, mana, manaMax, eng, engMax;
-    int   str, phyDmg, phyDef, magDmg, magDef;
+    /* Damage is three components (weapon, strength, magic); each defence is a
+       PERCENTAGE reduction of the matching component, as in the original. */
+    int   str, phyDmg, strDmg, magDmg;
+    int   phyDef, magDef;            /* percent, 0..DEF_CAP                  */
     int   shd, shdMax, shdPhyDef, shdMagDef, shdDmg;
-    int   speed, avoid;
+    int   speed, atkSpd;
     int   engRate;
     Look  look;
     /* volatile battle state */

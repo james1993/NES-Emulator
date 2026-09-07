@@ -84,11 +84,11 @@ void ui_tooltip_item(const ItemDef *it, Rectangle at)
     struct { const char *tag; int v; } rows[] = {
         { "Life",        it->lifeMax }, { "Mana",       it->manaMax },
         { "Strength",    it->str },     { "Phys dmg",   it->phyDmg },
-        { "Phys def",    it->phyDef },  { "Magic dmg",  it->magDmg },
+        { "Phys def %",  it->phyDef },  { "Magic dmg",  it->magDmg },
         { "Magic def",   it->magDef },  { "Shield pts", it->shdPts },
-        { "Shd p.def",   it->shdPhyDef }, { "Shd m.def", it->shdMagDef },
+        { "Shd p.def %", it->shdPhyDef }, { "Shd m.def %", it->shdMagDef },
         { "Shd damage",  it->shdDmg },  { "Speed",      it->speed },
-        { "Avoid",       it->avoid },
+        { "Avoidance",   it->avoid },
     };
     for (unsigned i = 0; i < sizeof rows / sizeof rows[0]; i++) {
         if (!rows[i].v) continue;
@@ -200,24 +200,25 @@ void ui_scene_menu(Game *g)
         }
 
         ui_panel(right, "STATISTICS");
-        struct { const char *tag; int v; } st[] = {
-            { "Life",             c.lifeMax },
-            { "Mana",             c.manaMax },
-            { "Strength",         c.str },
-            { "Physical damage",  c.phyDmg },
-            { "Physical defence", c.phyDef },
-            { "Magic damage",     c.magDmg },
-            { "Magic defence",    c.magDef },
-            { "Shield points",    c.shdMax },
-            { "Shield p.defence", c.shdPhyDef },
-            { "Shield m.defence", c.shdMagDef },
-            { "Shield damage",    c.shdDmg },
-            { "Speed",            c.speed },
-            { "Avoidance",        c.avoid },
+        struct { const char *tag; int v; int pct; } st[] = {
+            { "Life",             c.lifeMax,   0 },
+            { "Mana",             c.manaMax,   0 },
+            { "Strength",         c.str,       0 },
+            { "Weapon damage",    c.phyDmg,    0 },
+            { "Strength damage",  c.strDmg,    0 },
+            { "Magic damage",     c.magDmg,    0 },
+            { "Physical defence", c.phyDef,    1 },
+            { "Magic defence",    c.magDef,    1 },
+            { "Shield points",    c.shdMax,    0 },
+            { "Shield p.defence", c.shdPhyDef, 1 },
+            { "Shield m.defence", c.shdMagDef, 1 },
+            { "Shield damage",    c.shdDmg,    0 },
+            { "Speed",            c.speed,     0 },
         };
         for (unsigned i = 0; i < sizeof st / sizeof st[0]; i++) {
             char b2[96];
-            snprintf(b2, sizeof b2, "%-18s %5d", st[i].tag, st[i].v);
+            if (st[i].pct) snprintf(b2, sizeof b2, "%-18s %4d%%", st[i].tag, st[i].v);
+            else           snprintf(b2, sizeof b2, "%-18s %5d", st[i].tag, st[i].v);
             ui_text(b2, right.x + 20, right.y + 46 + i * 26, 19, C_PARCH);
         }
         draw_hero_preview(g, (Vector2){ right.x + right.width - 130, right.y + 470 }, 1.15f);
@@ -467,7 +468,8 @@ void ui_scene_train(Game *g)
         float y = left.y + 46 + 7 * 56 + 16;
         snprintf(b, sizeof b, "Life %d    Mana %d    Speed %d", c.lifeMax, c.manaMax, c.speed);
         ui_text(b, left.x + 16, y, 19, C_PARCH);
-        snprintf(b, sizeof b, "Damage %d phys / %d magic", c.phyDmg, c.magDmg);
+        snprintf(b, sizeof b, "Damage %d weapon + %d str / %d magic",
+                 c.phyDmg, c.strDmg, c.magDmg);
         ui_text(b, left.x + 16, y + 26, 19, C_PARCH);
     } else {
         int top = g->menuIdx - 8; if (top < 0) top = 0;
@@ -487,7 +489,7 @@ void ui_scene_train(Game *g)
             "Life is the only stat that stops a killing blow.",
             "Mana feeds every ki discipline you know.",
             "Strength drives every physical strike you land.",
-            "Defence subtracts from each blow that reaches you.",
+            "Defence cuts a percentage off every blow that lands.",
             "Magic raises spell damage and everything you mend.",
             "Magic defence blunts spellwork and shadow.",
             "Speed decides who moves first, and how often.",
@@ -631,8 +633,8 @@ void ui_scene_create(Game *g)
     char b[128];
     snprintf(b, sizeof b, "Life %d    Mana %d    Speed %d", c.lifeMax, c.manaMax, c.speed);
     ui_text(b, info.x + 20, y, 20, C_GOLD);
-    snprintf(b, sizeof b, "Damage %d physical / %d magic     Guard %d",
-             c.phyDmg, c.magDmg, c.shdMax);
+    snprintf(b, sizeof b, "Damage %d+%d phys / %d magic     Guard %d",
+             c.phyDmg, c.strDmg, c.magDmg, c.shdMax);
     ui_text(b, info.x + 20, y + 28, 20, C_GOLD);
 
     Rectangle nb = { 540, 530, 680, 90 };
