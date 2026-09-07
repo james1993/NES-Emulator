@@ -3,6 +3,7 @@
 //! Built on raylib with no external art: every visual is drawn procedurally at
 //! runtime (see `render.rs`). Tuning constants live in `config.rs`.
 
+mod calibrate;
 mod combat;
 mod config;
 mod enemy;
@@ -13,6 +14,7 @@ mod ui;
 mod util;
 mod world;
 
+use calibrate::Calibration;
 use combat::overlaps;
 use config as cfg;
 use enemy::{stats_for, EState, Enemy};
@@ -335,18 +337,23 @@ fn scripted_input(frame: u32) -> InputState {
     i
 }
 
-fn sample_input(rl: &RaylibHandle) -> InputState {
+/// `arrows` is false while the calibration overlay owns the arrow keys for
+/// nudging the reference image; WASD still drives the character.
+fn sample_input(rl: &RaylibHandle, arrows: bool) -> InputState {
     use KeyboardKey::*;
-    let left = rl.is_key_down(KEY_A) || rl.is_key_down(KEY_LEFT);
-    let right = rl.is_key_down(KEY_D) || rl.is_key_down(KEY_RIGHT);
+    let arrow = |k: KeyboardKey| arrows && rl.is_key_down(k);
+    let arrow_p = |k: KeyboardKey| arrows && rl.is_key_pressed(k);
+
+    let left = rl.is_key_down(KEY_A) || arrow(KEY_LEFT);
+    let right = rl.is_key_down(KEY_D) || arrow(KEY_RIGHT);
     InputState {
         move_x: (right as i32 - left as i32) as f32,
-        jump_pressed: rl.is_key_pressed(KEY_SPACE) || rl.is_key_pressed(KEY_W) || rl.is_key_pressed(KEY_UP),
-        jump_held: rl.is_key_down(KEY_SPACE) || rl.is_key_down(KEY_W) || rl.is_key_down(KEY_UP),
+        jump_pressed: rl.is_key_pressed(KEY_SPACE) || rl.is_key_pressed(KEY_W) || arrow_p(KEY_UP),
+        jump_held: rl.is_key_down(KEY_SPACE) || rl.is_key_down(KEY_W) || arrow(KEY_UP),
         attack_pressed: rl.is_key_pressed(KEY_J),
         block_held: rl.is_key_down(KEY_K),
         roll_pressed: rl.is_key_pressed(KEY_L) || rl.is_key_pressed(KEY_LEFT_SHIFT),
-        down_held: rl.is_key_down(KEY_S) || rl.is_key_down(KEY_DOWN),
+        down_held: rl.is_key_down(KEY_S) || arrow(KEY_DOWN),
     }
 }
 
@@ -356,11 +363,13 @@ fn main() {
     // keyboard. raylib caches the working directory inside InitWindow and
     // resolves screenshot paths against it, so the chdir must happen first.
     let args: Vec<String> = std::env::args().collect();
-    let capture_dir = args
-        .iter()
-        .position(|a| a == "--capture")
-        .and_then(|i| args.get(i + 1))
-        .cloned();
+    let flag = |name: &str| -> Option<String> {
+        args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned()
+    };
+    let capture_dir = flag("--capture");
+    // A reference image implies calibration mode.
+    let reference = flag("--reference");
+    let calibrating = reference.is_some() || args.iter().any(|a| a == "--calibrate");
     if let Some(dir) = &capture_dir {
         std::fs::create_dir_all(dir).expect("could not create capture directory");
         std::env::set_current_dir(dir).expect("could not enter capture directory");
@@ -377,6 +386,12 @@ fn main() {
     const SHOT_FRAMES: [u32; 6] = [40, 82, 95, 165, 190, 238];
     let mut frame: u32 = 0;
 
+    let mut calib = if calibrating {
+        Some(Calibration::new(&mut rl, &thread, reference.as_deref()))
+    } else {
+        None
+    };
+
     let mut game = Game::new();
     let mut accumulator = 0.0f32;
 
@@ -392,6 +407,9 @@ fn main() {
         if rl.is_key_pressed(KeyboardKey::KEY_R) {
             game = Game::new();
             accumulator = 0.0;
+        }
+        if let Some(c) = &mut calib {
+            c.handle_input(&rl);
         }
         if rl.is_key_pressed(KeyboardKey::KEY_TAB) {
             game.mode = match game.mode {
@@ -425,10 +443,11 @@ fn main() {
 
         // --- Fixed-step simulation ---
         if game.mode == Mode::Playing || game.mode == Mode::Dead {
+            let overlay_owns_arrows = calib.as_ref().is_some_and(|c| c.enabled);
             let input = if capture_dir.is_some() {
                 scripted_input(frame)
             } else {
-                sample_input(&rl)
+                sample_input(&rl, !overlay_owns_arrows)
             };
             // In capture mode the clock is fixed so runs are reproducible.
             accumulator += if capture_dir.is_some() {
@@ -462,6 +481,9 @@ fn main() {
             render::draw_player(&mut w, &game.player);
             render::draw_sparks(&mut w, &game.sparks);
             render::draw_float_text(&mut w, &game.floats);
+            if let Some(c) = &calib {
+                c.draw_world(&mut w, &game.player, &game.enemies, cam.target.into());
+            }
         }
 
         ui::draw_hud(
@@ -474,6 +496,9 @@ fn main() {
             game.time,
         );
         ui::draw_controls(&mut d);
+        if let Some(c) = &calib {
+            c.draw_overlay(&mut d);
+        }
 
         if game.toast_life > 0.0 {
             let toast = game.toast.clone();

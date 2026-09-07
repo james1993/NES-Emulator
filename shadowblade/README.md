@@ -48,12 +48,43 @@ repo was verified.
 
 `src/config.rs` is the tuning surface. Sprite dimensions, physics constants,
 progression curves and the full palette live there and nowhere else, so the game
-can be re-proportioned against reference footage without touching game logic.
-The values in it now are hand-picked starting points for a 16:9 brawler, not
+can be re-proportioned against reference art without touching game logic. The
+values in it now are hand-picked starting points for a 16:9 brawler, not
 measurements taken from anything.
 
 Combat feel is tuned separately in `src/combat.rs`, where each attack is frame
 data — startup, active, recovery, reach, damage, knockback, cancel window.
+
+### Calibration overlay
+
+```sh
+cargo run --release -- --calibrate                        # overlay only
+cargo run --release -- --reference reference/pose.png     # with reference art
+```
+
+Draws a 16px world grid, the player's collision box and silhouette bounds, the
+ground line, and every live attack hitbox — so reach and proportion become
+numbers rather than impressions. With `--reference`, your own image is drawn in
+world space beside the character and aligned to the same ground line, so heights
+compare directly.
+
+| Key | Action |
+| --- | --- |
+| `F1` | Toggle the overlay |
+| `G` / `O` | Toggle grid / outlines |
+| Arrows | Move the reference image |
+| `[` `]` | Scale the reference |
+| `-` `=` | Reference opacity |
+| `Ctrl` | Hold for fine adjustment |
+| `P` | Print current values to stdout |
+
+`P` dumps the tuned numbers in a form you can paste back into `config.rs`. While
+the overlay is up the arrow keys drive the reference image, so move the
+character with `WASD`.
+
+Put reference images in `reference/`, which is gitignored: it is someone else's
+art, used locally to check proportions, and it should not end up in the repo or
+the build.
 
 ## Architecture
 

@@ -1,2 +1,8 @@
 /target
+
+# Screenshots produced by --capture.
 *.png
+
+# Reference art you supply locally for calibration. Kept out of the repo on
+# purpose: it is someone else's work, used to check proportions, never shipped.
+/reference/
