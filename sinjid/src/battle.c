@@ -370,7 +370,9 @@ static void apply_skill(Game *g, Combatant *a, const SkillDef *sk, int rank, int
             battle_log(b, "%s braces behind the guard.", a->name);
         }
         if (sk->flags & SKF_HEAL) {
-            int heal = (int)(a->magDmg * (1.8f + 0.35f * (rank - 1))) + 20;
+            sound_play(SFX_HEAL);
+            /* The original heals a flat amount, not a multiple of magic damage. */
+            int heal = sk->flatBase + sk->flatPerRank * rank;
             if (a->life + heal > a->lifeMax) heal = a->lifeMax - a->life;
             a->life += heal;
             battle_floater(b, (Vector2){ ap.x, ap.y - 160 }, C_JADE, 26, "+%d", heal);
@@ -415,15 +417,18 @@ static void apply_skill(Game *g, Combatant *a, const SkillDef *sk, int rank, int
         Hit h = resolve_hit(b, a, t, sk, rank);
 
         if (h.missed) {
+            sound_play(SFX_NO);
             battle_floater(b, (Vector2){ tp.x, tp.y - 150 }, C_PARCH2, 22, "miss");
             battle_log(b, "%s slips aside.", t->name);
             continue;
         }
         if (h.toShield > 0) {
+            sound_play(SFX_BLOCK);
             battle_floater(b, (Vector2){ tp.x - 26, tp.y - 170 }, C_KI2, 20, "-%d", h.toShield);
             battle_burst(b, (Vector2){ tp.x, tp.y - 80 }, C_KI2, 10, 130, 0);
         }
         if (h.broke) {
+            sound_play(SFX_BREAK);
             battle_log(b, "%s's guard shatters!", t->name);
             battle_floater(b, (Vector2){ tp.x, tp.y - 200 }, C_GOLD, 22, "guard broken");
             battle_burst(b, (Vector2){ tp.x, tp.y - 80 }, C_GOLD, 26, 200, 0);
@@ -431,6 +436,7 @@ static void apply_skill(Game *g, Combatant *a, const SkillDef *sk, int rank, int
             if (t->alive) { t->anim = ANIM_BLOCKBREAK; t->animT = 0; }
         }
         if (h.toLife > 0) {
+            sound_play(sk->dmgType == DMG_MAGIC ? SFX_SPELL : (rnd(0,1) ? SFX_SWORD1 : SFX_SWORD2));
             battle_floater(b, (Vector2){ tp.x, tp.y - 150 }, sk->dmgType == DMG_MAGIC ? sk->fx : C_BLOOD2,
                            30, "%d", h.toLife);
             battle_burst(b, (Vector2){ tp.x, tp.y - 70 }, sk->dmgType == DMG_PHYSICAL ? C_BLOOD : sk->fx,
@@ -448,6 +454,7 @@ static void apply_skill(Game *g, Combatant *a, const SkillDef *sk, int rank, int
             }
         }
         if (h.killed) {
+            sound_play(SFX_DIE);
             t->anim = ANIM_DIE; t->animT = 0;
             battle_log(b, "%s falls.", t->name);
             battle_burst(b, (Vector2){ tp.x, tp.y - 60 }, C_BLOOD, 30, 220, 0);
@@ -514,6 +521,11 @@ static void end_battle_win(Game *g)
                 if (player_add_item(&g->p, pick) >= 0) b->dropItem = pick;
             }
         }
+    }
+    sound_play(SFX_COINS);
+    if (b->isPortal && g->portalIdx >= 0 && g->portalIdx < 3) {
+        int *lvl = &g->p.portalLevel[g->portalIdx];
+        if (*lvl == g->portalStage && *lvl < portal_stage_count(g->portalIdx)) (*lvl)++;
     }
     player_gain_exp(g, b->expGain);
     g->p.curLife = b->heroes[0].life;
@@ -652,6 +664,48 @@ static void update_player_menu(Game *g)
             else begin_action(g, 0, id, b->target);
         }
     } else {
+        /* Slots 0 and 1 are the original's lifepots / manapots counters. */
+        int ids[MAX_INVENTORY], n = 0;
+        for (int i = 0; i < g->p.invCount; i++)
+            if (ITEMS[g->p.inv[i].def].type == ITEM_CONSUMABLE) ids[n++] = i;
+        int total = 2 + n;
+        if (IsKeyPressed(KEY_ESCAPE)) { b->menuTab = 0; return; }
+        if (b->menuIdx >= total) b->menuIdx = total - 1;
+        if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) b->menuIdx = (b->menuIdx + 1) % total;
+        if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) b->menuIdx = (b->menuIdx + total - 1) % total;
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+            bool used = false;
+            if (b->menuIdx == 0) {
+                if (g->p.lifePots > 0 && a->life < a->lifeMax) {
+                    g->p.lifePots--;
+                    int h2 = a->lifeMax / 3;
+                    if (a->life + h2 > a->lifeMax) h2 = a->lifeMax - a->life;
+                    a->life += h2; used = true;
+                    battle_log(b, "%s drinks a life potion (+%d).", a->name, h2);
+                    battle_floater(b, (Vector2){ HERO_X[0], LINE_Y - 160 }, C_JADE, 26, "+%d", h2);
+                } else battle_log(b, g->p.lifePots > 0 ? "Already whole." : "No life potions.");
+            } else if (b->menuIdx == 1) {
+                if (g->p.manaPots > 0 && a->mana < a->manaMax) {
+                    g->p.manaPots--;
+                    int m2 = a->manaMax / 3;
+                    if (a->mana + m2 > a->manaMax) m2 = a->manaMax - a->mana;
+                    a->mana += m2; used = true;
+                    battle_log(b, "%s drinks a mana potion (+%d).", a->name, m2);
+                    battle_floater(b, (Vector2){ HERO_X[0], LINE_Y - 160 }, C_KI, 26, "+%d", m2);
+                } else battle_log(b, g->p.manaPots > 0 ? "Already full." : "No mana potions.");
+            } else if (use_consumable(g, ids[b->menuIdx - 2], a)) used = true;
+            if (used) {
+                a->anim = ANIM_HEAL; a->animT = 0;
+                battle_burst(b, (Vector2){ HERO_X[0], LINE_Y - 70 }, C_JADE, 14, 80, 1);
+                b->menuTab = 0;
+                b->orderIdx++;
+                b->phase = BP_TURN_END;
+                b->timer = 0.6f;
+            }
+        }
+        return;
+    }
+    if (0) {
         int ids[MAX_INVENTORY], n = 0;
         for (int i = 0; i < g->p.invCount; i++)
             if (ITEMS[g->p.inv[i].def].type == ITEM_CONSUMABLE) ids[n++] = i;
@@ -767,7 +821,9 @@ void battle_update(Game *g, float dt)
         if (b->timer > 0.6f && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE))) {
             g->p.curLife = b->heroes[0].life;
             g->p.curMana = b->heroes[0].mana;
-            if (b->isArena) {
+            if (b->isPortal) {
+                go_scene(g, SCENE_PORTAL);
+            } else if (b->isArena) {
                 g->p.arenaWave++;
                 go_scene(g, SCENE_ARENA);
                 g->scene = SCENE_VILLAGE;      /* arena flow returns to town */
@@ -956,15 +1012,18 @@ void battle_draw(Game *g)
             int ids[MAX_INVENTORY], n = 0;
             for (int i = 0; i < g->p.invCount; i++)
                 if (ITEMS[g->p.inv[i].def].type == ITEM_CONSUMABLE) ids[n++] = i;
+            char lab[64];
+            int total = 2 + n;
             int top = b->menuIdx - 4; if (top < 0) top = 0;
-            for (int i = top; i < n && i < top + 5; i++) {
-                char lab[64];
-                snprintf(lab, sizeof lab, "%s  x%d", ITEMS[g->p.inv[ids[i]].def].name,
-                         g->p.inv[ids[i]].count);
+            for (int i = top; i < total && i < top + 5; i++) {
+                if (i == 0) snprintf(lab, sizeof lab, "Life Potion  x%d", g->p.lifePots);
+                else if (i == 1) snprintf(lab, sizeof lab, "Mana Potion  x%d", g->p.manaPots);
+                else snprintf(lab, sizeof lab, "%s  x%d", ITEMS[g->p.inv[ids[i - 2]].def].name,
+                              g->p.inv[ids[i - 2]].count);
+                bool en = (i == 0) ? g->p.lifePots > 0 : (i == 1) ? g->p.manaPots > 0 : true;
                 ui_button((Rectangle){ cp.x + 14, cp.y + 44 + (i - top) * 44, cp.width - 28, 38 },
-                          lab, b->menuIdx == i, true);
+                          lab, b->menuIdx == i, en);
             }
-            if (n == 0) ui_text("Nothing to use.", cp.x + 18, cp.y + 50, 18, C_PARCH2);
         }
         if (b->phase == BP_PLAYER_TARGET)
             ui_text_c("choose a target -- ESC to go back", SCREEN_W / 2, 120, 20, C_GOLD);

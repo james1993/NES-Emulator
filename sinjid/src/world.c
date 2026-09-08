@@ -331,6 +331,14 @@ static const NpcSeed VILLAGE_NPCS[] = {
   { NPC_PROP,     3, 8, "Crate", "A crate, nailed shut.", 0 },
   { NPC_PROP,     6, 9, "Urn", "Chipped at the lip. Empty.", 0 },
   { NPC_PROP,    15, 9, "Bamboo", "Cut stalks, drying in a bundle.", 0 },
+  { NPC_PORTAL,  10, 9, "The Three Roads",
+    "Three roads run south. The human road, the beast road, and\nthe one nobody walks back up.", 0 },
+  { NPC_TRAINER2,13, 9, "Training Post",
+    "A post wrapped in old rope. Work it until the breath goes.", 0 },
+  { NPC_PICKUP,   2, 9, "Loose Flagstone",
+    "Something is wedged under the stone.", 0 },
+  { NPC_PICKUP,  17, 9, "Hollow Trunk",
+    "A split trunk with a hollow behind the bark.", 1 },
   { NPC_GATE,    10,11, "South Road", "The road out of the valley.", ZONE_STAGE0 },
 };
 
@@ -491,6 +499,28 @@ static void interact(Game *g, Npc *n)
         g->menuIdx = 0; g->menuTab = 0;
         go_scene(g, SCENE_TRAIN);
         break;
+    case NPC_PORTAL:
+        g->portalIdx = 0;
+        go_scene(g, SCENE_PORTAL);
+        break;
+    case NPC_TRAINER2:
+        g->trainGain = 0; g->trainT = 0;
+        go_scene(g, SCENE_TRAINING);
+        break;
+    case NPC_PICKUP: {
+        /* The original hides items behind searchable scenery; each is once only. */
+        int slot = n->arg & 15;
+        if (p->picked[slot]) { ui_toast(g, "Nothing more here."); break; }
+        p->picked[slot] = true;
+        if (slot == 0) {
+            p->skillPts++;
+            ui_toast(g, "A ring, and the sense to use it. +1 skill point.");
+            player_add_item(p, IT_MENDOS_RING);
+        } else {
+            p->gold += 120;
+            ui_toast(g, "Someone's hidden purse. +120 gold.");
+        }
+    } break;
     case NPC_HEALER: {
         Combatant c;
         player_recalc(p, &c);
@@ -507,10 +537,17 @@ static void interact(Game *g, Npc *n)
     case NPC_SAVE: {
         Combatant c;
         player_recalc(p, &c);
+        if (p->rests <= 0) {
+            ui_toast(g, "You have no rests left. The shrine only gives so much.");
+            break;
+        }
+        p->rests--;
         p->curLife = c.lifeMax;
         p->curMana = c.manaMax;
+        p->curEnergy = c.engMax;
         p->saveZone = p->zone; p->saveX = p->tx; p->saveY = p->ty;
-        if (save_write(g)) { g->hasSave = true; ui_toast(g, "Rested. Progress saved."); }
+        if (save_write(g)) { g->hasSave = true;
+            ui_toast(g, "Rested and saved. %d rests left.", p->rests); }
         else ui_toast(g, "The shrine is silent. (save failed)");
     } break;
     case NPC_ARENA: {
@@ -587,6 +624,7 @@ void world_update(Game *g, float dt)
             p->tx = nx; p->ty = ny;
             g->moving = true;
             g->moveT = 0;
+            sound_play(SFX_STEP);
         } else {
             g->walkT += dt;   /* keep the legs moving while pushing a wall */
         }

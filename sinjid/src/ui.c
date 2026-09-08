@@ -347,7 +347,8 @@ void ui_scene_shop(Game *g)
                     const ItemDef *it = &ITEMS[stock[g->shopIdx]];
                     if (p->gold < it->price) ui_toast(g, "Not enough gold.");
                     else if (player_add_item(p, stock[g->shopIdx]) < 0) ui_toast(g, "Your pack is full.");
-                    else { p->gold -= it->price; ui_toast(g, "Bought %s.", it->name); }
+                    else { p->gold -= it->price; sound_play(SFX_ITEM);
+                           ui_toast(g, "Bought %s.", it->name); }
                 } else if (p->invCount > 0) {
                     int def = p->inv[g->shopIdx].def;
                     int price = ITEMS[def].price / 2;
@@ -462,6 +463,7 @@ void ui_scene_train(Game *g)
                 else {
                     p->skillRank[id]++;
                     p->skillPts--;
+                    sound_play(SFX_SKILL);
                     ui_toast(g, "%s -- rank %d.", SKILLS[id].name, p->skillRank[id]);
                 }
             }
@@ -672,4 +674,128 @@ void ui_scene_create(Game *g)
     ui_text(g->createField == 0 ? "left/right to pick a discipline, ENTER to name your warrior"
                                 : "type a name, ENTER to begin, ESC to go back",
             60, SCREEN_H - 40, 19, C_PARCH2);
+}
+
+
+/* ---------------------------------------------------------------- portals */
+
+/* The three roads out of the valley.  Each is a ladder of the original's own
+   encounters, and each remembers how far you have pushed down it. */
+void ui_scene_portal(Game *g)
+{
+    Player *p = &g->p;
+    if (g->fadeDir <= 0) {
+        if (IsKeyPressed(KEY_ESCAPE)) { go_scene(g, SCENE_VILLAGE); return; }
+        if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) g->portalIdx = (g->portalIdx + 1) % 3;
+        if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) g->portalIdx = (g->portalIdx + 2) % 3;
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+            int idx = g->portalIdx;
+            int lvl = p->portalLevel[idx];
+            if (lvl >= portal_stage_count(idx)) {
+                ui_toast(g, "%s is walked out to its end.", PORTALS[idx].name);
+            } else {
+                const PortalStage *st = &PORTAL_STAGES[PORTALS[idx].first + lvl];
+                int defs[MAX_FOES]; int n = 0;
+                defs[n++] = st->enemyA;
+                if (st->enemyB >= 0) defs[n++] = st->enemyB;
+                g->portalStage = lvl;
+                battle_start(g, defs, n, p->level, false, false);
+                g->b.isPortal = true;
+                g->b.canFlee = true;
+            }
+        }
+    }
+
+    art_draw_battle_bg(BG_DARK, g->time);
+    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 200 });
+    ui_text("THE THREE ROADS", 60, 40, 40, C_GOLD);
+    ui_text("Each road runs deeper than the last. You keep your place on every one.",
+            60, 88, 19, C_PARCH2);
+
+    for (int i = 0; i < 3; i++) {
+        Rectangle r = { 80, 150 + i * 130, SCREEN_W - 160, 110 };
+        bool sel = (g->portalIdx == i);
+        DrawRectangleRounded(r, 0.08f, 8, sel ? (Color){ 46, 38, 26, 240 }
+                                              : (Color){ 20, 18, 24, 220 });
+        DrawRectangleRoundedLines(r, 0.08f, 8, sel ? C_GOLD : (Color){ 70, 62, 46, 220 });
+        ui_text(PORTALS[i].name, r.x + 24, r.y + 16, 28, sel ? C_PARCH : C_PARCH2);
+        int total = portal_stage_count(i), done = p->portalLevel[i];
+        char b[96];
+        snprintf(b, sizeof b, "stage %d of %d", done < total ? done + 1 : total, total);
+        ui_text(b, r.x + 24, r.y + 56, 20, C_GOLD);
+        /* progress pips */
+        for (int s = 0; s < total; s++) {
+            float x = r.x + 300 + s * 22, y = r.y + 66;
+            DrawRectangleRounded((Rectangle){ x, y, 16, 16 }, 0.3f, 4,
+                                 s < done ? C_JADE : (Color){ 40, 36, 44, 255 });
+        }
+        if (done >= total)
+            ui_text("walked out", r.x + r.width - 150, r.y + 56, 20, C_JADE);
+    }
+    ui_text("ENTER walk the next stage    ESC leave", 60, SCREEN_H - 44, 19, C_PARCH2);
+}
+
+/* --------------------------------------------------------------- training */
+
+/* The original's trainer burns energy for experience: every tick spends
+   engrate energy and banks ceil(exprate * 2) experience until you run dry. */
+void ui_scene_training(Game *g)
+{
+    Player *p = &g->p;
+    Combatant c;
+    player_recalc(p, &c);
+
+    if (g->fadeDir <= 0) {
+        if (IsKeyPressed(KEY_ESCAPE)) { go_scene(g, SCENE_VILLAGE); return; }
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+            if (p->curEnergy <= 0) ui_toast(g, "You have nothing left to burn.");
+            else {
+                int rate = 4 + p->level;
+                int spend = p->curEnergy < rate ? p->curEnergy : rate;
+                p->curEnergy -= spend;
+                int gained = (spend * 2 + 1) / 2 + p->level;
+                g->trainGain += gained;
+                g->trainT = 0.6f;
+                player_gain_exp(g, gained);
+            }
+        }
+    }
+    if (g->trainT > 0) g->trainT -= GetFrameTime();
+
+    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 210 });
+    ui_text("TRAINING GROUND", 60, 40, 36, C_GOLD);
+    ui_text("Work the post until the breath runs out. Energy buys experience.",
+            60, 86, 19, C_PARCH2);
+
+    Rectangle bar = { 60, 200, SCREEN_W - 120, 34 };
+    ui_bar(bar, c.engMax ? (float)p->curEnergy / c.engMax : 0, C_GOLD,
+           (Color){ 24, 22, 28, 220 }, NULL);
+    char b[96];
+    snprintf(b, sizeof b, "ENERGY  %d / %d", p->curEnergy, c.engMax);
+    ui_text(b, bar.x + 8, bar.y + 6, 20, C_INK);
+
+    snprintf(b, sizeof b, "Experience  %d / %d      banked this session: %d",
+             p->exp, p->expNext, g->trainGain);
+    ui_text(b, 60, 260, 22, C_PARCH);
+
+    /* the training post takes the hits */
+    Combatant post;
+    memset(&post, 0, sizeof post);
+    post.look = data_class_look(CLASS_WARRIOR);
+    post.look.cloth = (Color){ 120, 96, 64, 255 };
+    post.look.weapon = WEAP_NONE;
+    post.alive = true;
+    post.anim = g->trainT > 0 ? ANIM_HIT : ANIM_STAND;
+    post.animT = g->trainT > 0 ? (0.6f - g->trainT) : g->time;
+    art_draw_puppet(&post, (Vector2){ SCREEN_W * 0.72f, 600 }, -1.0f, post.animT, 1.5f);
+
+    Combatant hero;
+    player_recalc(p, &hero);
+    hero.anim = g->trainT > 0 ? ANIM_ATTACK : ANIM_STAND;
+    hero.animT = g->trainT > 0 ? (0.6f - g->trainT) : g->time;
+    art_draw_puppet(&hero, (Vector2){ SCREEN_W * 0.42f, 600 }, 1.0f, hero.animT, 1.5f);
+
+    ui_text(p->curEnergy > 0 ? "ENTER strike the post    ESC leave"
+                             : "You are spent. Rest before you train again.    ESC leave",
+            60, SCREEN_H - 44, 20, p->curEnergy > 0 ? C_GOLD : C_BLOOD2);
 }

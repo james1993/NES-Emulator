@@ -211,7 +211,7 @@ const SkillDef SKILLS[MAX_SKILLS] = {
    1, 10, 1, { 4, -1 }, 0, 0,    0, 0, 0, 7, 0, 0,
    DMG_MAGIC, SK_TARGET_SELF, SKF_PASSIVE, ANIM_STAND, P_KI },
  { "Mend", "Close your own wounds with ki instead of thread.",
-   1, 10, 1, { 4, -1 }, 0, 0,   0, 0, 0, 0, 0, 0,
+   1, 10, 1, { 4, -1 }, 16, 0,   0, 0, 80, 22, 0, 0,
    DMG_MAGIC, SK_TARGET_SELF, SKF_HEAL, ANIM_HEAL, P_JADE },
  { "Blade Mastery", "The edge finds the seam by itself now. Flat damage, every rank.",
    0, 10, 5, { 6, -1 }, 0, 0,    0, 0, 0, 5, 0, 0,
@@ -471,4 +471,58 @@ int data_shop_table(int vendor, const int **out)
     *out = t;
     int n = 0; while (t[n] >= 0) n++;
     return n;
+}
+
+/* ---------------------------------------------------------------- portals */
+/* The original's three portals.  Each stage is one of its own encounter
+   definitions, grouped by the portal the enemy family belongs to and
+   ordered by the experience it awards. */
+const PortalStage PORTAL_STAGES[] = {
+  {  1, -1 },   /* HUMAN */
+  {  0, -1 },   /* HUMAN */
+  {  6, -1 },   /* HUMAN */
+  {  8, -1 },   /* HUMAN */
+  { 12, -1 },   /* HUMAN */
+  {  3,  7 },   /* HUMAN */
+  { 18, -1 },   /* HUMAN */
+  {  4, -1 },   /* HUMAN */
+  { 11, 13 },   /* HUMAN */
+  { 14, 15 },   /* HUMAN */
+  {  9, -1 },   /* HUMAN */
+  { 28, -1 },   /* HUMAN */
+  { 32, -1 },   /* HUMAN */
+  { 20,  5 },   /* HUMAN */
+  { 23, -1 },   /* HUMAN */
+  { 25, -1 },   /* HUMAN */
+  { 34, -1 },   /* HUMAN */
+  { 26, -1 },   /* HUMAN */
+  { 29, 30 },   /* HUMAN */
+  { 39, 39 },   /* HUMAN */
+  { 24, -1 },   /* MONSTER */
+  { 37, -1 },   /* MONSTER */
+  { 19, -1 },   /* MONSTER */
+  { 35, -1 },   /* MONSTER */
+  { 27, -1 },   /* MONSTER */
+  { 17, 40 },   /* MONSTER */
+  { 42, -1 },   /* MONSTER */
+  { 44, -1 },   /* MONSTER */
+  { 22, 21 },   /* MONSTER */
+  { 31, 36 },   /* MONSTER */
+  { 41, -1 },   /* MONSTER */
+  { 43, -1 },   /* MONSTER */
+  { 45, -1 },   /* DARK */
+  { 46, -1 },   /* DARK */
+  { 33, -1 },   /* DARK */
+};
+
+const Portal PORTALS[3] = {
+  { "Human Road", 0, 20 },
+  { "Beast Road", 20, 12 },
+  { "Shadow Road", 32, 3 },
+};
+
+int portal_stage_count(int portal)
+{
+    if (portal < 0 || portal > 2) return 0;
+    return PORTALS[portal].count;
 }

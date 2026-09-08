@@ -231,6 +231,8 @@ void player_recalc(Player *p, Combatant *out)
     out->atkBuff = out->defBuff = 1.0f;
 }
 
+/* The original keeps a fixed 28-slot itemstats grid and drops purchases into
+   the first free slot of its 4..11 window; anything beyond that is refused. */
 int player_add_item(Player *p, int def)
 {
     if (def < 0 || def >= ITEM_COUNT) return -1;
@@ -242,6 +244,13 @@ int player_add_item(Player *p, int def)
     p->inv[p->invCount].def = def;
     p->inv[p->invCount].count = 1;
     return p->invCount++;
+}
+
+/* How many carried items the pack window still has room for. */
+int player_pack_free(const Player *p)
+{
+    int free = MAX_INVENTORY - p->invCount;
+    return free < 0 ? 0 : free;
 }
 
 static void inv_remove(Player *p, int idx, int n)
@@ -334,6 +343,7 @@ void player_gain_exp(Game *g, int exp)
         }
         p->expNext = player_exp_for_level(p->level);
         if (p->exp >= p->expNext) p->exp = p->expNext - 1;   /* carry-over cap */
+        sound_play(SFX_LEVEL);
         if (bonus) ui_toast(g, "Level %d! Bonus: +2 Strength, +2 Speed, +1 skill.", p->level);
         else       ui_toast(g, "Level %d! +1 stat point, +1 skill point.", p->level);
     }
@@ -395,6 +405,11 @@ static void new_player(Game *g, ClassId cls, const char *name)
     p->tx = 10; p->ty = 9; p->dir = 1;
     p->saveZone = ZONE_VILLAGE; p->saveX = 10; p->saveY = 9;
     p->arenaWave = 0;
+    p->rests = 10;                 /* the original starts you with ten rests */
+    p->lifePots = 5;
+    p->manaPots = 5;
+    p->curEnergy = 50;
+    for (int i = 0; i < 3; i++) p->portalLevel[i] = 0;
 }
 
 /* --------------------------------------------------------------- scenes */
@@ -483,6 +498,7 @@ int main(int argc, char **argv)
     SetTargetFPS(60);
     SetExitKey(0);
     load_fonts(&G);
+    sound_init();
     data_init_zones(G.zones);
     G.scene = SCENE_TITLE;
     G.hasSave = save_exists();
@@ -566,6 +582,8 @@ int main(int argc, char **argv)
         case SCENE_MENU:
         case SCENE_SHOP:
         case SCENE_TRAIN:
+        case SCENE_PORTAL:
+        case SCENE_TRAINING:
         case SCENE_DIALOG:
             /* handled inside their draw/update helpers in ui.c            */
             break;
@@ -599,6 +617,8 @@ int main(int argc, char **argv)
         case SCENE_SHOP:     world_draw(&G); ui_scene_shop(&G); break;
         case SCENE_TRAIN:    world_draw(&G); ui_scene_train(&G); break;
         case SCENE_DIALOG:   world_draw(&G); ui_scene_dialog(&G); break;
+        case SCENE_PORTAL:   ui_scene_portal(&G); break;
+        case SCENE_TRAINING: world_draw(&G); ui_scene_training(&G); break;
         case SCENE_GAMEOVER: {
             art_draw_battle_bg(BG_DARK, G.time);
             DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 0, 0, 0, 190 });
@@ -659,6 +679,7 @@ int main(int argc, char **argv)
     }
 
     UnloadRenderTexture(target);
+    sound_close();
     if (G.fontLoaded) UnloadFont(G.font);
     CloseWindow();
     return 0;

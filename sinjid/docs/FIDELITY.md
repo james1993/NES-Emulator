@@ -41,6 +41,15 @@ life damage that turn. Hit/miss is a speed roll —
 spread is the original's `random(phydmg/3)`. Turn order sorts purely on
 descending speed.
 
+**The three portals.** `HUMAN`, `MONSTER` and `DARK`, each a ladder of the
+original's own encounter definitions (20, 12 and 3 stages), with progress kept
+per portal in `portallevel`. **Rests are limited** to the original's ten.
+**Potions are counters** (`lifepots` / `manapots`, five each at the start), not
+inventory items, and are the first two entries in the battle supply menu. The
+pack is the original's **28-slot grid**. The **training ground** burns energy
+for experience the way the original's does, and **hidden pickups** sit behind
+searchable scenery, once each.
+
 **Progression.** `expmax = 50 * level`. A level grants +1 stat point, +1 skill
 point, +5 life, +5 mana, +3 energy; every fifth level adds +2 Strength, +2 Speed
 and a bonus skill point. Leftover experience carries, capped at `expmax - 1`.
@@ -83,27 +92,20 @@ nineteen rather than members of the table, as in the original.
 
 ## Present in the original, not implemented here
 
-* **The three portals of twenty stages each** (`HUMAN`, `MONSTER`, `DARK`, over
-  Snow / Coast / Grass / Desert). This remake uses the eleven recovered hub
-  layouts joined in a line instead. This is the largest structural gap.
-* **Limited rests** (`rests = 10`).
-* **Potions as counters** (`lifepots` / `manapots`, 5 each at start) — here they
-  are ordinary inventory items.
-* **The 28-slot `itemstats` inventory grid**, and buying into slots 4–11.
-* **A second hero.** The engine supports two per side and the original tracks
-  `hero1`/`hero2`; only one is ever fielded here.
-* **The training minigame**, which spends energy for experience
-  (`engb -= engrate`, `expup += ceil(exprate * 2)`). Energy is consequently
-  vestigial in this build, since skills cost mana only.
-* **Hidden searchable pickups** (`SearchItem` / `Searched`).
+* **The second hero.** The engine supports two fighters a side and the original
+  tracks `hero1`/`hero2`; only one is ever fielded.
+* **Per-stage layouts for the portal ladders.** The portals are battle ladders
+  here; the original's walkable screens are the eleven hub layouts, which are
+  reproduced exactly.
 * **One guard-destroying attack** that passes `dmgtoshd = 999` with every other
   component zeroed. It is not tied to any player skill rank in the scripts, so
   it has not been attributed to one here.
-* **Sound.** The original calls `playSound` throughout; there is no audio here.
-* Saving uses a local file rather than a Flash `SharedObject`.
 
 ## Out of scope
 
-**Art** is drawn procedurally in `art.c`; no asset from the original is used or
-redistributed. **Dialogue** is written for this remake — the cast, their roles
+**Art** is drawn procedurally in `art.c` and **audio is synthesised** in
+`sound.c` -- the original's `playSound` vocabulary (sword hits, a blocked blow,
+a shattering guard, coins, a picked-up item, a level, a spent point, a refusal,
+thunder, a howl, footsteps) reproduced as generated waveforms. No art or audio
+asset from the original is used or redistributed. **Dialogue** is written for this remake — the cast, their roles
 and their mechanical function are the original's, the words are not.

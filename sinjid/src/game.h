@@ -19,7 +19,8 @@
 
 #define MAX_HEROES     2
 #define MAX_FOES       2
-#define MAX_INVENTORY 48
+#define MAX_INVENTORY 28    /* the original's itemstats grid */
+#define INV_FIRST_FREE 4    /* purchases land in slots 4..11        */
 #define MAX_SKILLS    19
 #define MAX_LOG        6
 #define MAX_FLOATERS  24
@@ -73,8 +74,16 @@
 typedef enum {
     SCENE_TITLE, SCENE_CREATE, SCENE_VILLAGE, SCENE_WORLD, SCENE_BATTLE,
     SCENE_MENU, SCENE_SHOP, SCENE_TRAIN, SCENE_ARENA, SCENE_DIALOG,
-    SCENE_GAMEOVER, SCENE_CREDITS
+    SCENE_GAMEOVER, SCENE_CREDITS, SCENE_PORTAL, SCENE_TRAINING
 } Scene;
+
+/* The original runs three portals of stages -- HUMAN, MONSTER and DARK -- each
+   a ladder of its own encounter definitions, with progress kept per portal. */
+typedef struct { int enemyA, enemyB; } PortalStage;
+typedef struct { const char *name; int first, count; } Portal;
+extern const PortalStage PORTAL_STAGES[];
+extern const Portal PORTALS[3];
+int  portal_stage_count(int portal);
 
 /* The original's own four disciplines. */
 typedef enum { CLASS_BALANCED, CLASS_WARRIOR, CLASS_SPELLCASTER, CLASS_SHADOW,
@@ -263,7 +272,7 @@ typedef enum {
 
 typedef enum {
     NPC_NONE, NPC_ELDER, NPC_SMITH, NPC_VENDOR, NPC_HEALER, NPC_TRAINER,
-    NPC_ARENA, NPC_SAVE, NPC_VILLAGER, NPC_GATE, NPC_PROP
+    NPC_ARENA, NPC_SAVE, NPC_VILLAGER, NPC_GATE, NPC_PROP, NPC_PORTAL, NPC_PICKUP, NPC_TRAINER2
 } NpcKind;
 
 typedef struct {
@@ -306,9 +315,15 @@ typedef struct {
     Look      look;
     ZoneId    zone;
     int       tx, ty, dir;
-    int       curLife, curMana;    /* carried between fights              */
+    int       curLife, curMana, curEnergy;  /* carried between fights     */
     ZoneId    saveZone; int saveX, saveY;
     int       arenaWave;
+    /* Portal progress, limited rests and potion counts, as the original keeps
+       them (portallevel, rests, lifepots, manapots). */
+    int       portalLevel[3];
+    int       rests;
+    int       lifePots, manaPots;
+    bool      picked[16];          /* hidden pickups already taken          */
     bool      zoneCleared[ZONE_COUNT];
     int       playtime;
 } Player;
@@ -350,7 +365,7 @@ typedef struct {
     Particle  parts[MAX_PARTICLES];
     float     shake, flashScreen;
     Color     flashCol;
-    bool      isArena, canFlee, isBoss;
+    bool      isArena, canFlee, isBoss, isPortal;
     int       expGain, goldGain, dropItem;
     int       bgStyle;
 } Battle;
@@ -386,6 +401,9 @@ typedef struct {
     bool    hasSave;
     float   camShakeT;
     int     credits;
+    int     portalIdx, portalStage;
+    float   trainT;
+    int     trainGain;
 } Game;
 
 /* ------------------------------------------------------------------- data */
@@ -427,11 +445,14 @@ void  ui_scene_train(Game *g);
 void  ui_scene_title(Game *g);
 void  ui_scene_create(Game *g);
 void  ui_scene_dialog(Game *g);
+void  ui_scene_portal(Game *g);
+void  ui_scene_training(Game *g);
 void  ui_toast(Game *g, const char *fmt, ...);
 
 /* ---------------------------------------------------------------- player */
 void  player_recalc(Player *p, Combatant *out);
 int   player_add_item(Player *p, int def);
+int   player_pack_free(const Player *p);
 void  player_equip(Player *p, int invIndex);
 bool  player_can_equip(const Player *p, int def);
 bool  skill_prereqs_met(const Player *p, int id);
@@ -446,6 +467,7 @@ const char *skill_lock_reason(const Player *p, int id);
 #define IT_LEATHER_ARMOUR 52
 #define IT_RICE_BALL      63
 #define IT_GREEN_TEA      66
+#define IT_MENDOS_RING    61
 void  player_gain_exp(Game *g, int exp);
 int   player_exp_for_level(int lvl);
 bool  save_write(const Game *g);
@@ -466,6 +488,18 @@ void  battle_burst(Battle *b, Vector2 at, Color c, int n, float spd, int kind);
 void  world_update(Game *g, float dt);
 void  world_draw(Game *g);
 void  world_enter_zone(Game *g, ZoneId z, int tx, int ty);
+
+/* ----------------------------------------------------------------- sound
+   The original's playSound vocabulary, synthesised rather than sampled. */
+typedef enum {
+    SFX_SWORD1, SFX_SWORD2, SFX_BLOCK, SFX_BREAK, SFX_COINS, SFX_ITEM,
+    SFX_LEVEL, SFX_SKILL, SFX_NO, SFX_THUNDER, SFX_HOWL, SFX_STEP,
+    SFX_HEAL, SFX_SPELL, SFX_DIE, SFX_COUNT
+} SfxId;
+
+void  sound_init(void);
+void  sound_play(int id);
+void  sound_close(void);
 
 /* ------------------------------------------------------------------ util */
 int   rnd(int lo, int hi);
