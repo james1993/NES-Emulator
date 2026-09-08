@@ -24,6 +24,13 @@ any future edit.
 
 ## Exact, from the bytecode
 
+**Shield damage** is its own channel. An attack passes a `dmgtoshd` argument
+alongside the three damage components: normally the fighter's raw shield-damage
+stat (which items supply -- the Shield Breaker weapon carries 40, Guard Blade
+10, Katana 7), zero for the pure-magic bolts, and scaled by
+`(shddmg / 100) * (62 + 8 * rank)` for the shield-breaking skill. All three
+cases are implemented.
+
 **Combat.** Defence is percentage reduction, `dmg - ceil(dmg/100 * def)`, applied
 to three separate components (weapon, strength, magic) each metered by its
 matching defence. While shield points remain, the whole blow is spent on them
@@ -89,6 +96,9 @@ nineteen rather than members of the table, as in the original.
   (`engb -= engrate`, `expup += ceil(exprate * 2)`). Energy is consequently
   vestigial in this build, since skills cost mana only.
 * **Hidden searchable pickups** (`SearchItem` / `Searched`).
+* **One guard-destroying attack** that passes `dmgtoshd = 999` with every other
+  component zeroed. It is not tied to any player skill rank in the scripts, so
+  it has not been attributed to one here.
 * **Sound.** The original calls `playSound` throughout; there is no audio here.
 * Saving uses a local file rather than a Flash `SharedObject`.
 

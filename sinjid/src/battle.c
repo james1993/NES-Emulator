@@ -197,7 +197,7 @@ typedef struct { int toShield, toLife; bool missed, broke, killed; } Hit;
    only skills scale them.  Selected in the menu as "Attack" (id -1). */
 static const SkillDef BASIC_ATTACK = {
     "Attack", "A plain swing with what you are holding.",
-    0, 1, 0, { -1, -1 }, 0, 0,  100, 0, 0, 0,
+    0, 1, 0, { -1, -1 }, 0, 0,  100, 0, 0, 0, 0, 0,
     DMG_PHYSICAL, SK_TARGET_ONE_FOE, SKF_NONE, ANIM_ATTACK, P_STEEL
 };
 
@@ -205,7 +205,7 @@ static const SkillDef BASIC_ATTACK = {
    nineteen, so it lives here rather than in the table. */
 static const SkillDef BASIC_GUARD = {
     "Guard", "Brace behind the shield and mend it.",
-    0, 1, 0, { -1, -1 }, 0, 0,  0, 0, 0, 0,
+    0, 1, 0, { -1, -1 }, 0, 0,  0, 0, 0, 0, 0, 0,
     DMG_PHYSICAL, SK_TARGET_SELF, SKF_SHIELD_UP, ANIM_BLOCK, P_KI
 };
 
@@ -270,11 +270,19 @@ static Hit resolve_hit(Battle *b, Combatant *a, Combatant *t, const SkillDef *sk
         phy += t->life * (sk->pctBase + sk->pctPerRank * rank) / 100;
     int ran = rnd(0, (a->phyDmg / 3) + 1);   /* the original's random(phydmg/3) */
 
+    /* Shield damage is its own argument in the original: normally the raw
+       shield-damage stat, zero for the pure-magic bolts, and scaled by a
+       shield-breaking skill's rank. */
+    int toShd = a->shdDmg;
+    if (sk->flags & SKF_PURE_MAGIC) toShd = 0;
+    else if (sk->shdPctBase > 0)
+        toShd = a->shdDmg * (sk->shdPctBase + sk->shdPctPerRank * rank) / 100;
+
     bool shieldLayer = (t->shd > 0) && !(sk->flags & SKF_IGNORE_SHD) &&
                        sk->dmgType != DMG_PURE;
     if (shieldLayer) {
         float d = (float)(cut(phy, t->shdPhyDef) + cut(mag, t->shdMagDef) +
-                          cut(str, t->shdPhyDef) + a->shdDmg);
+                          cut(str, t->shdPhyDef) + toShd);
         if (t->guarding) d *= 0.5f;
         h.toShield = (int)(d + 0.5f) + ran;
         if (h.toShield < 1) h.toShield = 1;

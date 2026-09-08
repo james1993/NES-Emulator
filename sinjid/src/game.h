@@ -188,6 +188,11 @@ typedef struct {
     /* Some skills add a flat amount on top of the stat instead of scaling it:
        the original's magic bolts are magdmg + flatBase + flatPerRank * rank. */
     int         flatBase, flatPerRank;
+    /* Shield damage is its own channel in the original: an attack passes
+       dmgtoshd, normally the fighter's raw shield-damage stat, but a
+       shield-breaking skill scales it by (shdPctBase + shdPctPerRank * rank).
+       Pure-magic skills pass zero. */
+    int         shdPctBase, shdPctPerRank;
     DamageType  dmgType;
     SkillTarget target;
     unsigned    flags;

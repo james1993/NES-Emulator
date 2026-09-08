@@ -295,6 +295,12 @@ void ui_scene_menu(Game *g)
             snprintf(b, sizeof b, "Passive: +%d per rank (currently +%d)",
                      sk->flatPerRank, sk->flatPerRank * p->skillRank[g->menuIdx]);
             ui_text(b, right.x + 20, y, 18, C_JADE); y += 26;
+        } else if (sk->shdPctBase > 0) {
+            int r = p->skillRank[g->menuIdx];
+            snprintf(b, sizeof b, "Shield damage %d%% (+%d%% per rank, now %d%%)",
+                     sk->shdPctBase, sk->shdPctPerRank,
+                     sk->shdPctBase + sk->shdPctPerRank * r);
+            ui_text(b, right.x + 20, y, 18, C_KI2); y += 26;
         } else if (sk->pctBase > 0) {
             int r = p->skillRank[g->menuIdx];
             snprintf(b, sizeof b, "Power %d%% (+%d%% per rank, now %d%%)",
