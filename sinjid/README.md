@@ -102,11 +102,30 @@ you are not strong enough to hold, which is what makes Strength worth training.
 Weapons like *Shield Breaker* (40 extra shield damage) and *Guard Blade* (90
 physical damage at the cost of 40 mana) behave exactly as their numbers say.
 
-**Enemy stats** are absolute per encounter, not a level curve. Eight encounter
-definitions were recovered exactly (Poison Wasp, Skeleton Mage, Mountain Naga,
-two Mercenary variants, two Undead variants, Anti Ninja) and are marked
-`/* exact */` in `data.c`; the rest of the roster is ours, scaled to sit
-between them.
+**The enemy roster** is the original's, all 47 encounter definitions recovered
+from its per-encounter setup scripts — absolute stats rather than a level
+curve, including each fighter's weapon and shield. That covers the whole cast:
+Thief, Bandit, Raider, Warrior, Assailant, Seer, Shaman, Ronin, Samurai,
+Mercenary, Agent, Skeleton, Skeleton Mage, Undead, Poison Wasp, Mountain Naga,
+Golem, Semi Demon, Flesh Fiend, Liquid Metal, Blood Spirit, Fallen Guardian,
+Anti Ninja, Shadow Reaper and the Training Ward. A couple of them carry
+*negative* magic defence, which amplifies spells rather than blunting them, so
+the damage code clamps only the upper bound.
+
+**The four disciplines** are the original's — Balanced, Warrior, Spell Caster,
+Shadow Ninja — together with its class table, which turns out to be per-level
+growth in `[speed, toughness, magic damage, physical damage]`:
+
+| discipline | speed | toughness | magic | physical |
+| --- | --- | --- | --- | --- |
+| Balanced | 2 | 2 | 10 | 10 |
+| Warrior | 1 | 3 | 5 | 15 |
+| Spell Caster | 2 | 1 | 15 | 10 |
+| Shadow Ninja | 3 | 1 | 10 | 10 |
+
+**The starting state** is the original's too: 75 life, 75 mana, 50 energy, 15
+Strength, 15 Speed, zero physical/magic damage and no shield points, 75 gold,
+50 experience to the second level, an Iron Knife and nothing else worn.
 
 **The trainable stat list** matches the original's own: Life Points, Mana
 Points, Strength, Physical Damage, Magic Damage, Physical Defence, Magic
@@ -114,8 +133,8 @@ Defence, Shield Points, Speed.
 
 Also reproduced: two fighters a side; the nine animation states (`stand, walk,
 attack, block, blockbreak, hit, heal, die, miss`); segmented-puppet fighters;
-a tile overworld of single-screen zones with random encounters; and a village
-hub of vendors, healer, trainer, save shrine and arena.
+a tile overworld with random encounters; and a village hub of vendors, healer,
+trainer, save shrine and arena.
 
 `strdmg` is read by both damage functions but assigned outside them, so its
 source is not confirmed; this remake feeds it from Strength.
@@ -125,15 +144,22 @@ source is not confirmed; this remake feeds it from Strength.
 * **All art and animation** — every pixel is drawn by `art.c`; no asset from
   the original is used or redistributed
 * **All writing** — item notes, skill descriptions, NPC dialogue, class blurbs
-* the four classes and their names, and their starting stats
-* all 19 skills, their effects, costs and ranks
-* item prices, and the effects of the three zero-stat rows in the source table
-  (Medicine, White Leaves, Mendo's Ring), plus the trailing food and drink rows
-* twelve of the twenty enemies, every map, the exp curve and level-up rewards
+* **The 19 skills**, their effects, costs and ranks. The original keeps no
+  skill table: the effects are inlined in its combat code, so these are ours.
+* **Item prices**, derived from each item's stats
+* **The exp curve and level-up rewards.** Only the first level's cost (50) is
+  the original's; `expmaxb` turns out to be a display binding, so the growth
+  rule was not recoverable.
+* **Every map.** The original is built from three portals of twenty stages
+  each (HUMAN, MONSTER and DARK, over Snow / Coast / Grass / Desert), which
+  this remake does not reproduce — it uses six hand-drawn zones instead.
+* the effects of the three zero-stat rows in the source table (Medicine, White
+  Leaves, Mendo's Ring) and the trailing food and drink rows
 * the energy economy and the buff / stun / drain mechanics
 
-So the systems *and* the core numbers are the original's, verified from its
-bytecode; the presentation and the writing are new.
+So the systems, the combat maths, the items, the enemies and the classes are
+the original's, verified from its bytecode; the presentation, the writing, the
+skills and the level design are new.
 
 ## Layout
 

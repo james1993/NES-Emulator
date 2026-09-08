@@ -114,7 +114,7 @@ static void build_enemy(Combatant *c, const EnemyDef *d, int level)
     c->phyDmg  = d->phyDmg;
     c->magDmg  = d->magDmg;
     c->phyDef  = d->phyDef > DEF_CAP ? DEF_CAP : d->phyDef;
-    c->magDef  = d->magDef > DEF_CAP ? DEF_CAP : d->magDef;
+    c->magDef  = d->magDef > DEF_CAP ? DEF_CAP : d->magDef;   /* may be negative */
     c->shdMax  = c->shd = d->shdPts;
     c->shdPhyDef = d->shdPhyDef;
     c->shdMagDef = d->shdMagDef;
@@ -203,7 +203,9 @@ static int skill_power(const SkillDef *sk, int rank)
    dmg - ceil(dmg / 100 * defence).  Capped so armour never fully negates. */
 static int cut(int dmg, int defPct)
 {
-    if (defPct < 0) defPct = 0;
+    /* A few of the original's fighters carry negative defence, which amplifies
+       the blow rather than blunting it, so only the upper bound is clamped. */
+    if (defPct < -100) defPct = -100;
     if (defPct > DEF_CAP) defPct = DEF_CAP;
     return dmg - (int)ceilf(dmg / 100.0f * defPct);
 }

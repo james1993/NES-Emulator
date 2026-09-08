@@ -3,13 +3,23 @@
 #include "game.h"
 #include <string.h>
 
-const char *CLASS_NAMES[CLASS_COUNT] = { "Warrior", "Shadow", "Mystic", "Monk" };
-const char *CLASS_BLURB[CLASS_COUNT] = {
-    "Heavy steel and a stubborn guard. The most life and the deepest\nshield pool; grinds enemies down with raw strength.",
-    "A ninja of the burnt village. Fast and evasive, strikes twice\nbefore the guard comes up. Fragile once a blow lands clean.",
-    "Trained in the old ki disciplines. Weak arm, enormous mana, and\nspells that walk straight past armour and shields.",
-    "Bare hands and breath control. Balanced, recovers energy fast,\nand mends its own wounds cheaply."
+const char *CLASS_NAMES[CLASS_COUNT] = { "Balanced", "Warrior", "Spell Caster", "Shadow Ninja" };
+
+/* Recovered from the original's class table: each entry is
+   [speed, toughness, magic damage, physical damage] gained per level. */
+const ClassGrowth CLASS_GROWTH[CLASS_COUNT] = {
+    { 2, 2, 10, 10 },   /* Balanced     */
+    { 1, 3,  5, 15 },   /* Warrior      */
+    { 2, 1, 15, 10 },   /* Spell Caster */
+    { 3, 1, 10, 10 },   /* Shadow Ninja */
 };
+const char *CLASS_BLURB[CLASS_COUNT] = {
+    "Even growth in every direction. Gains ground steadily and is\nnever badly wrong-footed by a fight.",
+    "Toughest of the four, and hits hardest with steel. Gains the\nmost life per level and the most physical damage.",
+    "Trades life for ki. The fastest-growing magic damage in the\ngame, and armour barely slows a spell down.",
+    "Fastest of the four. Speed decides who strikes first and who\ngets missed, so the ninja does both.",
+};
+
 
 /* ------------------------------------------------------------------ items */
 /* name, type, price, tier | life mana str pdmg pdef mdmg mdef |
@@ -213,67 +223,154 @@ const SkillDef SKILLS[MAX_SKILLS] = {
    per-encounter setup scripts; the rest are ours, scaled to sit between them.
    name, life | pDmg,mDmg,shdDmg | pDef%,mDef% | shdPts,shdPdef%,shdMdef% |
    str, speed | exp, gold | drop%, dropTier | look | ai skills               */
+/* ---------------------------------------------------------------- enemies
+   Every stat line below is the original's own, recovered from its per-encounter
+   setup scripts (enemy1life/phydmg/phydef/...), including each fighter's weapon
+   and shield.  The palettes, body shapes and AI skill picks are ours.
+   name, life | pDmg,mDmg,shdDmg | pDef%,mDef% | shdPts,shdPdef%,shdMdef% |
+   str, speed | exp, gold | drop%, dropTier | look | ai                      */
 const EnemyDef ENEMIES[] = {
- { "Straw Dummy", 60, 4,0,0, 0,0, 1,0,0, 0,6, 10,0, 0,0,  /* ours   */
-   { {150,120,80,255},{120,96,64,255},{88,68,44,255},{170,150,110,255},{90,70,50,255},P_STEEL,
-     BODY_HUMAN, WEAP_NONE, SHLD_NONE, HELM_NONE, P_STEEL, P_STEEL, 0.95f, false }, {0},1 },
- { "Field Rat", 90, 8,0,0, 5,0, 1,5,5, 0,18, 25,15, 20,1,  /* ours   */
-   { {126,112,92,255},{96,84,68,255},{64,56,46,255},{150,134,110,255},{60,52,44,255},P_STEEL,
-     BODY_BEAST, WEAP_NONE, SHLD_NONE, HELM_NONE, P_STEEL, P_STEEL, 0.62f, false }, {0,0},2 },
- { "Road Thief", 160, 12,0,3, 10,5, 20,10,10, 2,20, 45,40, 35,1,  /* ours   */
-   { {186,150,116,255},{106,84,66,255},{72,56,44,255},{150,60,50,255},{40,32,28,255},P_STEEL,
-     BODY_HUMAN, WEAP_KNIFE, SHLD_WRIST, HELM_BANDANA, P_STEEL, P_BARK, 1.0f, false }, {0,2},2 },
- { "Bandit", 240, 16,0,5, 15,5, 60,15,10, 4,18, 70,70, 40,2,  /* ours   */
+ { "Bandit", 40, 7,0,5, 15,10, 60,20,0, 0,15, 30,40, 28,1,
    { {178,142,110,255},{92,74,60,255},{62,50,40,255},{160,70,54,255},{38,30,26,255},P_STEEL,
-     BODY_HUMAN, WEAP_BROAD, SHLD_BUCKLER, HELM_BANDANA, P_STEEL, P_BARK, 1.02f, false }, {0,2,3},3 },
- { "Skeleton", 320, 20,0,6, 20,5, 80,20,10, 5,16, 100,90, 40,2,  /* ours   */
-   { {206,200,182,255},{96,96,90,255},{60,60,56,255},{150,148,136,255},{30,30,30,255},P_STEEL,
-     BODY_UNDEAD, WEAP_BROAD, SHLD_BUCKLER, HELM_NONE, P_STEEL2, P_STEEL2, 1.0f, false }, {0,3},2 },
- { "Mercenary", 400, 12,0,10, 20,20, 150,70,70, 0,14, 60,80, 45,2,  /* exact */
-   { {178,140,108,255},{92,70,58,255},{60,46,38,255},{170,120,60,255},{50,40,34,255},P_STEEL,
-     BODY_HUMAN, WEAP_AXE, SHLD_SPIKE, HELM_HORNED, P_STEEL2, P_BLOOD, 1.1f, false }, {0,2,3,6},4 },
- { "Skeleton Mage", 400, 0,32,0, 10,30, 800,20,60, 0,22, 200,260, 40,3,  /* exact */
+     BODY_HUMAN, WEAP_KNIFE, SHLD_NONE, HELM_BANDANA, P_STEEL, P_STEEL, 1.02f, false }, {0,0},2 },
+ { "Thief", 60, 5,0,5, 15,10, 20,20,0, 0,15, 30,30, 28,1,
+   { {186,150,116,255},{106,84,66,255},{72,56,44,255},{150,60,50,255},{40,32,28,255},P_STEEL,
+     BODY_HUMAN, WEAP_KNIFE, SHLD_NONE, HELM_BANDANA, P_STEEL, P_STEEL, 1.0f, false }, {0,0},2 },
+ { "Training Ward", 80, 5,5,100, 0,50, 300,50,0, 0,15, 0,0, 28,1,
+   { {150,120,80,255},{120,96,64,255},{88,68,44,255},{170,150,110,255},{90,70,50,255},P_STEEL,
+     BODY_HUMAN, WEAP_NONE, SHLD_NONE, HELM_NONE, P_STEEL, P_STEEL, 0.95f, false }, {0,3,5},3 },
+ { "Bandit", 100, 4,0,5, 15,10, 35,20,0, 0,15, 60,100, 28,1,
+   { {178,142,110,255},{92,74,60,255},{62,50,40,255},{160,70,54,255},{38,30,26,255},P_STEEL,
+     BODY_HUMAN, WEAP_KNIFE, SHLD_NONE, HELM_BANDANA, P_STEEL, P_STEEL, 1.02f, false }, {0,0},2 },
+ { "Assailant", 100, 14,0,10, 30,5, 40,15,15, 0,50, 60,90, 28,1,
+   { {172,140,112,255},{54,56,70,255},{34,36,46,255},{150,52,48,255},{30,28,26,255},P_INK2,
+     BODY_HUMAN, WEAP_KATANA, SHLD_NONE, HELM_HOOD, P_INK2, P_INK2, 1.0f, false }, {0,0},2 },
+ { "Assailant", 110, 13,0,15, 25,10, 80,25,10, 0,50, 150,260, 28,1,
+   { {172,140,112,255},{54,56,70,255},{34,36,46,255},{150,52,48,255},{30,28,26,255},P_INK2,
+     BODY_HUMAN, WEAP_KATANA, SHLD_NONE, HELM_HOOD, P_INK2, P_INK2, 1.0f, false }, {0,0},2 },
+ { "Raider", 120, 9,0,5, 15,10, 15,20,0, 0,15, 40,50, 28,1,
+   { {182,146,112,255},{104,80,52,255},{70,54,36,255},{170,120,60,255},{44,34,28,255},P_STEEL,
+     BODY_HUMAN, WEAP_BROAD, SHLD_NONE, HELM_BANDANA, P_STEEL, P_STEEL, 1.03f, false }, {0,0},2 },
+ { "Thief", 140, 7,0,5, 15,10, 35,20,0, 0,15, 60,100, 28,1,
+   { {186,150,116,255},{106,84,66,255},{72,56,44,255},{150,60,50,255},{40,32,28,255},P_STEEL,
+     BODY_HUMAN, WEAP_KNIFE, SHLD_NONE, HELM_BANDANA, P_STEEL, P_STEEL, 1.0f, false }, {0,0},2 },
+ { "Warrior", 180, 8,0,10, 15,10, 200,20,0, 0,15, 40,60, 36,2,
+   { {190,156,120,255},{86,86,96,255},{56,56,64,255},{160,140,90,255},{36,30,28,255},P_STEEL,
+     BODY_HUMAN, WEAP_BROAD, SHLD_NONE, HELM_FULL, P_STEEL, P_STEEL, 1.05f, false }, {0,0},2 },
+ { "Assailant", 180, 23,0,20, 40,15, 0,40,15, 0,60, 120,120, 36,2,
+   { {172,140,112,255},{54,56,70,255},{34,36,46,255},{150,52,48,255},{30,28,26,255},P_INK2,
+     BODY_HUMAN, WEAP_KATANA, SHLD_NONE, HELM_HOOD, P_INK2, P_INK2, 1.0f, false }, {0,3,5},3 },
+ { "Training Ward", 180, 8,8,100, 0,50, 500,50,0, 0,30, 0,0, 36,2,
+   { {150,120,80,255},{120,96,64,255},{88,68,44,255},{170,150,110,255},{90,70,50,255},P_STEEL,
+     BODY_HUMAN, WEAP_NONE, SHLD_NONE, HELM_NONE, P_STEEL, P_STEEL, 0.95f, false }, {0,3,5},3 },
+ { "Raider", 200, 5,0,10, 15,10, 70,20,0, 0,15, 80,130, 36,2,
+   { {182,146,112,255},{104,80,52,255},{70,54,36,255},{170,120,60,255},{44,34,28,255},P_STEEL,
+     BODY_HUMAN, WEAP_BROAD, SHLD_NONE, HELM_BANDANA, P_STEEL, P_STEEL, 1.03f, false }, {0,0},2 },
+ { "Seer", 200, 2,8,10, 10,30, 170,15,60, 0,17, 40,70, 36,2,
+   { {198,180,160,255},{74,66,104,255},{48,42,70,255},{150,130,190,255},{60,50,44,255},P_VIOLET,
+     BODY_HUMAN, WEAP_STAFF, SHLD_NONE, HELM_HOOD, P_VIOLET, P_VIOLET, 1.0f, false }, {10,13,11,15},4 },
+ { "Warrior", 230, 3,0,5, 15,10, 140,20,0, 0,15, 80,130, 36,2,
+   { {190,156,120,255},{86,86,96,255},{56,56,64,255},{160,140,90,255},{36,30,28,255},P_STEEL,
+     BODY_HUMAN, WEAP_BROAD, SHLD_NONE, HELM_FULL, P_STEEL, P_STEEL, 1.05f, false }, {0,0},2 },
+ { "Seer", 260, 3,7,10, 10,40, 100,0,30, 0,17, 100,220, 36,2,
+   { {198,180,160,255},{74,66,104,255},{48,42,70,255},{150,130,190,255},{60,50,44,255},P_VIOLET,
+     BODY_HUMAN, WEAP_STAFF, SHLD_NONE, HELM_HOOD, P_VIOLET, P_VIOLET, 1.0f, false }, {10,13,11,15},4 },
+ { "Warrior", 280, 6,0,10, 30,10, 320,30,0, 0,14, 100,220, 36,2,
+   { {190,156,120,255},{86,86,96,255},{56,56,64,255},{160,140,90,255},{36,30,28,255},P_STEEL,
+     BODY_HUMAN, WEAP_BROAD, SHLD_NONE, HELM_FULL, P_STEEL, P_STEEL, 1.05f, false }, {0,0},2 },
+ { "Training Ward", 300, 12,12,100, 0,50, 700,50,0, 0,40, 0,0, 36,2,
+   { {150,120,80,255},{120,96,64,255},{88,68,44,255},{170,150,110,255},{90,70,50,255},P_STEEL,
+     BODY_HUMAN, WEAP_NONE, SHLD_NONE, HELM_NONE, P_STEEL, P_STEEL, 0.95f, false }, {0,3,5},3 },
+ { "Skeleton", 400, 14,10,10, 10,10, 0,10,10, 0,25, 300,450, 36,2,
+   { {206,200,182,255},{96,96,90,255},{60,60,56,255},{150,148,136,255},{30,30,30,255},P_STEEL2,
+     BODY_UNDEAD, WEAP_AXE, SHLD_NONE, HELM_NONE, P_STEEL2, P_STEEL2, 1.0f, false }, {0,2,3},3 },
+ { "Mercenary", 400, 12,0,10, 20,20, 150,70,70, 0,14, 60,80, 36,2,
+   { {178,140,108,255},{92,70,58,255},{60,46,38,255},{170,120,60,255},{50,40,34,255},P_STEEL2,
+     BODY_HUMAN, WEAP_BROAD, SHLD_NONE, HELM_HORNED, P_STEEL2, P_STEEL2, 1.1f, false }, {0,2,3},3 },
+ { "Skeleton Mage", 400, 0,32,0, 10,30, 800,20,60, 0,22, 200,260, 36,2,
    { {198,192,172,255},{70,60,92,255},{46,40,62,255},{140,120,180,255},{30,30,30,255},P_VIOLET,
-     BODY_UNDEAD, WEAP_STAFF, SHLD_NONE, HELM_HOOD, P_VIOLET, P_VIOLET, 1.0f, true }, {10,13,11},3 },
- { "Mercenary", 420, 10,0,15, 30,0, 170,30,0, 0,10, 150,260, 45,3,  /* exact */
-   { {178,140,108,255},{92,70,58,255},{60,46,38,255},{170,120,60,255},{50,40,34,255},P_STEEL,
-     BODY_HUMAN, WEAP_AXE, SHLD_SPIKE, HELM_HORNED, P_STEEL2, P_BLOOD, 1.1f, false }, {0,3,5},3 },
- { "Poison Wasp", 550, 16,0,5, 15,10, 1,10,10, 0,35, 170,250, 25,2,  /* exact */
+     BODY_UNDEAD, WEAP_NONE, SHLD_NONE, HELM_HOOD, P_VIOLET, P_VIOLET, 1.0f, true }, {10,13,11,15},4 },
+ { "Mercenary", 420, 10,0,15, 30,0, 170,30,0, 0,10, 150,260, 36,2,
+   { {178,140,108,255},{92,70,58,255},{60,46,38,255},{170,120,60,255},{50,40,34,255},P_STEEL2,
+     BODY_HUMAN, WEAP_KATANA, SHLD_NONE, HELM_HORNED, P_STEEL2, P_STEEL2, 1.1f, false }, {0,2,3},3 },
+ { "Skeleton", 450, 17,5,10, 20,20, 350,20,20, 0,27, 350,450, 44,3,
+   { {206,200,182,255},{96,96,90,255},{60,60,56,255},{150,148,136,255},{30,30,30,255},P_STEEL2,
+     BODY_UNDEAD, WEAP_BROAD, SHLD_NONE, HELM_NONE, P_STEEL2, P_STEEL2, 1.0f, false }, {0,2,3},3 },
+ { "Skeleton Mage", 500, 5,28,10, 10,50, 0,30,50, 0,27, 350,450, 44,3,
+   { {198,192,172,255},{70,60,92,255},{46,40,62,255},{140,120,180,255},{30,30,30,255},P_VIOLET,
+     BODY_UNDEAD, WEAP_NONE, SHLD_NONE, HELM_HOOD, P_VIOLET, P_VIOLET, 1.0f, true }, {10,13,11,15},4 },
+ { "Agent", 550, 17,0,15, 40,-15, 250,50,25, 0,19, 150,160, 44,3,
+   { {168,138,112,255},{40,42,54,255},{26,28,36,255},{140,44,44,255},{28,26,24,255},P_INK2,
+     BODY_HUMAN, WEAP_KATANA, SHLD_NONE, HELM_HOOD, P_INK2, P_INK2, 1.0f, false }, {0,2,3},3 },
+ { "Poison Wasp", 550, 16,0,5, 15,10, 1,10,10, 0,35, 170,250, 44,3,
    { {168,150,60,255},{120,104,40,255},{84,72,28,255},{208,190,90,255},{60,52,24,255},P_STEEL,
-     BODY_BEAST, WEAP_NONE, SHLD_NONE, HELM_NONE, P_STEEL, P_STEEL, 0.72f, false }, {0,0},2 },
- { "Golem", 900, 30,0,0, 35,10, 300,30,10, 8,10, 220,200, 40,3,  /* ours   */
-   { {168,196,214,255},{110,140,164,255},{74,100,124,255},{200,226,240,255},{80,110,130,255},P_KI2,
-     BODY_BRUTE, WEAP_NONE, SHLD_NONE, HELM_NONE, P_KI, P_KI, 1.35f, false }, {0,0,8},3 },
- { "Mountain Naga", 1100, 25,4,30, 40,40, 400,20,20, 0,22, 200,265, 40,3,  /* exact */
-   { {150,132,86,255},{122,104,62,255},{86,72,42,255},{190,170,110,255},{70,60,36,255},P_STEEL,
-     BODY_BEAST, WEAP_SPEAR, SHLD_NONE, HELM_NONE, P_GOLD2, P_STEEL, 1.15f, false }, {0,4,12},3 },
- { "Undead", 1200, 28,0,7, 40,10, 1,20,20, 0,15, 180,225, 45,3,  /* exact */
-   { {126,140,110,255},{84,80,64,255},{54,52,42,255},{110,124,96,255},{44,44,36,255},P_STEEL,
-     BODY_UNDEAD, WEAP_CLAW, SHLD_NONE, HELM_NONE, P_JADE, P_STEEL, 1.05f, false }, {0,7},2 },
- { "Blood Spirit", 1300, 10,40,0, 20,45, 200,20,50, 0,26, 260,300, 40,4,  /* ours   */
+     BODY_BEAST, WEAP_NONE, SHLD_NONE, HELM_NONE, P_STEEL, P_STEEL, 0.72f, false }, {0,2,3},3 },
+ { "Seer", 600, 4,15,15, 15,60, 250,30,60, 0,19, 150,120, 44,3,
+   { {198,180,160,255},{74,66,104,255},{48,42,70,255},{150,130,190,255},{60,50,44,255},P_VIOLET,
+     BODY_HUMAN, WEAP_STAFF, SHLD_NONE, HELM_HOOD, P_VIOLET, P_VIOLET, 1.0f, false }, {10,13,11,15},4 },
+ { "Shaman", 700, 7,14,7, 40,40, 1,0,0, 0,19, 200,70, 44,3,
+   { {176,150,120,255},{86,70,52,255},{56,46,34,255},{120,160,110,255},{40,34,28,255},P_JADE,
+     BODY_HUMAN, WEAP_STAFF, SHLD_NONE, HELM_HOOD, P_JADE, P_JADE, 1.02f, false }, {10,13,11,15},4 },
+ { "Golem", 700, 28,3,10, 60,40, 200,80,80, 0,20, 200,270, 44,3,
+   { {168,196,214,255},{110,140,164,255},{74,100,124,255},{200,226,240,255},{80,110,130,255},P_KI,
+     BODY_BRUTE, WEAP_AXE, SHLD_NONE, HELM_NONE, P_KI, P_KI, 1.35f, false }, {0,2,3},3 },
+ { "Ronin", 900, 10,13,20, 40,40, 1,0,0, 0,19, 120,120, 44,3,
+   { {188,152,118,255},{70,74,86,255},{46,50,60,255},{160,140,90,255},{34,30,28,255},P_STEEL,
+     BODY_HUMAN, WEAP_KATANA, SHLD_NONE, HELM_NONE, P_STEEL, P_STEEL, 1.05f, false }, {10,13,11,15},4 },
+ { "Ronin", 1000, 10,11,10, 40,40, 1,0,0, 0,20, 500,320, 44,3,
+   { {188,152,118,255},{70,74,86,255},{46,50,60,255},{160,140,90,255},{34,30,28,255},P_STEEL,
+     BODY_HUMAN, WEAP_KATANA, SHLD_NONE, HELM_NONE, P_STEEL, P_STEEL, 1.05f, false }, {10,13,11,15},4 },
+ { "Shaman", 1000, 9,8,8, 20,50, 1,0,0, 0,20, 500,320, 44,3,
+   { {176,150,120,255},{86,70,52,255},{56,46,34,255},{120,160,110,255},{40,34,28,255},P_JADE,
+     BODY_HUMAN, WEAP_STAFF, SHLD_NONE, HELM_HOOD, P_JADE, P_JADE, 1.02f, false }, {0,2,3},3 },
+ { "Golem", 1000, 25,0,20, 50,30, 0,80,80, 0,27, 350,460, 44,3,
+   { {168,196,214,255},{110,140,164,255},{74,100,124,255},{200,226,240,255},{80,110,130,255},P_KI,
+     BODY_BRUTE, WEAP_AXE, SHLD_NONE, HELM_NONE, P_KI, P_KI, 1.35f, false }, {0,3,5},3 },
+ { "Agent", 1000, 19,0,10, 40,-10, 0,90,90, 0,21, 120,140, 44,3,
+   { {168,138,112,255},{40,42,54,255},{26,28,36,255},{140,44,44,255},{28,26,24,255},P_INK2,
+     BODY_HUMAN, WEAP_KNIFE, SHLD_NONE, HELM_HOOD, P_INK2, P_INK2, 1.0f, false }, {0,2,3},3 },
+ { "Shadow Reaper", 1000, 65,15,5, 85,85, 1,20,20, 0,60, 700,600, 44,3,
+   { {110,100,130,255},{40,32,56,255},{24,18,36,255},{122,92,158,255},{20,16,28,255},P_VIOLET,
+     BODY_WISP, WEAP_SCYTHE, SHLD_NONE, HELM_HOOD, P_VIOLET, P_VIOLET, 1.45f, true }, {0,2,3},3 },
+ { "Samurai", 1100, 18,0,10, 40,30, 0,40,30, 0,18, 160,230, 52,4,
+   { {190,156,120,255},{78,62,58,255},{50,40,38,255},{178,146,74,255},{34,30,28,255},P_GOLD,
+     BODY_HUMAN, WEAP_KATANA, SHLD_NONE, HELM_HORNED, P_GOLD, P_GOLD, 1.08f, false }, {0,2,3},3 },
+ { "Mountain Naga", 1100, 25,4,30, 40,40, 400,20,20, 0,22, 200,265, 52,4,
+   { {150,132,86,255},{122,104,62,255},{86,72,42,255},{190,170,110,255},{70,60,36,255},P_GOLD2,
+     BODY_BEAST, WEAP_NONE, SHLD_NONE, HELM_NONE, P_GOLD2, P_GOLD2, 1.15f, false }, {0,3,5},3 },
+ { "Mountain Naga", 1150, 17,10,0, 30,30, 450,30,30, 0,27, 350,460, 52,4,
+   { {150,132,86,255},{122,104,62,255},{86,72,42,255},{190,170,110,255},{70,60,36,255},P_GOLD2,
+     BODY_BEAST, WEAP_NONE, SHLD_NONE, HELM_NONE, P_GOLD2, P_GOLD2, 1.15f, false }, {0,2,3},3 },
+ { "Undead", 1200, 28,0,7, 40,10, 1,20,20, 0,15, 180,225, 52,4,
+   { {126,140,110,255},{84,80,64,255},{54,52,42,255},{110,124,96,255},{44,44,36,255},P_JADE,
+     BODY_UNDEAD, WEAP_AXE, SHLD_NONE, HELM_NONE, P_JADE, P_JADE, 1.05f, false }, {0,2,3},3 },
+ { "Samurai", 1350, 14,10,10, 40,30, 0,40,30, 0,17, 550,750, 52,4,
+   { {190,156,120,255},{78,62,58,255},{50,40,38,255},{178,146,74,255},{34,30,28,255},P_GOLD,
+     BODY_HUMAN, WEAP_KATANA, SHLD_NONE, HELM_HORNED, P_GOLD, P_GOLD, 1.08f, false }, {0,2,3},3 },
+ { "Samurai", 1350, 10,14,10, 40,30, 150,40,30, 0,17, 550,750, 52,4,
+   { {190,156,120,255},{78,62,58,255},{50,40,38,255},{178,146,74,255},{34,30,28,255},P_GOLD,
+     BODY_HUMAN, WEAP_BROAD, SHLD_NONE, HELM_HORNED, P_GOLD, P_GOLD, 1.08f, false }, {10,13,11,15},4 },
+ { "Undead", 1500, 30,0,10, 60,20, 1,40,20, 0,17, 300,450, 52,4,
+   { {126,140,110,255},{84,80,64,255},{54,52,42,255},{110,124,96,255},{44,44,36,255},P_JADE,
+     BODY_UNDEAD, WEAP_AXE, SHLD_NONE, HELM_NONE, P_JADE, P_JADE, 1.05f, false }, {0,2,7,8},4 },
+ { "Blood Spirit", 1800, 0,65,0, 0,65, 4000,20,50, 0,35, 400,300, 52,4,
    { {190,90,90,255},{120,40,52,255},{80,24,34,255},{220,120,110,255},{60,20,26,255},P_BLOOD,
-     BODY_WISP, WEAP_NONE, SHLD_NONE, HELM_NONE, P_BLOOD, P_BLOOD, 1.0f, true }, {10,15,13,11},4 },
- { "Undead", 1500, 30,0,10, 60,20, 1,40,20, 0,17, 300,450, 45,4,  /* exact */
-   { {126,140,110,255},{84,80,64,255},{54,52,42,255},{110,124,96,255},{44,44,36,255},P_STEEL,
-     BODY_UNDEAD, WEAP_CLAW, SHLD_NONE, HELM_NONE, P_JADE, P_STEEL, 1.05f, false }, {0,7,8},3 },
- { "Flesh Fiend", 1800, 40,0,12, 45,15, 200,25,15, 10,14, 340,380, 50,4,  /* ours   */
+     BODY_WISP, WEAP_NONE, SHLD_NONE, HELM_NONE, P_BLOOD, P_BLOOD, 1.0f, true }, {10,13,11,15},4 },
+ { "Semi Demon", 2300, 25,10,10, 50,10, 200,30,30, 0,25, 300,300, 52,4,
+   { {150,90,96,255},{80,40,60,255},{52,26,40,255},{190,80,70,255},{36,24,30,255},P_BLOOD,
+     BODY_HUMAN, WEAP_BROAD, SHLD_NONE, HELM_HORNED, P_BLOOD, P_BLOOD, 1.15f, true }, {0,2,7,8},4 },
+ { "Flesh Fiend", 2350, 30,10,10, 40,40, 350,60,60, 0,30, 500,500, 52,4,
    { {170,120,110,255},{124,70,64,255},{80,44,42,255},{200,150,140,255},{70,40,38,255},P_BLOOD,
-     BODY_BRUTE, WEAP_CLAW, SHLD_NONE, HELM_NONE, P_BLOOD, P_BLOOD, 1.4f, false }, {0,5,7,8},4 },
- { "Liquid Metal", 2000, 35,20,20, 50,40, 900,45,40, 8,20, 380,420, 45,4,  /* ours   */
-   { P_STEEL,P_STEEL2,{60,64,74,255},{190,196,206,255},P_STEEL2,P_STEEL,
-     BODY_BRUTE, WEAP_BROAD, SHLD_TOWER, HELM_NONE, P_STEEL, P_STEEL, 1.2f, true }, {0,3,6,12},4 },
- { "Fallen Ninja", 2200, 45,15,10, 30,30, 300,25,25, 10,45, 420,400, 55,4,  /* ours   */
-   { {170,140,112,255},{44,46,58,255},{28,30,40,255},{120,40,44,255},{28,26,24,255},P_INK2,
-     BODY_HUMAN, WEAP_KATANA, SHLD_WRIST, HELM_HOOD, P_INK2, P_INK2, 1.0f, false }, {2,4,7,12},4 },
- { "Fallen Guardian", 3000, 50,10,15, 60,40, 1200,50,40, 12,18, 500,480, 60,5,  /* ours   */
-   { {160,150,140,255},{86,84,96,255},{56,54,64,255},P_GOLD,{40,40,44,255},P_GOLD,
-     BODY_BRUTE, WEAP_BROAD, SHLD_TOWER, HELM_FULL, P_GOLD, P_GOLD, 1.35f, false }, {0,3,5,6},4 },
- { "Anti Ninja", 4000, 65,15,5, 0,0, 1,20,20, 0,80, 600,500, 100,5,  /* exact */
+     BODY_BRUTE, WEAP_BROAD, SHLD_NONE, HELM_NONE, P_BLOOD, P_BLOOD, 1.4f, false }, {0,2,7,8},4 },
+ { "Liquid Metal", 3000, 60,0,10, 70,20, 350,30,30, 0,27, 300,300, 60,5,
+   { {142,148,158,255},{86,92,104,255},{60,64,74,255},{190,196,206,255},{86,92,104,255},P_STEEL,
+     BODY_BRUTE, WEAP_BROAD, SHLD_NONE, HELM_NONE, P_STEEL, P_STEEL, 1.2f, true }, {0,2,7,8},4 },
+ { "Fallen Guardian", 4000, 50,20,10, 40,40, 2300,20,20, 0,38, 500,400, 60,5,
+   { {160,150,140,255},{86,84,96,255},{56,54,64,255},{198,160,74,255},{40,40,44,255},P_GOLD,
+     BODY_BRUTE, WEAP_BROAD, SHLD_NONE, HELM_FULL, P_GOLD, P_GOLD, 1.35f, false }, {0,2,7,8},4 },
+ { "Anti Ninja", 4000, 65,15,5, 0,0, 1,20,20, 0,80, 600,500, 60,5,
    { {140,132,128,255},{36,34,44,255},{22,20,28,255},{150,40,40,255},{24,22,22,255},P_INK2,
-     BODY_HUMAN, WEAP_CLAW, SHLD_BLADE, HELM_HOOD, P_INK2, P_BLOOD, 1.05f, true }, {2,4,7,17},4 },
- { "Shadow Reaper", 7000, 80,45,20, 50,50, 2000,45,45, 15,40, 1200,900, 100,5,  /* ours   */
-   { {110,100,130,255},{40,32,56,255},{24,18,36,255},P_VIOLET,{20,16,28,255},P_VIOLET,
-     BODY_WISP, WEAP_SCYTHE, SHLD_NONE, HELM_HOOD, P_VIOLET, P_VIOLET, 1.45f, true }, {18,17,15,9},4 },
+     BODY_HUMAN, WEAP_KATANA, SHLD_NONE, HELM_HOOD, P_INK2, P_INK2, 1.05f, false }, {0,2,7,8},4 },
 };
 const int ENEMY_COUNT = (int)(sizeof(ENEMIES) / sizeof(ENEMIES[0]));
 
@@ -298,10 +395,10 @@ Look data_class_look(ClassId c)
     case CLASS_SHADOW:
         lk.cloth = (Color){ 42, 44, 58, 255 }; lk.clothDark = (Color){ 26, 28, 38, 255 };
         lk.trim  = (Color){ 150, 52, 48, 255 }; break;
-    case CLASS_MYSTIC:
+    case CLASS_SPELLCASTER:
         lk.cloth = (Color){ 62, 58, 96, 255 }; lk.clothDark = (Color){ 40, 38, 66, 255 };
         lk.trim  = (Color){ 132, 176, 200, 255 }; lk.glow = true; break;
-    case CLASS_MONK:
+    case CLASS_BALANCED:
         lk.cloth = (Color){ 132, 92, 52, 255 }; lk.clothDark = (Color){ 92, 62, 36, 255 };
         lk.trim  = (Color){ 200, 190, 160, 255 }; break;
     default: break;
@@ -311,25 +408,18 @@ Look data_class_look(ClassId c)
 
 void data_class_base(Player *p, ClassId c)
 {
-    switch (c) {
-    case CLASS_WARRIOR:
-        p->baseLife=500; p->baseMana=60;  p->baseStr=12; p->baseSpeed=12;
-        p->basePhyDmg=40; p->baseMagDmg=0;  p->basePhyDef=20; p->baseMagDef=5;
-        p->baseShdPts=60; break;
-    case CLASS_SHADOW:
-        p->baseLife=380; p->baseMana=100; p->baseStr=10; p->baseSpeed=30;
-        p->basePhyDmg=32; p->baseMagDmg=8;  p->basePhyDef=10; p->baseMagDef=10;
-        p->baseShdPts=30; break;
-    case CLASS_MYSTIC:
-        p->baseLife=320; p->baseMana=220; p->baseStr=8;  p->baseSpeed=16;
-        p->basePhyDmg=12; p->baseMagDmg=45; p->basePhyDef=8;  p->baseMagDef=20;
-        p->baseShdPts=30; break;
-    case CLASS_MONK:
-        p->baseLife=440; p->baseMana=150; p->baseStr=10; p->baseSpeed=20;
-        p->basePhyDmg=28; p->baseMagDmg=20; p->basePhyDef=14; p->baseMagDef=14;
-        p->baseShdPts=40; break;
-    default: break;
-    }
+    /* Every discipline starts from the same numbers in the original; only the
+       per-level growth in CLASS_GROWTH differs. */
+    (void)c;
+    p->baseLife   = 75;
+    p->baseMana   = 75;
+    p->baseStr    = 15;
+    p->baseSpeed  = 15;
+    p->basePhyDmg = 0;
+    p->baseMagDmg = 0;
+    p->basePhyDef = 0;
+    p->baseMagDef = 0;
+    p->baseShdPts = 0;
 }
 
 /* Shop stock (indices into ITEMS). */

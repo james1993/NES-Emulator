@@ -73,7 +73,14 @@ typedef enum {
     SCENE_GAMEOVER, SCENE_CREDITS
 } Scene;
 
-typedef enum { CLASS_WARRIOR, CLASS_SHADOW, CLASS_MYSTIC, CLASS_MONK, CLASS_COUNT } ClassId;
+/* The original's own four disciplines. */
+typedef enum { CLASS_BALANCED, CLASS_WARRIOR, CLASS_SPELLCASTER, CLASS_SHADOW,
+               CLASS_COUNT } ClassId;
+
+/* Per-level growth, from the original's class table:
+   [speed, toughness, magic damage, physical damage]. */
+typedef struct { int speed, tough, magDmg, phyDmg; } ClassGrowth;
+extern const ClassGrowth CLASS_GROWTH[CLASS_COUNT];
 
 typedef enum {
     ANIM_STAND, ANIM_WALK, ANIM_ATTACK, ANIM_CAST, ANIM_BLOCK, ANIM_BLOCKBREAK,

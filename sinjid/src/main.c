@@ -167,13 +167,15 @@ void player_recalc(Player *p, Combatant *out)
     out->alive  = true;
     out->level  = p->level;
 
-    int life = p->baseLife + p->level * 10;
-    int mana = p->baseMana;
+    const ClassGrowth *g = &CLASS_GROWTH[p->cls];
+    int lv = p->level - 1;                      /* growth applies past level 1 */
+    int life = p->baseLife + g->tough * 15 * lv;
+    int mana = p->baseMana + g->magDmg * 2 * lv;
     int str  = p->baseStr;
-    int pdmg = p->basePhyDmg, pdef = p->basePhyDef;
-    int mdmg = p->baseMagDmg, mdef = p->baseMagDef;
+    int pdmg = p->basePhyDmg + g->phyDmg * lv, pdef = p->basePhyDef;
+    int mdmg = p->baseMagDmg + g->magDmg * lv, mdef = p->baseMagDef;
     int shd = p->baseShdPts, shdPDef = 0, shdMDef = 0, shdDmg = 0;
-    int spd = p->baseSpeed, avd = 0;
+    int spd = p->baseSpeed + g->speed * lv, avd = 0;
 
     Look lk = p->look;
     lk.weapon = WEAP_NONE; lk.shield = SHLD_NONE; lk.helm = HELM_NONE;
@@ -198,7 +200,7 @@ void player_recalc(Player *p, Combatant *out)
     out->lifeMax = life;   out->life = life;
     out->manaMax = mana;   out->mana = mana;
     out->engMax  = 100;    out->eng  = 40;
-    out->engRate = 18 + p->level + (p->cls == CLASS_MONK ? 10 : 0);
+    out->engRate = 18 + p->level + (p->cls == CLASS_BALANCED ? 6 : 0);
     out->str = str;
     /* Weapon damage and strength damage are separate components; each defence
        below is a percentage reduction, so they are capped. */
@@ -322,8 +324,8 @@ static void new_player(Game *g, ClassId cls, const char *name)
     p->cls = cls;
     p->level = 1;
     p->exp = 0;
-    p->expNext = player_exp_for_level(1);
-    p->gold = 120;
+    p->expNext = 50;      /* the original's first level costs 50 */
+    p->gold = 75;
     p->statPts = 3;      /* something to spend on the first visit to the trainer */
     p->skillPts = 2;
     data_class_base(p, cls);
@@ -331,19 +333,11 @@ static void new_player(Game *g, ClassId cls, const char *name)
     for (int i = 0; i < SLOT_COUNT; i++) p->equip[i] = -1;
     p->skillRank[0] = 1;                     /* Strike  */
     p->skillRank[1] = 1;                     /* Guard   */
-    if (cls == CLASS_MYSTIC || cls == CLASS_MONK) p->skillRank[10] = 1;
+    if (cls == CLASS_SPELLCASTER || cls == CLASS_BALANCED) p->skillRank[10] = 1;
 
     /* Item indices below are positions in the original's own item table. */
-    switch (cls) {
-    case CLASS_WARRIOR: p->equip[SLOT_WEAPON] = IT_SILVER_KNIFE; break;
-    case CLASS_SHADOW:  p->equip[SLOT_WEAPON] = IT_IRON_KNIFE;   break;
-    case CLASS_MYSTIC:  p->equip[SLOT_WEAPON] = IT_ENERGY_KNIFE; break;
-    case CLASS_MONK:    p->equip[SLOT_WEAPON] = IT_IRON_KNIFE;   break;
-    default: break;
-    }
-    p->equip[SLOT_SHIELD] = IT_LEATHER_WRIST;
-    p->equip[SLOT_ARMOUR] = IT_LEATHER_ARMOUR;
-    p->equip[SLOT_HELM]   = IT_BANDANA;
+    /* The original starts you with an Iron Knife and nothing else worn. */
+    p->equip[SLOT_WEAPON] = IT_IRON_KNIFE;
     player_add_item(p, IT_RICE_BALL); player_add_item(p, IT_RICE_BALL);
     player_add_item(p, IT_RICE_BALL); player_add_item(p, IT_GREEN_TEA);
     p->zone = ZONE_VILLAGE;

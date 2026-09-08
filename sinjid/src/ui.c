@@ -618,14 +618,7 @@ void ui_scene_create(Game *g)
     data_class_base(&tmp, tmp.cls);
     tmp.look = data_class_look(tmp.cls);
     for (int i = 0; i < SLOT_COUNT; i++) tmp.equip[i] = -1;
-    switch (tmp.cls) {
-    case CLASS_WARRIOR: tmp.equip[SLOT_WEAPON] = 4; tmp.equip[SLOT_SHIELD] = 16; break;
-    case CLASS_SHADOW:  tmp.equip[SLOT_WEAPON] = 2; tmp.equip[SLOT_SHIELD] = 15; break;
-    case CLASS_MYSTIC:  tmp.equip[SLOT_WEAPON] = 3; tmp.equip[SLOT_SHIELD] = 15; break;
-    default:            tmp.equip[SLOT_WEAPON] = 0; tmp.equip[SLOT_SHIELD] = 15; break;
-    }
-    tmp.equip[SLOT_ARMOUR] = 24;
-    tmp.equip[SLOT_HELM] = 32;
+    tmp.equip[SLOT_WEAPON] = IT_IRON_KNIFE;
     Combatant c;
     player_recalc(&tmp, &c);
     c.anim = ANIM_STAND;
