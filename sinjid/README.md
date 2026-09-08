@@ -171,7 +171,13 @@ random term is the original's `random(phydmg / 3)`. The recovered behaviours:
 | last breath | adds a multiple of *your own missing life* |
 | execution | adds 10% + 2% per rank of the *target's current* life |
 
-Passives never appear as battle actions -- they fold into the stats, exactly
+**Casting costs** are the original's too, read from the `manareq` its in-battle
+skill buttons check and deduct: 15, 20, 20, 20, 25, 25, 20 for the early
+skills, rising to 40, 60, 70 and 100 for the deepest ones, with one free skill
+and one that costs a single point of mana.
+
+Three of the nineteen have no in-battle button at all -- those are the
+passives. Passives never appear as battle actions -- they fold into the stats, exactly
 as the original applies them. The plain Attack command passes your stats
 through unscaled, which is what the original's basic swing does.
 
@@ -213,9 +219,9 @@ source is not confirmed; this remake feeds it from Strength.
   blurbs. The cast and their roles are the original's; the words are not.
   Prose is the authored part of a game, and copying it is the one thing a
   remake genuinely should not do.
-* **Skill names and mana/energy costs.** The tree, the ranks, the level gates,
-  the prerequisites and the damage scaling are all the original's; the names
-  and what each one costs to cast are ours.
+* **Skill names.** The tree, the ranks, the level gates, the prerequisites,
+  the damage scaling and the mana costs are all the original's; only the names
+  and descriptions are ours.
 * prices for the handful of items its shops never stock (food, drink and the
   three zero-stat rows: Medicine, White Leaves, Mendo's Ring)
 * the enemy AI's skill choices, and the buff / stun / drain mechanics

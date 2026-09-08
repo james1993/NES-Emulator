@@ -201,8 +201,20 @@ static const SkillDef BASIC_ATTACK = {
     DMG_PHYSICAL, SK_TARGET_ONE_FOE, SKF_NONE, ANIM_ATTACK, P_STEEL
 };
 
+/* Guard is a stance the original offers alongside the skills, not one of the
+   nineteen, so it lives here rather than in the table. */
+static const SkillDef BASIC_GUARD = {
+    "Guard", "Brace behind the shield and mend it.",
+    0, 1, 0, { -1, -1 }, 0, 0,  0, 0, 0,
+    DMG_PHYSICAL, SK_TARGET_SELF, SKF_SHIELD_UP, ANIM_BLOCK, P_KI
+};
+
+#define ID_ATTACK (-1)
+#define ID_GUARD  (-2)
+
 static const SkillDef *skill_def(int id)
 {
+    if (id == ID_GUARD) return &BASIC_GUARD;
     if (id < 0 || id >= MAX_SKILLS) return &BASIC_ATTACK;
     return &SKILLS[id];
 }
@@ -304,6 +316,7 @@ static void begin_action(Game *g, int actor, int skillId, int target)
     const SkillDef *sk = skill_def(skillId);
     int rank = (skillId < 0) ? 1
              : (a->isHero ? g->p.skillRank[skillId] : 1 + a->level / 6);
+    if (rank < 1) rank = 1;
     if (rank < 1) rank = 1;
 
     ACT.actor = actor; ACT.target = target; ACT.skill = skillId; ACT.rank = rank;
@@ -585,13 +598,13 @@ static void update_player_menu(Game *g)
         if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
             switch (b->menuIdx) {
             case 0:                                   /* Attack             */
-                b->pendingSkill = -1;          /* plain attack */
+                b->pendingSkill = ID_ATTACK;
                 b->phase = BP_PLAYER_TARGET;
                 break;
             case 1: b->menuTab = 1; b->skillIdx = 0; break;
             case 2: b->menuTab = 2; b->menuIdx = 0; break;
             case 3:                                   /* Guard              */
-                begin_action(g, 0, SKILL_GUARD, 0);
+                begin_action(g, 0, ID_GUARD, 0);
                 break;
             case 4:                                   /* Flee               */
                 if (!b->canFlee) { battle_log(b, "There is no way out of this one."); break; }

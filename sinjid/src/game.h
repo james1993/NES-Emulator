@@ -21,7 +21,6 @@
 #define MAX_FOES       2
 #define MAX_INVENTORY 48
 #define MAX_SKILLS    19
-#define SKILL_GUARD    7     /* Iron Stance, the brace skill */
 #define MAX_LOG        6
 #define MAX_FLOATERS  24
 #define MAX_PARTICLES 256
