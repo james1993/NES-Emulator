@@ -173,6 +173,7 @@ typedef struct {
     int         tree;          /* 0 = combat, 1 = magic                      */
     int         maxRank;
     int         reqLevel;
+    int         prereq[2];     /* skills that must be learned first, -1 = none */
     int         manaCost, engCost;
     float       power;         /* multiplier on the relevant damage stat     */
     float       powerPerRank;
@@ -280,7 +281,7 @@ typedef struct {
     int       level, exp, expNext, gold;
     int       statPts, skillPts;
     /* Trainable stats, mirroring the original's own stat list. */
-    int       baseLife, baseMana, baseStr, baseSpeed;
+    int       baseLife, baseMana, baseEng, baseStr, baseSpeed;
     int       basePhyDmg, baseMagDmg, basePhyDef, baseMagDef, baseShdPts;
     int       skillRank[MAX_SKILLS];
     ItemStack inv[MAX_INVENTORY];
@@ -417,6 +418,8 @@ void  player_recalc(Player *p, Combatant *out);
 int   player_add_item(Player *p, int def);
 void  player_equip(Player *p, int invIndex);
 bool  player_can_equip(const Player *p, int def);
+bool  skill_prereqs_met(const Player *p, int id);
+const char *skill_lock_reason(const Player *p, int id);
 
 /* Indices into the original's item table, for starting gear. */
 #define IT_IRON_KNIFE     0

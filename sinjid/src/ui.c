@@ -448,8 +448,8 @@ void ui_scene_train(Game *g)
             } else {
                 int id = g->menuIdx;
                 if (p->skillPts <= 0) ui_toast(g, "No skill points left.");
-                else if (p->level < SKILLS[id].reqLevel)
-                    ui_toast(g, "%s needs level %d.", SKILLS[id].name, SKILLS[id].reqLevel);
+                else if (!skill_prereqs_met(p, id))
+                    ui_toast(g, "%s %s.", SKILLS[id].name, skill_lock_reason(p, id));
                 else if (p->skillRank[id] >= SKILLS[id].maxRank)
                     ui_toast(g, "%s is already mastered.", SKILLS[id].name);
                 else {
@@ -489,9 +489,10 @@ void ui_scene_train(Game *g)
         int top = g->menuIdx - 8; if (top < 0) top = 0;
         for (int i = top; i < MAX_SKILLS && i < top + 10; i++) {
             char lab[96];
-            bool ok = p->level >= SKILLS[i].reqLevel;
-            snprintf(lab, sizeof lab, "%-16s %d/%d%s", SKILLS[i].name, p->skillRank[i],
-                     SKILLS[i].maxRank, ok ? "" : "  locked");
+            bool ok = skill_prereqs_met(p, i);
+            const char *why = ok ? NULL : skill_lock_reason(p, i);
+            snprintf(lab, sizeof lab, "%-16s %d/%d%s%s", SKILLS[i].name, p->skillRank[i],
+                     SKILLS[i].maxRank, ok ? "" : "  -- ", ok ? "" : (why ? why : "locked"));
             ui_button((Rectangle){ left.x + 16, left.y + 44 + (i - top) * 50, left.width - 32, 44 },
                       lab, g->menuIdx == i, ok);
         }
@@ -529,6 +530,14 @@ void ui_scene_train(Game *g)
         snprintf(b, sizeof b, "Requires level %d   rank %d of %d",
                  sk->reqLevel, p->skillRank[g->menuIdx], sk->maxRank);
         ui_text(b, right.x + 20, right.y + 180, 18, C_PARCH2);
+        float py = right.y + 206;
+        for (int i = 0; i < 2; i++) {
+            int r = sk->prereq[i];
+            if (r < 0 || r >= MAX_SKILLS) continue;
+            snprintf(b, sizeof b, "Needs %s", SKILLS[r].name);
+            ui_text(b, right.x + 20, py, 18, p->skillRank[r] > 0 ? C_JADE : C_BLOOD2);
+            py += 24;
+        }
     }
     draw_hero_preview(g, (Vector2){ right.x + right.width / 2, right.y + right.height - 40 }, 1.3f);
 }

@@ -142,6 +142,37 @@ fills in the original. **Their dialogue is written for this remake** -- the
 original's writing is the one thing a remake should not copy, so every line is
 new, and only the role behind it is faithful.
 
+**The skill tree** is the original's. Its skill buttons come in triples -- a
+label button that sets `skilllabel` and `levelreq`, and a click button that
+guards the spend -- so the whole dependency graph came out of them: nineteen
+skills, **max rank 10** each, with level requirements and prerequisites.
+
+```
+0-3   free            10  lv5   needs 6      15  lv10  needs 7 and 11
+4,5   needs 1         11  lv5   needs 8      16  lv10  needs 5 and 12
+6     lv1  needs 2    12  lv5   needs 9      17  lv15  needs 13 and 14
+7     lv1  needs 3    13  lv10  needs 10     18  lv15  needs 15
+8,9   lv1  needs 4    14  lv10  needs 10
+```
+
+**Item prices** are the original's, recovered by joining its shop screens
+(which assign `itemstats[slot] = "item name"`) to its buy buttons (which set
+`cost` and `slotnum`): 42 items, from a 10-gold Bandana to 1600-gold Golden
+Armour.
+
+**The exp curve and level-up rewards** are the original's:
+
+```
+expmaxb = 50 * level                       // the next level costs 50 x level
+on level-up:  +1 stat point, +1 skill point, +5 life, +5 mana, +3 energy
+every 5th level: +2 Strength, +2 Speed, and a bonus skill point
+leftover experience carries over, capped at expmaxb - 1
+```
+
+**The village layout** is the original's `Arena0` hub grid -- the hub screens
+live in the same `area` as the stages, so the village is one of the eleven
+recovered layouts rather than a separate map.
+
 **The trainable stat list** matches the original's own: Life Points, Mana
 Points, Strength, Physical Damage, Magic Damage, Physical Defence, Magic
 Defence, Shield Points, Speed.
@@ -156,25 +187,19 @@ source is not confirmed; this remake feeds it from Strength.
 
 ### Still original to this remake
 
-* **All art and animation** — every pixel is drawn by `art.c`; no asset from
+* **All art and animation** -- every pixel is drawn by `art.c`; no asset from
   the original is used or redistributed
-* **All writing** — item notes, skill descriptions, NPC dialogue, class blurbs
-* **The 19 skills**, their effects, costs and ranks. The original keeps no
-  skill table: the effects are inlined in its combat code, so these are ours.
-* **Item prices**, derived from each item's stats
-* **The exp curve and level-up rewards.** Only the first level's cost (50) is
-  the original's; `expmaxb` turns out to be a display binding, so the growth
-  rule was not recoverable.
-* **Every map.** The original is built from three portals of twenty stages
-  each (HUMAN, MONSTER and DARK, over Snow / Coast / Grass / Desert), which
-  this remake does not reproduce — it uses six hand-drawn zones instead.
-* the effects of the three zero-stat rows in the source table (Medicine, White
-  Leaves, Mendo's Ring) and the trailing food and drink rows
-* the energy economy and the buff / stun / drain mechanics
-
-So the systems, the combat maths, the items, the enemies and the classes are
-the original's, verified from its bytecode; the presentation, the writing, the
-skills and the level design are new.
+* **All writing** -- NPC dialogue, item notes, skill descriptions, class
+  blurbs. The cast and their roles are the original's; the words are not.
+  Prose is the authored part of a game, and copying it is the one thing a
+  remake genuinely should not do.
+* **Skill names, effects and costs.** The tree they hang on -- ranks, level
+  gates and prerequisites -- is the original's, but it keeps no table of what
+  each skill *does*: the effects are inlined in its combat code, so the
+  nineteen effects here are ours, fitted to the real tree.
+* prices for the handful of items its shops never stock (food, drink and the
+  three zero-stat rows: Medicine, White Leaves, Mendo's Ring)
+* the enemy AI's skill choices, and the buff / stun / drain mechanics
 
 ## Layout
 

@@ -289,49 +289,49 @@ typedef struct {
 } NpcSeed;
 
 static const NpcSeed VILLAGE_NPCS[] = {
-  { NPC_ELDER,   10, 4, "Elder",
+  { NPC_ELDER,   10, 3, "Elder",
     "You were away on the mountain when it came. Now the road\nsouth belongs to the reaper, and we are what is left.", 0 },
-  { NPC_SAVE,     4, 10, "Scribe",
-    "I keep the names of the dead and the deeds of the living.\nRest here and I will write yours down.", 0 },
-  { NPC_HEALER,  16, 4, "Healer",
+  { NPC_HEALER,  16, 3, "Healer",
     "Sit. Breathe out. I can close most of what the road opens.", 0 },
-  { NPC_SMITH,   4,  4, "Item Vendor",
+  { NPC_SMITH,    4, 3, "Item Vendor",
     "Steel, leather, and a wrist guard if you have the sense.\nStrength first -- you cannot swing what you cannot lift.", 0 },
-  { NPC_SMITH,   6,  6, "Item Vendor 2",
-    "The heavy stock. Come back when your arm is worth it.", 3 },
-  { NPC_VENDOR,  14, 6, "Food Vendor",
-    "Rice and broth. It is not a blade, but it keeps you\nstanding long enough to use one.", 1 },
-  { NPC_VENDOR,  16, 8, "Potion Vendor",
-    "Medicine, tea, white leaves. Buy more than you think\nyou need; everyone always does.", 2 },
-  { NPC_TRAINER, 10, 8, "Ninja",
-    "Points are worth nothing in your pocket. Put them into\nthe arm, the guard, or the breath -- but put them in.", 0 },
-  { NPC_ARENA,   14,10, "Dark Ninja",
-    "The ward is through here. It hits back, and it does not\nstop when you are tired.", 0 },
-  { NPC_VILLAGER, 7, 4, "Lady",
+  { NPC_VILLAGER, 7, 3, "Lady",
     "My husband went south with the guard. Three of them came\nback. He was not one of the three.", 0 },
-  { NPC_VILLAGER,18, 6, "Drunkard",
-    "You are the one from the mountain. Ha. They will feel\nbetter now. I will not, but they will.", 0 },
-  { NPC_VILLAGER, 5,  8, "Drinker",
-    "Cheapest cup in the village and it still costs too much.", 0 },
-  { NPC_VILLAGER,12, 4, "Relaxing Ninja",
-    "Rest while the gate holds. It will not hold long.", 0 },
-  { NPC_VILLAGER, 8, 10, "Meditating Ninja",
-    "Speed is not hurry. The fast fighter is the one who is\nalready where the blade is going.", 0 },
-  { NPC_VILLAGER,18, 4, "Wounded Warrior",
-    "Their guard soaks up everything you have. Break it first,\nor you will never touch the man behind it.", 0 },
-  { NPC_VILLAGER, 4,  6, "Apprentice",
-    "The Elder says you trained where the air is thin.\nIs it true you never once came down?", 0 },
-  { NPC_VILLAGER,12,10, "Student",
-    "I can hold a knife. That is not the same as using one,\nthe Ninja keeps telling me.", 0 },
-  { NPC_VILLAGER, 2,  4, "Statue",
+  { NPC_VILLAGER, 2, 3, "Statue",
     "A stone warrior, worn smooth. Someone keeps the moss off it.", 0 },
-  { NPC_PROP,     3, 11, "Crate", "A crate, nailed shut.", 0 },
-  { NPC_PROP,    18,10, "Barrel", "Rainwater, and a drowned moth.", 0 },
-  { NPC_PROP,     6, 11, "Urn", "Chipped at the lip. Empty.", 0 },
-  { NPC_PROP,    15, 11,"Bamboo", "Cut stalks, drying in a bundle.", 0 },
-  { NPC_PROP,     9,  6, "Posted Note",
+  { NPC_VILLAGER,18, 3, "Wounded Warrior",
+    "Their guard soaks up everything you have. Break it first,\nor you will never touch the man behind it.", 0 },
+  { NPC_SMITH,    5, 4, "Item Vendor 2",
+    "The heavy stock. Come back when your arm is worth it.", 3 },
+  { NPC_VENDOR,  14, 4, "Food Vendor",
+    "Rice and broth. It is not a blade, but it keeps you\nstanding long enough to use one.", 1 },
+  { NPC_VILLAGER,18, 4, "Drunkard",
+    "You are the one from the mountain. Ha. They will feel\nbetter now. I will not, but they will.", 0 },
+  { NPC_VILLAGER, 1, 4, "Apprentice",
+    "The Elder says you trained where the air is thin.\nIs it true you never once came down?", 0 },
+  { NPC_VENDOR,  16, 5, "Potion Vendor",
+    "Medicine, tea, white leaves. Buy more than you think\nyou need; everyone always does.", 2 },
+  { NPC_TRAINER, 10, 5, "Ninja",
+    "Points are worth nothing in your pocket. Put them into\nthe arm, the guard, or the breath -- but put them in.", 0 },
+  { NPC_PROP,     8, 5, "Posted Note",
     "A notice: the south road is closed. Nobody has taken it down.", 0 },
-  { NPC_GATE,    10,12, "South Road", "The road out of the valley.", ZONE_STAGE0 },
+  { NPC_VILLAGER, 5, 6, "Drinker",
+    "Cheapest cup in the village and it still costs too much.", 0 },
+  { NPC_VILLAGER,12, 6, "Relaxing Ninja",
+    "Rest while the gate holds. It will not hold long.", 0 },
+  { NPC_PROP,    18, 6, "Barrel", "Rainwater, and a drowned moth.", 0 },
+  { NPC_SAVE,     4, 7, "Scribe",
+    "I keep the names of the dead and the deeds of the living.\nRest here and I will write yours down.", 0 },
+  { NPC_ARENA,   14, 7, "Dark Ninja",
+    "The ward is through here. It hits back, and it does not\nstop when you are tired.", 0 },
+  { NPC_VILLAGER, 8, 7, "Meditating Ninja",
+    "Speed is not hurry. The fast fighter is the one who is\nalready where the blade is going.", 0 },
+  { NPC_VILLAGER,12, 8, "Student",
+    "I can hold a knife. That is not the same as using one,\nthe Ninja keeps telling me.", 0 },
+  { NPC_PROP,     3, 8, "Crate", "A crate, nailed shut.", 0 },
+  { NPC_PROP,     6, 9, "Urn", "Chipped at the lip. Empty.", 0 },
+  { NPC_PROP,    15, 9, "Bamboo", "Cut stalks, drying in a bundle.", 0 },
+  { NPC_GATE,    10,11, "South Road", "The road out of the valley.", ZONE_STAGE0 },
 };
 
 void data_init_zones(Zone *zones)
@@ -349,24 +349,10 @@ void data_init_zones(Zone *zones)
         z->groundDark = (Color){ 78, 94, 62, 255 };
         z->propA = (Color){ 150, 132, 96, 255 };
         z->propB = (Color){ 126, 110, 80, 255 };
-        static const char *rows[MAP_H] = {
-            "TTTTTTTTTTTTTTTTTTTT",
-            "T..................T",
-            "T.##...##...##...##T",
-            "T.#D...#D...#D...#DT",
-            "T..................T",
-            "T....,,,,,,,,,,....T",
-            "T.##.,,,,,,,,,,.##.T",
-            "T.#D.,,,,,,,,,,.#D.T",
-            "T....,,,,,,,,,,....T",
-            "T..................T",
-            "T.##...........##..T",
-            "T..................T",
-            "TTTTTTTTTT,,TTTTTTTT",
-        };
-        fill_zone(z, rows);
-        z->entryX = 10; z->entryY = 9;
-        z->exitX  = 10; z->exitY  = 11;
+        /* The hub screen uses the original's own Arena0 layout. */
+        fill_zone(z, STAGES[0].rows);
+        z->entryX = 10; z->entryY = 10;
+        z->exitX  = 10; z->exitY  = 10;
         for (unsigned i = 0; i < sizeof VILLAGE_NPCS / sizeof VILLAGE_NPCS[0]; i++) {
             const NpcSeed *s = &VILLAGE_NPCS[i];
             Look lk = npc_look_for(s->name);

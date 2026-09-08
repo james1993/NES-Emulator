@@ -152,9 +152,10 @@ int sj_char_pressed(void)
 
 /* --------------------------------------------------------- player maths */
 
+/* The original's curve: the next level always costs 50 x your current level. */
 int player_exp_for_level(int lvl)
 {
-    return 60 + lvl * lvl * 26 + lvl * 40;
+    return 50 * (lvl < 1 ? 1 : lvl);
 }
 
 /* Rolls the player's allocated stats, gear and class into a battle-ready
@@ -199,7 +200,7 @@ void player_recalc(Player *p, Combatant *out)
 
     out->lifeMax = life;   out->life = life;
     out->manaMax = mana;   out->mana = mana;
-    out->engMax  = 100;    out->eng  = 40;
+    out->engMax  = p->baseEng;  out->eng = p->baseEng * 2 / 5;
     out->engRate = 18 + p->level + (p->cls == CLASS_BALANCED ? 6 : 0);
     out->str = str;
     /* Weapon damage and strength damage are separate components; each defence
@@ -273,17 +274,60 @@ void player_equip(Player *p, int invIndex)
     if (old >= 0) player_add_item(p, old);
 }
 
+/* Level-up rewards, exactly as the original grants them: one stat point and
+   one skill point, +5 life, +5 mana and +3 energy -- and on every fifth level
+   a bonus of +2 Strength, +2 Speed and a second skill point. */
+/* A skill opens only once its prerequisites are learned and the level is
+   reached -- the original's tree, recovered from its skill buttons. */
+bool skill_prereqs_met(const Player *p, int id)
+{
+    if (id < 0 || id >= MAX_SKILLS) return false;
+    for (int i = 0; i < 2; i++) {
+        int r = SKILLS[id].prereq[i];
+        if (r >= 0 && r < MAX_SKILLS && p->skillRank[r] <= 0) return false;
+    }
+    return p->level >= SKILLS[id].reqLevel;
+}
+
+const char *skill_lock_reason(const Player *p, int id)
+{
+    static char buf[96];
+    if (p->level < SKILLS[id].reqLevel) {
+        snprintf(buf, sizeof buf, "needs level %d", SKILLS[id].reqLevel);
+        return buf;
+    }
+    for (int i = 0; i < 2; i++) {
+        int r = SKILLS[id].prereq[i];
+        if (r >= 0 && r < MAX_SKILLS && p->skillRank[r] <= 0) {
+            snprintf(buf, sizeof buf, "needs %s", SKILLS[r].name);
+            return buf;
+        }
+    }
+    return NULL;
+}
+
 void player_gain_exp(Game *g, int exp)
 {
     Player *p = &g->p;
     p->exp += exp;
     while (p->exp >= p->expNext) {
         p->exp -= p->expNext;
+        p->statPts++;
+        p->skillPts++;
+        p->baseLife += 5;
+        p->baseMana += 5;
+        p->baseEng  += 3;
         p->level++;
-        p->statPts += 3;
-        p->skillPts += 1;
+        bool bonus = (p->level % 5) == 0;
+        if (bonus) {
+            p->baseStr   += 2;
+            p->baseSpeed += 2;
+            p->skillPts++;
+        }
         p->expNext = player_exp_for_level(p->level);
-        ui_toast(g, "Level %d! 3 stat points, 1 skill point.", p->level);
+        if (p->exp >= p->expNext) p->exp = p->expNext - 1;   /* carry-over cap */
+        if (bonus) ui_toast(g, "Level %d! Bonus: +2 Strength, +2 Speed, +1 skill.", p->level);
+        else       ui_toast(g, "Level %d! +1 stat point, +1 skill point.", p->level);
     }
 }
 
@@ -324,7 +368,7 @@ static void new_player(Game *g, ClassId cls, const char *name)
     p->cls = cls;
     p->level = 1;
     p->exp = 0;
-    p->expNext = 50;      /* the original's first level costs 50 */
+    p->expNext = player_exp_for_level(1);
     p->gold = 75;
     p->statPts = 3;      /* something to spend on the first visit to the trainer */
     p->skillPts = 2;
