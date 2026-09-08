@@ -571,7 +571,7 @@ void ui_scene_dialog(Game *g)
 
 void ui_scene_title(Game *g)
 {
-    art_draw_battle_bg(ZONE_SHADOW, g->time);
+    art_draw_battle_bg(BG_DARK, g->time);
     DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 120 });
 
     /* a lone figure on the ridge */
@@ -602,7 +602,7 @@ void ui_scene_title(Game *g)
 
 void ui_scene_create(Game *g)
 {
-    art_draw_battle_bg(ZONE_VILLAGE, g->time);
+    art_draw_battle_bg(BG_VILLAGE, g->time);
     DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 170 });
     ui_text_sh("CHOOSE YOUR DISCIPLINE", 60, 40, 40, C_GOLD);
 

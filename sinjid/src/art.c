@@ -748,41 +748,33 @@ static void draw_torii(Vector2 at, float h, Color col)
 }
 
 /* Battle stages: a gradient sky, parallax silhouettes, then a ground plane. */
-void art_draw_battle_bg(ZoneId zone, float t)
+void art_draw_battle_bg(int bgStyle, float t)
 {
+    int zone = bgStyle;
     Color skyTop, skyBot, far, mid, near, ground, groundDk;
     switch (zone) {
-    case ZONE_COAST:
+    case BG_ARENA2:                                   /* coastal flats      */
         skyTop = (Color){ 62, 84, 122, 255 }; skyBot = (Color){ 196, 150, 116, 255 };
         far = (Color){ 74, 88, 112, 255 }; mid = (Color){ 52, 62, 82, 255 };
         near = (Color){ 34, 40, 56, 255 };
         ground = (Color){ 138, 120, 92, 255 }; groundDk = (Color){ 96, 82, 62, 255 }; break;
-    case ZONE_DESERT:
+    case BG_ARENA3:                                   /* dry rock           */
         skyTop = (Color){ 122, 108, 96, 255 }; skyBot = (Color){ 214, 176, 122, 255 };
         far = (Color){ 176, 142, 100, 255 }; mid = (Color){ 142, 112, 78, 255 };
         near = (Color){ 104, 80, 56, 255 };
         ground = (Color){ 190, 158, 108, 255 }; groundDk = (Color){ 142, 114, 76, 255 }; break;
-    case ZONE_SNOW:
-        skyTop = (Color){ 74, 86, 108, 255 }; skyBot = (Color){ 178, 192, 208, 255 };
-        far = (Color){ 150, 166, 186, 255 }; mid = (Color){ 108, 124, 146, 255 };
-        near = (Color){ 72, 84, 104, 255 };
-        ground = (Color){ 208, 218, 230, 255 }; groundDk = (Color){ 158, 172, 190, 255 }; break;
-    case ZONE_CAVE:
-        skyTop = (Color){ 20, 18, 26, 255 }; skyBot = (Color){ 44, 38, 48, 255 };
-        far = (Color){ 40, 34, 46, 255 }; mid = (Color){ 30, 26, 36, 255 };
-        near = (Color){ 20, 17, 25, 255 };
-        ground = (Color){ 62, 54, 58, 255 }; groundDk = (Color){ 40, 34, 40, 255 }; break;
-    case ZONE_SHADOW:
+    case BG_DARK:                                     /* the shadow realm   */
         skyTop = (Color){ 16, 12, 24, 255 }; skyBot = (Color){ 52, 30, 58, 255 };
         far = (Color){ 46, 28, 56, 255 }; mid = (Color){ 32, 20, 40, 255 };
         near = (Color){ 20, 13, 26, 255 };
         ground = (Color){ 46, 32, 52, 255 }; groundDk = (Color){ 30, 20, 36, 255 }; break;
-    case ZONE_VILLAGE:
+    case BG_VILLAGE:
         skyTop = (Color){ 70, 92, 120, 255 }; skyBot = (Color){ 176, 168, 148, 255 };
         far = (Color){ 96, 108, 104, 255 }; mid = (Color){ 62, 76, 70, 255 };
         near = (Color){ 40, 50, 46, 255 };
         ground = (Color){ 130, 122, 96, 255 }; groundDk = (Color){ 92, 86, 68, 255 }; break;
-    default:
+    case BG_ARENA:
+    default:                                          /* open ground        */
         skyTop = (Color){ 66, 88, 112, 255 }; skyBot = (Color){ 168, 178, 150, 255 };
         far = (Color){ 92, 112, 92, 255 }; mid = (Color){ 58, 78, 60, 255 };
         near = (Color){ 36, 52, 40, 255 };
@@ -793,43 +785,33 @@ void art_draw_battle_bg(ZoneId zone, float t)
     DrawRectangleGradientV(0, 0, SCREEN_W, (int)HORIZON + 20, skyTop, skyBot);
 
     /* sun or moon */
-    if (zone == ZONE_CAVE || zone == ZONE_SHADOW) {
+    if (zone == BG_DARK) {
         for (int i = 0; i < 26; i++) {
             float x = hashf(i, 3, 11) * SCREEN_W, y = hashf(i, 7, 13) * HORIZON * 0.8f;
-            float a = 0.25f + 0.25f * sinf(t * 1.5f + i);
-            DrawCircleV(v2(x, y), 1.6f, alpha(zone == ZONE_SHADOW ? C_VIOLET : C_KI, a));
+            float al = 0.25f + 0.25f * sinf(t * 1.5f + i);
+            DrawCircleV(v2(x, y), 1.6f, alpha(C_VIOLET, al));
         }
     } else {
         DrawCircleV(v2(SCREEN_W * 0.74f, HORIZON * 0.36f), 46, alpha(RAYWHITE, 0.10f));
         DrawCircleV(v2(SCREEN_W * 0.74f, HORIZON * 0.36f), 30,
-                    alpha(zone == ZONE_SNOW ? RAYWHITE : (Color){ 250, 226, 178, 255 }, 0.55f));
+                    alpha((Color){ 250, 226, 178, 255 }, 0.55f));
     }
 
     /* far layer */
-    if (zone == ZONE_DESERT || zone == ZONE_COAST)
+    if (zone == BG_ARENA3 || zone == BG_ARENA2)
         silhouette_hills(HORIZON - 70, 26, 0.006f, t * 2, far, t);
     else
         silhouette_hills(HORIZON - 90, 44, 0.004f, 40, far, t);
 
-    /* mid layer -- trees, dunes, stalagmites depending on the stage */
+    /* mid layer: what stands on the skyline depends on the stage */
     silhouette_hills(HORIZON - 40, 20, 0.009f, 200, mid, t);
-    if (zone == ZONE_GRASS || zone == ZONE_VILLAGE) {
+    if (zone == BG_ARENA || zone == BG_VILLAGE) {
         for (int i = 0; i < 9; i++) {
             float x = 60 + i * 148 + sinf(i * 2.1f) * 30;
             draw_pine(v2(x, HORIZON - 26), 120 + hashf(i, 1, 5) * 60, near);
         }
-        if (zone == ZONE_VILLAGE) draw_torii(v2(SCREEN_W * 0.18f, HORIZON - 20), 150, near);
-    } else if (zone == ZONE_SNOW) {
-        for (int i = 0; i < 7; i++)
-            draw_pine(v2(90 + i * 190, HORIZON - 20), 150, near);
-    } else if (zone == ZONE_CAVE) {
-        for (int i = 0; i < 14; i++) {
-            float x = i * 96 + hashf(i, 2, 9) * 40;
-            float h = 60 + hashf(i, 5, 3) * 120;
-            tri(v2(x - 22, HORIZON - 10), v2(x + 22, HORIZON - 10), v2(x, HORIZON - 10 - h), near);
-            tri(v2(x + 40 - 18, 0), v2(x + 40 + 18, 0), v2(x + 40, h * 0.9f), near);
-        }
-    } else if (zone == ZONE_SHADOW) {
+        if (zone == BG_VILLAGE) draw_torii(v2(SCREEN_W * 0.18f, HORIZON - 20), 150, near);
+    } else if (zone == BG_DARK) {
         for (int i = 0; i < 10; i++) {
             float x = 40 + i * 132;
             float h = 130 + hashf(i, 4, 7) * 90;
@@ -840,16 +822,16 @@ void art_draw_battle_bg(ZoneId zone, float t)
                      3, 1, near);
             }
         }
-    } else if (zone == ZONE_COAST) {
+    } else if (zone == BG_ARENA2) {
         for (int i = 0; i < 5; i++) {
             float x = 120 + i * 260;
             limb(v2(x, HORIZON - 20), v2(x + 14, HORIZON - 110), 6, 4, near);
             for (int f = 0; f < 5; f++) {
-                float a = -PI / 2 + (f - 2) * 0.45f;
-                limb(v2(x + 14, HORIZON - 110), polar(v2(x + 14, HORIZON - 110), a, 42), 4, 1, near);
+                float ang = -PI / 2 + (f - 2) * 0.45f;
+                limb(v2(x + 14, HORIZON - 110), polar(v2(x + 14, HORIZON - 110), ang, 42), 4, 1, near);
             }
         }
-    } else if (zone == ZONE_DESERT) {
+    } else if (zone == BG_ARENA3) {
         for (int i = 0; i < 6; i++) {
             float x = 100 + i * 220;
             float h = 60 + hashf(i, 6, 2) * 40;
@@ -868,7 +850,7 @@ void art_draw_battle_bg(ZoneId zone, float t)
         float w = 12 + hashf(i, 17, 6) * 40;
         DrawEllipse((int)x, (int)y, w, 2.4f, alpha(groundDk, 0.5f));
     }
-    if (zone == ZONE_COAST) {                       /* surf line            */
+    if (zone == BG_ARENA2) {                        /* surf line            */
         for (int i = 0; i < 3; i++) {
             float y = HORIZON - 6 + i * 5 + sinf(t * 1.4f + i) * 2;
             DrawRectangle(0, (int)y, SCREEN_W, 2, alpha(RAYWHITE, 0.25f - i * 0.06f));
@@ -958,9 +940,10 @@ void art_draw_tile(int tile, int px, int py, int size, const Zone *z, int wx, in
         break;
     case T_TREE:
         DrawRectangleRec(r, lerp_col(z->ground, z->groundDark, 0.4f));
-        if (z->id == ZONE_SNOW || z->id == ZONE_CAVE)
+        if (z->bgStyle == BG_DARK || z->bgStyle == BG_ARENA3)
             draw_pine(v2(px + size * 0.5f, py + size * 0.95f), size * 1.5f,
-                      z->id == ZONE_SNOW ? (Color){ 66, 92, 82, 255 } : (Color){ 52, 46, 52, 255 });
+                      z->bgStyle == BG_DARK ? (Color){ 52, 46, 52, 255 }
+                                            : (Color){ 66, 92, 82, 255 });
         else
             draw_broadleaf(v2(px + size * 0.5f, py + size * 0.95f), size * 1.4f,
                            (Color){ 62, 92, 58, 255 }, C_BARK);

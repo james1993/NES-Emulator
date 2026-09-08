@@ -161,7 +161,7 @@ void battle_start(Game *g, const int *enemyDefs, int count, int level, bool aren
     b->isArena = arena;
     b->isBoss  = boss;
     b->canFlee = !arena && !boss;
-    b->zone    = g->p.zone;
+    b->bgStyle = g->zones[g->p.zone].bgStyle;
 
     player_recalc(&g->p, &b->heroes[0]);
     if (g->p.curLife > 0) {
@@ -795,7 +795,7 @@ void battle_draw(Game *g)
     cam.offset = (Vector2){ frnd(-1, 1) * b->shake * 9, frnd(-1, 1) * b->shake * 7 };
 
     BeginMode2D(cam);
-    art_draw_battle_bg(b->zone, g->time);
+    art_draw_battle_bg(b->bgStyle, g->time);
 
     /* fighters, back to front */
     for (int i = b->nFoes - 1; i >= 0; i--) {

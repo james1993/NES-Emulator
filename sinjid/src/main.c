@@ -341,8 +341,8 @@ static void new_player(Game *g, ClassId cls, const char *name)
     player_add_item(p, IT_RICE_BALL); player_add_item(p, IT_RICE_BALL);
     player_add_item(p, IT_RICE_BALL); player_add_item(p, IT_GREEN_TEA);
     p->zone = ZONE_VILLAGE;
-    p->tx = 14; p->ty = 12; p->dir = 0;
-    p->saveZone = ZONE_VILLAGE; p->saveX = 14; p->saveY = 12;
+    p->tx = 10; p->ty = 9; p->dir = 1;
+    p->saveZone = ZONE_VILLAGE; p->saveX = 10; p->saveY = 9;
     p->arenaWave = 0;
 }
 
@@ -496,7 +496,7 @@ int main(int argc, char **argv)
                     if (IsKeyPressed(KEY_ESCAPE)) G.createField = 0;
                     if (IsKeyPressed(KEY_ENTER) && G.nameLen > 0) {
                         new_player(&G, (ClassId)G.createIdx, G.nameBuf);
-                        world_enter_zone(&G, ZONE_VILLAGE, 14, 12);
+                        world_enter_zone(&G, ZONE_VILLAGE, 10, 9);
                         go_scene(&G, SCENE_VILLAGE);
                     }
                 }
@@ -549,14 +549,14 @@ int main(int argc, char **argv)
         case SCENE_TRAIN:    world_draw(&G); ui_scene_train(&G); break;
         case SCENE_DIALOG:   world_draw(&G); ui_scene_dialog(&G); break;
         case SCENE_GAMEOVER: {
-            art_draw_battle_bg(ZONE_SHADOW, G.time);
+            art_draw_battle_bg(BG_DARK, G.time);
             DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 0, 0, 0, 190 });
             ui_text_c("YOU FELL", SCREEN_W / 2, 250, 64, C_BLOOD2);
             ui_text_c("The shadow takes what it is owed.", SCREEN_W / 2, 330, 22, C_PARCH2);
             ui_text_c("ENTER -- return to your last rest", SCREEN_W / 2, 420, 20, C_GOLD);
         } break;
         case SCENE_CREDITS: {
-            art_draw_battle_bg(ZONE_GRASS, G.time);
+            art_draw_battle_bg(BG_ARENA, G.time);
             DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 0, 0, 0, 170 });
             ui_text_c("ABOUT", SCREEN_W / 2, 120, 48, C_GOLD);
             const char *lines[] = {

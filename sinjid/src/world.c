@@ -10,9 +10,9 @@
 #include <string.h>
 #include <math.h>
 
-#define TILE   40
-#define OX     80          /* map origin on screen */
-#define OY     0
+#define TILE   52
+#define OX     120         /* 20 x 13 cells of 52px, centred */
+#define OY     22
 
 /* Map legend:  . grass   , path   # wall   D door   ~ water   T tree
                 R rock    s sand   w snow   m mat    = floor   L lava
@@ -43,29 +43,13 @@ static bool tile_solid(int t)
            t == T_VOID || t == T_LAVA;
 }
 
-static void fill_zone(Zone *z, const char *rows[MAP_H])
+static void fill_zone(Zone *z, const char *const rows[MAP_H])
 {
     for (int y = 0; y < MAP_H; y++)
         for (int x = 0; x < MAP_W; x++) {
             char c = rows[y][x] ? rows[y][x] : ' ';
             z->tiles[y][x] = (unsigned char)tile_from_char(c);
         }
-}
-
-static Look npc_look(Color cloth, Color trim, Color hair, int helm, int weapon)
-{
-    Look lk;
-    lk.skin = (Color){ 202, 164, 128, 255 };
-    lk.cloth = cloth;
-    lk.clothDark = art_shade(cloth, 0.62f);
-    lk.trim = trim;
-    lk.hair = hair;
-    lk.metal = C_STEEL;
-    lk.body = BODY_HUMAN;
-    lk.weapon = weapon; lk.shield = SHLD_NONE; lk.helm = helm;
-    lk.weaponTint = C_STEEL; lk.shieldTint = C_STEEL;
-    lk.scale = 0.92f; lk.glow = false;
-    return lk;
 }
 
 static void add_npc(Zone *z, NpcKind kind, int tx, int ty, const char *name,
@@ -79,241 +63,372 @@ static void add_npc(Zone *z, NpcKind kind, int tx, int ty, const char *name,
     n->bob = (float)(z->npcCount) * 0.7f;
 }
 
+
+/* A palette per cast member.  The names are the original's; the colours,
+   body shapes and gear choices are ours. */
+static Look npc_look_for(const char *name)
+{
+    struct { const char *n; Color cloth, trim, hair; int helm, weapon; float sc; } T[] = {
+      { "Elder",           { 74, 74, 88,255},{160,150,120,255},{200,198,194,255}, HELM_NONE,   WEAP_NONE,  0.95f },
+      { "Scribe",          { 96, 92,120,255},{190,180,150,255},{ 60, 54, 50,255}, HELM_NONE,   WEAP_NONE,  0.92f },
+      { "Healer",          {200,196,186,255},{ 92,146,100,255},{ 34, 30, 28,255}, HELM_HOOD,   WEAP_NONE,  0.92f },
+      { "Item Vendor",     { 96, 70, 48,255},{160, 60, 44,255},{ 40, 34, 30,255}, HELM_BANDANA,WEAP_NONE,  0.95f },
+      { "Item Vendor 2",   { 70, 62, 54,255},{176,140, 70,255},{ 36, 30, 26,255}, HELM_BANDANA,WEAP_NONE,  1.0f  },
+      { "Food Vendor",     {120, 92,130,255},{200,180,120,255},{ 60, 40, 34,255}, HELM_NONE,   WEAP_NONE,  0.92f },
+      { "Potion Vendor",   { 62, 92, 96,255},{140,190,180,255},{ 44, 38, 34,255}, HELM_NONE,   WEAP_NONE,  0.92f },
+      { "Ninja",           { 42, 44, 58,255},{150, 52, 48,255},{ 28, 26, 24,255}, HELM_HOOD,   WEAP_KATANA,1.0f  },
+      { "Dark Ninja",      { 30, 30, 40,255},{120, 36, 36,255},{ 24, 22, 22,255}, HELM_HOOD,   WEAP_CLAW,  1.02f },
+      { "Lady",            {130, 96,120,255},{210,190,150,255},{ 50, 40, 36,255}, HELM_NONE,   WEAP_NONE,  0.9f  },
+      { "Drunkard",        {110, 92, 70,255},{160,140,100,255},{ 54, 46, 40,255}, HELM_NONE,   WEAP_NONE,  0.94f },
+      { "Drinker",         { 96, 84, 66,255},{150,130, 96,255},{ 48, 42, 36,255}, HELM_NONE,   WEAP_NONE,  0.92f },
+      { "Relaxing Ninja",  { 54, 58, 74,255},{130, 60, 56,255},{ 30, 28, 26,255}, HELM_BANDANA,WEAP_NONE,  0.95f },
+      { "Meditating Ninja",{ 48, 52, 66,255},{120, 70, 60,255},{ 30, 28, 26,255}, HELM_NONE,   WEAP_NONE,  0.95f },
+      { "Wounded Warrior", { 86, 86, 96,255},{150, 44, 40,255},{ 40, 34, 30,255}, HELM_NONE,   WEAP_NONE,  0.95f },
+      { "Apprentice",      { 82, 96, 78,255},{170,160,120,255},{ 40, 34, 30,255}, HELM_NONE,   WEAP_NONE,  0.86f },
+      { "Student",         { 90,100, 86,255},{180,170,130,255},{ 38, 32, 28,255}, HELM_NONE,   WEAP_KNIFE, 0.86f },
+      { "Statue",          {130,126,118,255},{170,160,140,255},{ 90, 88, 84,255}, HELM_NONE,   WEAP_NONE,  1.0f  },
+      { "Guard",           { 70, 74, 86,255},{176,140, 70,255},{ 34, 30, 28,255}, HELM_FULL,   WEAP_NONE,  1.0f  },
+    };
+    Look lk;
+    lk.skin  = (Color){ 202, 164, 128, 255 };
+    lk.cloth = (Color){ 96, 92, 88, 255 };
+    lk.clothDark = art_shade(lk.cloth, 0.62f);
+    lk.trim  = C_GOLD; lk.hair = (Color){ 40, 34, 30, 255 };
+    lk.metal = C_STEEL; lk.body = BODY_HUMAN;
+    lk.weapon = WEAP_NONE; lk.shield = SHLD_NONE; lk.helm = HELM_NONE;
+    lk.weaponTint = C_STEEL; lk.shieldTint = C_STEEL;
+    lk.scale = 0.92f; lk.glow = false;
+    for (unsigned i = 0; i < sizeof T / sizeof T[0]; i++) {
+        if (strcmp(T[i].n, name) != 0) continue;
+        lk.cloth = T[i].cloth; lk.clothDark = art_shade(T[i].cloth, 0.62f);
+        lk.trim = T[i].trim;   lk.hair = T[i].hair;
+        lk.helm = T[i].helm;   lk.weapon = T[i].weapon;
+        lk.scale = T[i].sc;
+        break;
+    }
+    return lk;
+}
+
+typedef struct { const char *name; int bg; const char *rows[MAP_H]; } StageDef;
+
+/* 11 stage layouts, exactly as the original's stage scripts set them:
+   game.cell{x}_{y}.type = 2 marks a blocked cell on a 20-wide grid. */
+static const StageDef STAGES[] = {
+  { "Arena0", BG_ARENA2, {
+      "....................",
+      "....................",
+      "####################",
+      "....................",
+      ".......#....#...##..",
+      "...#................",
+      "....................",
+      "................#...",
+      "......#.............",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+  } },
+  { "Arena1", BG_ARENA, {
+      "....................",
+      "....................",
+      "####################",
+      "...#....#..#....#...",
+      "..##....#..#....##..",
+      "...######..######...",
+      "....................",
+      "....................",
+      "....................",
+      "................#...",
+      "....................",
+      "....................",
+      "....................",
+  } },
+  { "Arena2", BG_ARENA, {
+      "....................",
+      "....................",
+      "####################",
+      ".......##..##.......",
+      "......#.####........",
+      "..............#.....",
+      "....................",
+      "....................",
+      "....#...............",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+  } },
+  { "Arena3", BG_ARENA, {
+      "....................",
+      "....................",
+      "####################",
+      "...#.#.#............",
+      ".....###............",
+      "....................",
+      "....................",
+      "....................",
+      "................#...",
+      ".......#......###...",
+      "....................",
+      "....................",
+      "....................",
+  } },
+  { "Arena0", BG_ARENA3, {
+      "....................",
+      "....................",
+      "####################",
+      "....#...............",
+      "....................",
+      "...........#####....",
+      "....................",
+      "....................",
+      "....................",
+      "...#######..........",
+      "....................",
+      "....................",
+      "....................",
+  } },
+  { "Arena0", BG_ARENA3, {
+      "....................",
+      "....................",
+      "####################",
+      "....................",
+      ".......#....#.#.....",
+      "....................",
+      "....................",
+      "...........#........",
+      "....................",
+      "...#####............",
+      "....................",
+      "....................",
+      "....................",
+  } },
+  { "Arena0", BG_ARENA3, {
+      "....................",
+      "....................",
+      "####################",
+      "....#..........###..",
+      "##################..",
+      "..#.................",
+      "....................",
+      "....................",
+      ".......#.......#....",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+  } },
+  { "Arena0", BG_ARENA, {
+      "....................",
+      "....................",
+      "####################",
+      "....................",
+      "..#..............#..",
+      ".....#..####..#.....",
+      ".........##.........",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+  } },
+  { "Arena8", BG_ARENA, {
+      "....................",
+      "....................",
+      "####################",
+      ".........#####...#..",
+      ".............#####..",
+      "....................",
+      "....................",
+      "....................",
+      ".................#..",
+      "...........#........",
+      "..............#.#...",
+      "....................",
+      "....................",
+  } },
+  { "Arena9", BG_ARENA, {
+      "....................",
+      "....................",
+      "####################",
+      "......#......#......",
+      "....................",
+      "....................",
+      "....#...#...........",
+      "....................",
+      "......####..........",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+  } },
+  { "Arena10", BG_DARK, {
+      "....................",
+      "....................",
+      "####################",
+      "........#...#.......",
+      "...###...###........",
+      ".............#......",
+      "....................",
+      "...#.............#..",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+      "....................",
+  } },
+};
+
+/* The original's own NPC and prop cast, taken from its clip labels.  Their
+   roles match the roles they fill in the original; every line of dialogue
+   below is written for this remake. */
+typedef struct {
+    NpcKind kind; int tx, ty; const char *name; const char *line; int arg;
+} NpcSeed;
+
+static const NpcSeed VILLAGE_NPCS[] = {
+  { NPC_ELDER,   10, 4, "Elder",
+    "You were away on the mountain when it came. Now the road\nsouth belongs to the reaper, and we are what is left.", 0 },
+  { NPC_SAVE,     4, 10, "Scribe",
+    "I keep the names of the dead and the deeds of the living.\nRest here and I will write yours down.", 0 },
+  { NPC_HEALER,  16, 4, "Healer",
+    "Sit. Breathe out. I can close most of what the road opens.", 0 },
+  { NPC_SMITH,   4,  4, "Item Vendor",
+    "Steel, leather, and a wrist guard if you have the sense.\nStrength first -- you cannot swing what you cannot lift.", 0 },
+  { NPC_SMITH,   6,  6, "Item Vendor 2",
+    "The heavy stock. Come back when your arm is worth it.", 3 },
+  { NPC_VENDOR,  14, 6, "Food Vendor",
+    "Rice and broth. It is not a blade, but it keeps you\nstanding long enough to use one.", 1 },
+  { NPC_VENDOR,  16, 8, "Potion Vendor",
+    "Medicine, tea, white leaves. Buy more than you think\nyou need; everyone always does.", 2 },
+  { NPC_TRAINER, 10, 8, "Ninja",
+    "Points are worth nothing in your pocket. Put them into\nthe arm, the guard, or the breath -- but put them in.", 0 },
+  { NPC_ARENA,   14,10, "Dark Ninja",
+    "The ward is through here. It hits back, and it does not\nstop when you are tired.", 0 },
+  { NPC_VILLAGER, 7, 4, "Lady",
+    "My husband went south with the guard. Three of them came\nback. He was not one of the three.", 0 },
+  { NPC_VILLAGER,18, 6, "Drunkard",
+    "You are the one from the mountain. Ha. They will feel\nbetter now. I will not, but they will.", 0 },
+  { NPC_VILLAGER, 5,  8, "Drinker",
+    "Cheapest cup in the village and it still costs too much.", 0 },
+  { NPC_VILLAGER,12, 4, "Relaxing Ninja",
+    "Rest while the gate holds. It will not hold long.", 0 },
+  { NPC_VILLAGER, 8, 10, "Meditating Ninja",
+    "Speed is not hurry. The fast fighter is the one who is\nalready where the blade is going.", 0 },
+  { NPC_VILLAGER,18, 4, "Wounded Warrior",
+    "Their guard soaks up everything you have. Break it first,\nor you will never touch the man behind it.", 0 },
+  { NPC_VILLAGER, 4,  6, "Apprentice",
+    "The Elder says you trained where the air is thin.\nIs it true you never once came down?", 0 },
+  { NPC_VILLAGER,12,10, "Student",
+    "I can hold a knife. That is not the same as using one,\nthe Ninja keeps telling me.", 0 },
+  { NPC_VILLAGER, 2,  4, "Statue",
+    "A stone warrior, worn smooth. Someone keeps the moss off it.", 0 },
+  { NPC_PROP,     3, 11, "Crate", "A crate, nailed shut.", 0 },
+  { NPC_PROP,    18,10, "Barrel", "Rainwater, and a drowned moth.", 0 },
+  { NPC_PROP,     6, 11, "Urn", "Chipped at the lip. Empty.", 0 },
+  { NPC_PROP,    15, 11,"Bamboo", "Cut stalks, drying in a bundle.", 0 },
+  { NPC_PROP,     9,  6, "Posted Note",
+    "A notice: the south road is closed. Nobody has taken it down.", 0 },
+  { NPC_GATE,    10,12, "South Road", "The road out of the valley.", ZONE_STAGE0 },
+};
+
 void data_init_zones(Zone *zones)
 {
     memset(zones, 0, sizeof(Zone) * ZONE_COUNT);
 
-    /* ------------------------------------------------------- the village */
+    /* ------------------------------------------------------- the village
+       The original's village is laid out on its timeline rather than in a
+       stage script, so this screen is ours; the cast standing in it is not. */
     {
         Zone *z = &zones[ZONE_VILLAGE];
         z->id = ZONE_VILLAGE; z->name = "Kaido Village";
-        z->encounterRate = 0;
-        z->minLevel = 1; z->maxLevel = 1;
-        z->skyTop = (Color){ 70, 92, 120, 255 };
+        z->encounterRate = 0; z->bgStyle = BG_VILLAGE;
         z->ground = (Color){ 104, 122, 82, 255 };
         z->groundDark = (Color){ 78, 94, 62, 255 };
         z->propA = (Color){ 150, 132, 96, 255 };
         z->propB = (Color){ 126, 110, 80, 255 };
         static const char *rows[MAP_H] = {
-        /*   0123456789012345678901234567 */
-            "TTTTTTTTTTTTTTTTTTTTTTTTTTTT",
-            "T..........TTTT............T",
-            "T..#####...............####.T",
-            "T..#===#....,,,,,,....#===#.T",
-            "T..#===D...,,,,,,,,...D===#.T",
-            "T..#####...,,,,,,,,...#####.T",
-            "T..........,,,,,,,,........,T",
-            "T...####...,,,,,,,,...####..T",
-            "T...#==D...,,,,,,,,...D==#..T",
-            "T...####...,,,,,,,,...####..T",
-            "T..........,,,,,,,,........,T",
-            "T....RR....,,,,,,,,....RR...T",
-            "T..........,,,,,,,,.........T",
-            "T...####...,,,,,,,,...####..T",
-            "T...#mmD...,,,,,,,,...D==#..T",
-            "T...####...,,,,,,,,...####..T",
-            "T..........,,,,,,,,.........T",
-            "TTTTTTTTTT,,,,,,,,,TTTTTTTTT",
+            "TTTTTTTTTTTTTTTTTTTT",
+            "T..................T",
+            "T.##...##...##...##T",
+            "T.#D...#D...#D...#DT",
+            "T..................T",
+            "T....,,,,,,,,,,....T",
+            "T.##.,,,,,,,,,,.##.T",
+            "T.#D.,,,,,,,,,,.#D.T",
+            "T....,,,,,,,,,,....T",
+            "T..................T",
+            "T.##...........##..T",
+            "T..................T",
+            "TTTTTTTTTT,,TTTTTTTT",
         };
         fill_zone(z, rows);
-        add_npc(z, NPC_SMITH, 7, 4, "Toshi the Smith",
-                "Steel is honest. Bring gold and I will make you\nharder to kill.", 0,
-                npc_look((Color){ 96, 70, 48, 255 }, (Color){ 160, 60, 44, 255 },
-                         (Color){ 40, 34, 30, 255 }, HELM_BANDANA, WEAP_NONE));
-        add_npc(z, NPC_VENDOR, 22, 4, "Mira the Trader",
-                "Rice, tea, bandages. Everything a fool needs to\nlast one more fight.", 1,
-                npc_look((Color){ 120, 92, 130, 255 }, (Color){ 200, 180, 120, 255 },
-                         (Color){ 60, 40, 34, 255 }, HELM_NONE, WEAP_NONE));
-        add_npc(z, NPC_HEALER, 7, 8, "Sister Ayu",
-                "Sit. Breathe. I will close what I can.", 0,
-                npc_look((Color){ 200, 196, 186, 255 }, (Color){ 92, 146, 100, 255 },
-                         (Color){ 34, 30, 28, 255 }, HELM_HOOD, WEAP_NONE));
-        add_npc(z, NPC_TRAINER, 22, 8, "Master Renjiro",
-                "You carry what the fire left you. Let us shape it\ninto something with an edge.", 0,
-                npc_look((Color){ 62, 68, 92, 255 }, (Color){ 176, 140, 70, 255 },
-                         (Color){ 180, 178, 172, 255 }, HELM_NONE, WEAP_STAFF));
-        add_npc(z, NPC_SAVE, 6, 14, "Ancestor Shrine",
-                "The names of the dead are cut into the stone.\nResting here restores you.", 0,
-                npc_look((Color){ 130, 126, 118, 255 }, C_GOLD,
-                         (Color){ 90, 88, 84, 255 }, HELM_NONE, WEAP_NONE));
-        add_npc(z, NPC_ARENA, 22, 14, "Arena Keeper",
-                "Ten waves. No running, no supplies from outside.\nHow much are you worth?", 0,
-                npc_look((Color){ 88, 52, 52, 255 }, (Color){ 190, 160, 70, 255 },
-                         (Color){ 40, 30, 26, 255 }, HELM_HORNED, WEAP_AXE));
-        add_npc(z, NPC_ELDER, 14, 2, "Elder Sokan",
-                "The reaper took the village while you were away\ntraining. Everything past the south road is his now.", 0,
-                npc_look((Color){ 74, 74, 88, 255 }, (Color){ 160, 150, 120, 255 },
-                         (Color){ 200, 198, 194, 255 }, HELM_NONE, WEAP_NONE));
-        add_npc(z, NPC_GATE, 14, 17, "South Road", "The fern road out of the valley.",
-                ZONE_GRASS, npc_look(C_STEEL, C_GOLD, C_INK2, HELM_NONE, WEAP_NONE));
+        z->entryX = 10; z->entryY = 9;
+        z->exitX  = 10; z->exitY  = 11;
+        for (unsigned i = 0; i < sizeof VILLAGE_NPCS / sizeof VILLAGE_NPCS[0]; i++) {
+            const NpcSeed *s = &VILLAGE_NPCS[i];
+            Look lk = npc_look_for(s->name);
+            add_npc(z, s->kind, s->tx, s->ty, s->name, s->line, s->arg, lk);
+        }
     }
 
-    /* ------------------------------------------------------ the wild zones */
-    struct { ZoneId id; const char *name; int rate, lo, hi; Color g, gd, pa, pb;
-             int pool[6], pn; } W[] = {
-        { ZONE_GRASS,  "Fern Road",    9,  1,  6,
-          { 96,120,72,255 }, { 70,92,56,255 }, { 150,132,96,255 }, { 126,110,80,255 },
-          { 0, 1, 3, 6, 7, 0 }, 5 },
-        { ZONE_COAST,  "Grey Coast",   10, 5, 11,
-          { 150,138,104,255 }, { 118,108,80,255 }, { 168,156,124,255 }, { 140,128,98,255 },
-          { 8, 11, 12, 4, 13, 0 }, 5 },
-        { ZONE_DESERT, "Ash Flats",    11, 9, 16,
-          { 190,158,108,255 }, { 158,128,86,255 }, { 202,174,124,255 }, { 176,148,104,255 },
-          { 14, 15, 17, 18, 5, 0 }, 5 },
-        { ZONE_SNOW,   "White Pass",   12, 14, 21,
-          { 214,224,236,255 }, { 176,190,208,255 }, { 200,212,226,255 }, { 178,192,210,255 },
-          { 19, 20, 21, 22, 24, 0 }, 5 },
-        { ZONE_CAVE,   "Hollow Deep",  13, 18, 25,
-          { 66,58,62,255 }, { 44,38,42,255 }, { 74,66,68,255 }, { 56,50,54,255 },
-          { 25, 26, 27, 28, 31, 0 }, 5 },
-        { ZONE_SHADOW, "Shadow Realm", 14, 22, 30,
-          { 52,36,58,255 }, { 34,24,40,255 }, { 60,44,66,255 }, { 44,32,50,255 },
-          { 41, 42, 43, 44, 45, 0 }, 5 },
+    /* ------------------------------- the original's eleven stage layouts */
+    static const int POOLS[11][5] = {
+        { 0, 1, 3, 6, 7 }, { 1, 3, 6, 7, 8 }, { 4, 8,11,12,13 },
+        {11,12,13,14,15 }, {14,15,17,18,21 }, {17,18,19,20,22 },
+        {19,20,22,23,24 }, {25,26,27,28,31 }, {28,31,34,35,37 },
+        {37,40,41,42,43 }, {43,44,45,46,46 },
     };
+    for (int i = 0; i < 11; i++) {
+        Zone *z = &zones[ZONE_STAGE0 + i];
+        z->id = (ZoneId)(ZONE_STAGE0 + i);
+        z->name = STAGES[i].name;
+        z->bgStyle = STAGES[i].bg;
+        z->encounterRate = 10 + i / 2;
+        z->enemyPoolCount = 5;
+        for (int k = 0; k < 5; k++) z->enemyPool[k] = POOLS[i][k];
+        switch (STAGES[i].bg) {
+        case BG_ARENA2:
+            z->ground = (Color){ 150, 138, 104, 255 };
+            z->groundDark = (Color){ 118, 108, 80, 255 }; break;
+        case BG_ARENA3:
+            z->ground = (Color){ 122, 118, 110, 255 };
+            z->groundDark = (Color){ 92, 88, 82, 255 }; break;
+        case BG_DARK:
+            z->ground = (Color){ 52, 36, 58, 255 };
+            z->groundDark = (Color){ 34, 24, 40, 255 }; break;
+        default:
+            z->ground = (Color){ 96, 120, 72, 255 };
+            z->groundDark = (Color){ 70, 92, 56, 255 }; break;
+        }
+        z->propA = art_shade(z->ground, 1.15f);
+        z->propB = art_shade(z->ground, 0.85f);
+        fill_zone(z, STAGES[i].rows);
+        for (int y = 0; y < MAP_H; y++)
+            for (int x = 0; x < MAP_W; x++)
+                if (z->tiles[y][x] == T_WALL) z->tiles[y][x] = T_ROCK;
 
-    static const char *GRASS_ROWS[MAP_H] = {
-        "TTTTTTTTTT,,,,,,,,TTTTTTTTTT",
-        "TT.....TTT,,,,,,,,TTT......T",
-        "T.......T..........T.......T",
-        "T..TT...............RR.....T",
-        "T..TT.........TT...........T",
-        "T............TTTT..........T",
-        "T....RR......TTTT....TT....T",
-        "T.....................TT...T",
-        "T........TT................T",
-        "T........TT.....RR.........T",
-        "T..........................T",
-        "T...TT..............TT.....T",
-        "T...TT......RR......TT.....T",
-        "T..........................T",
-        "T.....TT...........TT......T",
-        "T.....TT...........TT......T",
-        "T..........................T",
-        "TTTTTTTTTTTT,,,,TTTTTTTTTTTT",
-    };
-    static const char *COAST_ROWS[MAP_H] = {
-        "TTTTTTTTTTTT,,,,TTTTTTTTTTTT",
-        "T.........TT....TT.........T",
-        "T..RR......................T",
-        "T.....................RR...T",
-        "T.......sssssssss..........T",
-        "T......sssssssssss.........T",
-        "T.....ssssssssssssss.......T",
-        "T....sssssssssssssssss.....T",
-        "T...ssssssssssssssssssss...T",
-        "T..sssssssss~~~ssssssssss..T",
-        "T.ssssssss~~~~~~~sssssssss.T",
-        "Tsssssss~~~~~~~~~~~ssssssssT",
-        "Tssssss~~~~~~~~~~~~~~ssssssT",
-        "Tsssss~~~~~~~~~~~~~~~~~ssssT",
-        "Tssss~~~~~~~~~~~~~~~~~~~~ssT",
-        "Tsss~~~~~~~~~~~~~~~~~~~~~~sT",
-        "Tss~~~~~~~~~~~~~~~~~~~~~~~sT",
-        "TTTTTTTTTTTT,,,,TTTTTTTTTTTT",
-    };
-    static const char *DESERT_ROWS[MAP_H] = {
-        "RRRRRRRRRRRR,,,,RRRRRRRRRRRR",
-        "Rsssssssssssssssssssssssss.R",
-        "Rss.RR.ssssssssss.RR.sssss.R",
-        "Rsssssssssssssssssssssssss.R",
-        "Rssssss.RRRR.sssssssssssss.R",
-        "Rsssssssssssssss.RR.ssssss.R",
-        "Rss.RR.sssssssssssssssssss.R",
-        "Rssssssssssss.RRRR.sssssss.R",
-        "Rsssssssssssssssssssssssss.R",
-        "Rssss.RR.sssssssssss.RR.ss.R",
-        "Rsssssssssssssssssssssssss.R",
-        "Rss.RRRR.ssssssssssssssss..R",
-        "Rsssssssssss.RR.ssssssssss.R",
-        "Rssssssssssssssssssssssss..R",
-        "Rss.RR.sssssssssss.RRRR.ss.R",
-        "Rsssssssssssssssssssssssss.R",
-        "Rsssssssssssssssssssssssss.R",
-        "RRRRRRRRRRRR,,,,RRRRRRRRRRRR",
-    };
-    static const char *SNOW_ROWS[MAP_H] = {
-        "RRRRRRRRRRRR,,,,RRRRRRRRRRRR",
-        "RwwwwwwwwwwwwwwwwwwwwwwwwwwR",
-        "Rww.TT.wwwwwwwwww.TT.wwwwwwR",
-        "RwwwwwwwwwwRRwwwwwwwwwwwwwwR",
-        "Rwwwww.TT.wwwwwwwwww.TT.wwwR",
-        "RwwwwwwwwwwwwwwRRwwwwwwwwwwR",
-        "Rww.TT.wwwwwwwwwwwwwww.TT.wR",
-        "RwwwwwwwwRRwwwwwwwwwwwwwwwwR",
-        "Rwwwwwwwwwwwwww.TT.wwwwwwwwR",
-        "Rww.TT.wwwwwwwwwwwwRRwwwwwwR",
-        "RwwwwwwwwwwwwwwwwwwwwwwwwwwR",
-        "RwwwwRRwwwww.TT.wwwwwww.TT.R",
-        "RwwwwwwwwwwwwwwwwwwwwwwwwwwR",
-        "Rww.TT.wwwwwwwwRRwwwwwwwwwwR",
-        "Rwwwwwwwwwwwwwwwwwww.TT.wwwR",
-        "RwwwwwwwwRRwwwwwwwwwwwwwwwwR",
-        "RwwwwwwwwwwwwwwwwwwwwwwwwwwR",
-        "RRRRRRRRRRRR,,,,RRRRRRRRRRRR",
-    };
-    static const char *CAVE_ROWS[MAP_H] = {
-        "############,,,,############",
-        "#=========#########========#",
-        "#===RR====#########===RR===#",
-        "#=========D=======D========#",
-        "#####=#####=======#####=####",
-        "#===========================",
-        "#==RR===#########===RR=====#",
-        "#=======#########==========#",
-        "#=======#########=====LL===#",
-        "#===========================",
-        "#####=#####=======#####=####",
-        "#=========D=======D========#",
-        "#==RR=====#########==RR====#",
-        "#=========#########========#",
-        "#=========#########========#",
-        "#===LL====#########===LL===#",
-        "#=========#########========#",
-        "############,,,,############",
-    };
-    static const char *SHADOW_ROWS[MAP_H] = {
-        "############,,,,############",
-        "#=========================.#",
-        "#=.RR.=========.RR.========#",
-        "#==========================#",
-        "#====.RRRR.================#",
-        "#==============.RR.========#",
-        "#=.RR.=====================#",
-        "#=========.RRRR.===========#",
-        "#==========================#",
-        "#====.RR.============.RR.==#",
-        "#==========================#",
-        "#=.RRRR.===================#",
-        "#===========.RR.===========#",
-        "#==========================#",
-        "#=.RR.==========.RRRR.=====#",
-        "#==========================#",
-        "#=============P============#",
-        "############,,,,############",
-    };
-    const char **MAPS[] = { GRASS_ROWS, COAST_ROWS, DESERT_ROWS, SNOW_ROWS, CAVE_ROWS, SHADOW_ROWS };
+        /* Row 3 of the original's grid is a solid wall, so the gates go on
+           the first and last walkable rows of the play area. */
+        int bx = -1, fx = -1;
+        for (int x = 1; x < MAP_W - 1; x++)
+            if (!tile_solid(z->tiles[3][x])) { bx = x; break; }
+        for (int x = MAP_W - 2; x > 0; x--)
+            if (!tile_solid(z->tiles[MAP_H - 3][x])) { fx = x; break; }
+        if (bx < 0) bx = 1;
+        if (fx < 0) fx = MAP_W - 2;
+        z->entryX = bx; z->entryY = 4;
+        z->exitX  = fx; z->exitY  = MAP_H - 4;
 
-    for (unsigned i = 0; i < sizeof W / sizeof W[0]; i++) {
-        Zone *z = &zones[W[i].id];
-        z->id = W[i].id;
-        z->name = W[i].name;
-        z->encounterRate = W[i].rate;
-        z->minLevel = W[i].lo; z->maxLevel = W[i].hi;
-        z->ground = W[i].g; z->groundDark = W[i].gd;
-        z->propA = W[i].pa; z->propB = W[i].pb;
-        z->enemyPoolCount = W[i].pn;
-        for (int k = 0; k < W[i].pn; k++) z->enemyPool[k] = W[i].pool[k];
-        fill_zone(z, MAPS[i]);
-
-        /* North gate goes back, south gate goes deeper. */
-        ZoneId back = (W[i].id == ZONE_GRASS) ? ZONE_VILLAGE : (ZoneId)(W[i].id - 1);
-        add_npc(z, NPC_GATE, 13, 0, "North Road", "Back the way you came.", back,
-                npc_look(C_STEEL, C_GOLD, C_INK2, HELM_NONE, WEAP_NONE));
-        if (W[i].id != ZONE_SHADOW)
-            add_npc(z, NPC_GATE, 14, 17, "South Road", "Deeper in.", (ZoneId)(W[i].id + 1),
-                    npc_look(C_STEEL, C_GOLD, C_INK2, HELM_NONE, WEAP_NONE));
+        ZoneId back = (i == 0) ? ZONE_VILLAGE : (ZoneId)(ZONE_STAGE0 + i - 1);
+        add_npc(z, NPC_GATE, bx, 3, "Back", "The way you came.", back,
+                npc_look_for("Guard"));
+        if (i < 10)
+            add_npc(z, NPC_GATE, fx, MAP_H - 3, "Onward", "Deeper in.",
+                    (ZoneId)(ZONE_STAGE0 + i + 1), npc_look_for("Guard"));
     }
-    zones[ZONE_SHADOW].npcs[zones[ZONE_SHADOW].npcCount - 1].kind = NPC_NONE;
 }
 
 /* ---------------------------------------------------------------- travel */
@@ -365,11 +480,15 @@ static void interact(Game *g, Npc *n)
 {
     Player *p = &g->p;
     switch (n->kind) {
-    case NPC_GATE:
-        world_enter_zone(g, (ZoneId)n->arg, n->tx == 13 ? 14 : 14, n->ty == 0 ? 16 : 1);
+    case NPC_GATE: {
+        Zone *dst = &g->zones[n->arg];
+        bool deeper = (int)n->arg > (int)p->zone;
+        int tx = deeper ? dst->entryX : dst->exitX;
+        int ty = deeper ? dst->entryY : dst->exitY;
+        world_enter_zone(g, (ZoneId)n->arg, tx, ty);
         go_scene(g, n->arg == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
-        ui_toast(g, "%s", g->zones[n->arg].name);
-        break;
+        ui_toast(g, "%s", dst->name);
+    } break;
     case NPC_SMITH:
         g->shopVendor = (p->level >= 8) ? 3 : 0;
         g->shopIdx = 0; g->shopMode = 0;
@@ -513,7 +632,12 @@ static void draw_npc(Game *g, Npc *n, float t)
         const char *arrow = (n->ty == 0) ? "^" : "v";
         ui_text_c(arrow, px, py - TILE * 0.9f, 26, C_GOLD);
         /* keep the label on screen: below the tile for the north gate */
-        ui_text_c(n->name, px, (n->ty == 0) ? py + 4 : py - TILE * 1.5f, 15, C_PARCH);
+        ui_text_c(n->name, px, (n->ty <= 3) ? py + 6 : py - TILE * 1.5f, 15, C_PARCH);
+        return;
+    }
+    if (n->kind == NPC_PROP) {
+        int kind = (int)(n->name[0] + n->name[1]) % 6;   /* stable per name */
+        art_draw_prop(kind, (Vector2){ px, py }, 0.8f, n->look.cloth, n->look.trim);
         return;
     }
     Look lk = n->look;

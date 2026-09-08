@@ -25,8 +25,9 @@
 #define MAX_FLOATERS  24
 #define MAX_PARTICLES 256
 #define DEF_CAP        80    /* defence percentages are capped here */
-#define MAP_W         28
-#define MAP_H         18
+/* The original's overworld grid: 20 cells wide, addressed cell{x}_{y}. */
+#define MAP_W         20
+#define MAP_H         13
 #define MAX_NPCS      24
 
 /* ---------------------------------------------------------------- palette */
@@ -89,10 +90,18 @@ typedef enum {
 
 typedef enum { DMG_PHYSICAL, DMG_MAGIC, DMG_PURE } DamageType;
 
+/* One id per screen: the village, then the original's eleven stage layouts. */
 typedef enum {
-    ZONE_VILLAGE, ZONE_GRASS, ZONE_COAST, ZONE_DESERT, ZONE_SNOW,
-    ZONE_CAVE, ZONE_SHADOW, ZONE_COUNT
+    ZONE_VILLAGE,
+    ZONE_STAGE0, ZONE_STAGE1, ZONE_STAGE2, ZONE_STAGE3, ZONE_STAGE4, ZONE_STAGE5,
+    ZONE_STAGE6, ZONE_STAGE7, ZONE_STAGE8, ZONE_STAGE9, ZONE_STAGE10,
+    ZONE_COUNT
 } ZoneId;
+
+/* Backdrop styles, kept separate from the map so a stage can pick any of them. */
+typedef enum {
+    BG_VILLAGE, BG_ARENA, BG_ARENA2, BG_ARENA3, BG_DARK, BG_COUNT
+} BgStyle;
 
 typedef enum {
     ITEM_NONE, ITEM_WEAPON, ITEM_SHIELD, ITEM_ARMOUR, ITEM_HELM,
@@ -237,7 +246,7 @@ typedef enum {
 
 typedef enum {
     NPC_NONE, NPC_ELDER, NPC_SMITH, NPC_VENDOR, NPC_HEALER, NPC_TRAINER,
-    NPC_ARENA, NPC_SAVE, NPC_VILLAGER, NPC_GATE
+    NPC_ARENA, NPC_SAVE, NPC_VILLAGER, NPC_GATE, NPC_PROP
 } NpcKind;
 
 typedef struct {
@@ -259,6 +268,7 @@ typedef struct {
     int  encounterRate;      /* 0 = safe                                    */
     int  minLevel, maxLevel;
     int  enemyPool[8], enemyPoolCount;
+    int  entryX, entryY, exitX, exitY;   /* where travel drops you */
     Color skyTop, skyBot, ground, groundDark, fog, propA, propB;
     int  bgStyle;
 } Zone;
@@ -325,7 +335,7 @@ typedef struct {
     Color     flashCol;
     bool      isArena, canFlee, isBoss;
     int       expGain, goldGain, dropItem;
-    ZoneId    zone;
+    int       bgStyle;
 } Battle;
 
 /* -------------------------------------------------------------- game glue */
@@ -379,7 +389,7 @@ int   data_shop_table(int vendor, const int **out);
 void  art_draw_puppet(const Combatant *c, Vector2 at, float facing, float t, float scale);
 void  art_draw_walker(const Look *lk, Vector2 at, int dir, float walkT, float scale);
 void  art_draw_zone_bg(const Zone *z, float t, float camX);
-void  art_draw_battle_bg(ZoneId zone, float t);
+void  art_draw_battle_bg(int bgStyle, float t);
 void  art_draw_tile(int tile, int px, int py, int size, const Zone *z, int wx, int wy);
 void  art_draw_prop(int kind, Vector2 at, float scale, Color a, Color b);
 void  art_weapon_shape(int shape, Vector2 grip, float ang, float scale, Color tint, Color edge);

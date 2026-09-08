@@ -127,6 +127,21 @@ growth in `[speed, toughness, magic damage, physical damage]`:
 Strength, 15 Speed, zero physical/magic damage and no shield points, 75 gold,
 50 experience to the second level, an Iron Knife and nothing else worn.
 
+**The map layouts** are the original's own. Its stage scripts build each screen
+by setting `game.cell{x}_{y}.type = 2` on a 20-wide grid, and all eleven of
+those layouts are reproduced cell for cell, with the stage names and backdrop
+each one selects. The village screen is laid out on the original's timeline
+rather than in a stage script, so that one screen is ours.
+
+**The NPC and prop cast** is the original's, taken from its clip labels --
+Elder, Scribe, Healer, Item Vendor and Item Vendor 2, Food Vendor, Potion
+Vendor, Ninja, Dark Ninja, Guard, Lady, Drunkard, Drinker, Relaxing Ninja,
+Meditating Ninja, Wounded Warrior, Apprentice, Student, Statue, and props like
+the crate, barrel, urn, bamboo and posted note. Each one fills the same role it
+fills in the original. **Their dialogue is written for this remake** -- the
+original's writing is the one thing a remake should not copy, so every line is
+new, and only the role behind it is faithful.
+
 **The trainable stat list** matches the original's own: Life Points, Mana
 Points, Strength, Physical Damage, Magic Damage, Physical Defence, Magic
 Defence, Shield Points, Speed.
