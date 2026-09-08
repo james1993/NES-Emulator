@@ -219,6 +219,14 @@ void player_recalc(Player *p, Combatant *out)
     out->speed = spd + avd / 2;
     if (out->speed < 1) out->speed = 1;
     out->atkSpd = out->speed;
+    /* Passive skills add flat damage per rank, as the original applies them. */
+    for (int i = 0; i < MAX_SKILLS; i++) {
+        if (!(SKILLS[i].flags & SKF_PASSIVE) || p->skillRank[i] <= 0) continue;
+        int bonus = SKILLS[i].flatPerRank * p->skillRank[i];
+        if (SKILLS[i].dmgType == DMG_MAGIC) out->magDmg += bonus;
+        else if (SKILLS[i].tree == 0 && SKILLS[i].flatPerRank == 2) out->strDmg += bonus * 2;
+        else out->phyDmg += bonus;
+    }
     out->look = lk;
     out->atkBuff = out->defBuff = 1.0f;
 }
@@ -375,9 +383,8 @@ static void new_player(Game *g, ClassId cls, const char *name)
     data_class_base(p, cls);
     p->look = data_class_look(cls);
     for (int i = 0; i < SLOT_COUNT; i++) p->equip[i] = -1;
-    p->skillRank[0] = 1;                     /* Strike  */
-    p->skillRank[1] = 1;                     /* Guard   */
-    if (cls == CLASS_SPELLCASTER || cls == CLASS_BALANCED) p->skillRank[10] = 1;
+    p->skillRank[2] = 1;                     /* Full Strike */
+    if (cls == CLASS_SPELLCASTER || cls == CLASS_BALANCED) p->skillRank[5] = 1;
 
     /* Item indices below are positions in the original's own item table. */
     /* The original starts you with an Iron Knife and nothing else worn. */

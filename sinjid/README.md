@@ -155,6 +155,26 @@ skills, **max rank 10** each, with level requirements and prerequisites.
 8,9   lv1  needs 4    14  lv10  needs 10
 ```
 
+**The skill effects** are the original's. Each skill script calls
+`heroDamage(magdmg, phydmg, nomiss, dmgtoshd, strdmg, atkspd, ran)` with its
+own expressions, so the scaling came straight out of them. Skills scale as a
+percentage of a stat, `(stat / 100) * (pctBase + pctPerRank * rank)`, and the
+random term is the original's `random(phydmg / 3)`. The recovered behaviours:
+
+| skill | recovered from the script |
+| --- | --- |
+| passives | flat damage per rank: +4, +5 physical, +7 magic, +2 strength |
+| all-round strike | 52% + 8% per rank across weapon, strength and magic |
+| shield breaker | 62% + 8% per rank against shield points, never misses |
+| heavy cut | 60% + 5% per rank of weapon damage |
+| magic bolts | 40 + 9/rank and 7 + 5/rank, pure magic -- zero shield damage |
+| last breath | adds a multiple of *your own missing life* |
+| execution | adds 10% + 2% per rank of the *target's current* life |
+
+Passives never appear as battle actions -- they fold into the stats, exactly
+as the original applies them. The plain Attack command passes your stats
+through unscaled, which is what the original's basic swing does.
+
 **Item prices** are the original's, recovered by joining its shop screens
 (which assign `itemstats[slot] = "item name"`) to its buy buttons (which set
 `cost` and `slotnum`): 42 items, from a 10-gold Bandana to 1600-gold Golden
@@ -193,10 +213,9 @@ source is not confirmed; this remake feeds it from Strength.
   blurbs. The cast and their roles are the original's; the words are not.
   Prose is the authored part of a game, and copying it is the one thing a
   remake genuinely should not do.
-* **Skill names, effects and costs.** The tree they hang on -- ranks, level
-  gates and prerequisites -- is the original's, but it keeps no table of what
-  each skill *does*: the effects are inlined in its combat code, so the
-  nineteen effects here are ours, fitted to the real tree.
+* **Skill names and mana/energy costs.** The tree, the ranks, the level gates,
+  the prerequisites and the damage scaling are all the original's; the names
+  and what each one costs to cast are ours.
 * prices for the handful of items its shops never stock (food, drink and the
   three zero-stat rows: Medicine, White Leaves, Mendo's Ring)
 * the enemy AI's skill choices, and the buff / stun / drain mechanics

@@ -193,10 +193,18 @@ void battle_start(Game *g, const int *enemyDefs, int count, int level, bool aren
 
 typedef struct { int toShield, toLife; bool missed, broke, killed; } Hit;
 
-static int skill_power(const SkillDef *sk, int rank)
+/* The original's plain attack passes the fighter's stats through untouched;
+   only skills scale them.  Selected in the menu as "Attack" (id -1). */
+static const SkillDef BASIC_ATTACK = {
+    "Attack", "A plain swing with what you are holding.",
+    0, 1, 0, { -1, -1 }, 0, 0,  100, 0, 0,
+    DMG_PHYSICAL, SK_TARGET_ONE_FOE, SKF_NONE, ANIM_ATTACK, P_STEEL
+};
+
+static const SkillDef *skill_def(int id)
 {
-    (void)sk; (void)rank;
-    return 0;
+    if (id < 0 || id >= MAX_SKILLS) return &BASIC_ATTACK;
+    return &SKILLS[id];
 }
 
 /* Percentage damage reduction, exactly as the original applies it:
@@ -213,7 +221,9 @@ static int cut(int dmg, int defPct)
 static Hit resolve_hit(Battle *b, Combatant *a, Combatant *t, const SkillDef *sk, int rank)
 {
     Hit h = { 0, 0, false, false, false };
-    float power = sk->power + sk->powerPerRank * (rank - 1);
+    /* (stat / 100) * (pctBase + pctPerRank * rank), as the original scales it */
+    float power = (sk->pctBase + sk->pctPerRank * rank) / 100.0f;
+    if (sk->pctBase == 0 && sk->pctPerRank == 0) power = 1.0f;
 
     /* Hit check: the attacker's attack speed rolled against the target's
        speed.  A guarding target is harder to catch. */
@@ -230,7 +240,14 @@ static Hit resolve_hit(Battle *b, Combatant *a, Combatant *t, const SkillDef *sk
     int mag = (int)(a->magDmg * power * a->atkBuff);
     if (sk->dmgType == DMG_MAGIC)         { phy = 0; str = 0; }
     else if (sk->dmgType == DMG_PHYSICAL) { mag = 0; }
-    int ran = rnd(0, 3 + a->level / 2);
+    if (sk->flags & SKF_PURE_MAGIC)       { phy = 0; str = 0; }
+    /* Two scalers the original carries: one off your own missing life, one
+       off a share of whatever life the target still has. */
+    if (sk->flags & SKF_MISSING_LIFE)
+        phy += (rank + 1) * (a->lifeMax - a->life) / 8;
+    if (sk->flags & SKF_TARGET_LIFE)
+        phy += t->life * (sk->pctBase + sk->pctPerRank * rank) / 100;
+    int ran = rnd(0, (a->phyDmg / 3) + 1);   /* the original's random(phydmg/3) */
 
     bool shieldLayer = (t->shd > 0) && !(sk->flags & SKF_IGNORE_SHD) &&
                        sk->dmgType != DMG_PURE;
@@ -284,8 +301,9 @@ static void begin_action(Game *g, int actor, int skillId, int target)
 {
     Battle *b = &g->b;
     Combatant *a = slot(b, actor);
-    const SkillDef *sk = &SKILLS[skillId];
-    int rank = a->isHero ? g->p.skillRank[skillId] : 1 + a->level / 6;
+    const SkillDef *sk = skill_def(skillId);
+    int rank = (skillId < 0) ? 1
+             : (a->isHero ? g->p.skillRank[skillId] : 1 + a->level / 6);
     if (rank < 1) rank = 1;
 
     ACT.actor = actor; ACT.target = target; ACT.skill = skillId; ACT.rank = rank;
@@ -421,17 +439,19 @@ static void apply_skill(Game *g, Combatant *a, const SkillDef *sk, int rank, int
 
 static int ai_pick_skill(Battle *b, Combatant *c)
 {
-    int best = 0;
+    int best = 2;              /* Full Strike -- a real attack, never a passive */
     int tries = 0;
     /* Heal when badly hurt and able. */
     for (int i = 0; i < c->aiSkillCount; i++) {
         const SkillDef *sk = &SKILLS[c->aiSkill[i]];
+        if (sk->flags & SKF_PASSIVE) continue;
         if ((sk->flags & SKF_HEAL) && c->life < c->lifeMax / 3 && c->mana >= sk->manaCost)
             return c->aiSkill[i];
     }
     while (tries++ < 12) {
         int id = c->aiSkill[rnd(0, c->aiSkillCount - 1)];
         const SkillDef *sk = &SKILLS[id];
+        if (sk->flags & SKF_PASSIVE) continue;      /* passives are not actions */
         if (sk->manaCost > c->mana || sk->engCost > c->eng) continue;
         if ((sk->flags & SKF_HEAL) && c->life > c->lifeMax * 3 / 4) continue;
         if (sk->target == SK_TARGET_ALL_FOES && b->nHeroes < 2 && rnd(0, 100) < 50) continue;
@@ -565,13 +585,13 @@ static void update_player_menu(Game *g)
         if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
             switch (b->menuIdx) {
             case 0:                                   /* Attack             */
-                b->pendingSkill = 0;
+                b->pendingSkill = -1;          /* plain attack */
                 b->phase = BP_PLAYER_TARGET;
                 break;
             case 1: b->menuTab = 1; b->skillIdx = 0; break;
             case 2: b->menuTab = 2; b->menuIdx = 0; break;
             case 3:                                   /* Guard              */
-                begin_action(g, 0, 1, 0);
+                begin_action(g, 0, SKILL_GUARD, 0);
                 break;
             case 4:                                   /* Flee               */
                 if (!b->canFlee) { battle_log(b, "There is no way out of this one."); break; }
@@ -588,7 +608,8 @@ static void update_player_menu(Game *g)
         }
     } else if (b->menuTab == 1) {
         int ids[MAX_SKILLS], n = 0;
-        for (int i = 0; i < MAX_SKILLS; i++) if (g->p.skillRank[i] > 0 && i != 1) ids[n++] = i;
+        for (int i = 0; i < MAX_SKILLS; i++)
+            if (g->p.skillRank[i] > 0 && !(SKILLS[i].flags & SKF_PASSIVE)) ids[n++] = i;
         if (n == 0) { b->menuTab = 0; return; }
         if (b->skillIdx >= n) b->skillIdx = n - 1;
         if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) b->skillIdx = (b->skillIdx + 1) % n;
@@ -688,7 +709,7 @@ void battle_update(Game *g, float dt)
     case BP_ACTING: {
         b->timer += dt;
         Combatant *a = slot(b, ACT.actor);
-        const SkillDef *sk = &SKILLS[ACT.skill];
+        const SkillDef *sk = skill_def(ACT.skill);
         float phase = b->timer / ANIM_LEN;
         if (!ACT.applied && phase >= ACT.nextStrikeAt) {
             apply_skill(g, a, sk, ACT.rank, ACT.target);
@@ -744,7 +765,6 @@ void battle_update(Game *g, float dt)
 
     default: break;
     }
-    (void)skill_power;
 }
 
 /* ----------------------------------------------------------------- draw */
@@ -871,7 +891,8 @@ void battle_draw(Game *g)
             }
         } else if (b->menuTab == 1) {
             int ids[MAX_SKILLS], n = 0;
-            for (int i = 0; i < MAX_SKILLS; i++) if (g->p.skillRank[i] > 0 && i != 1) ids[n++] = i;
+            for (int i = 0; i < MAX_SKILLS; i++)
+            if (g->p.skillRank[i] > 0 && !(SKILLS[i].flags & SKF_PASSIVE)) ids[n++] = i;
             int top = b->skillIdx - 4; if (top < 0) top = 0;
             for (int i = top; i < n && i < top + 5; i++) {
                 const SkillDef *sk = &SKILLS[ids[i]];

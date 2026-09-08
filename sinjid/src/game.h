@@ -21,6 +21,7 @@
 #define MAX_FOES       2
 #define MAX_INVENTORY 48
 #define MAX_SKILLS    19
+#define SKILL_GUARD    7     /* Iron Stance, the brace skill */
 #define MAX_LOG        6
 #define MAX_FLOATERS  24
 #define MAX_PARTICLES 256
@@ -164,7 +165,12 @@ typedef enum {
     SKF_BUFF_DEF   = 1 << 7,
     SKF_DRAIN      = 1 << 8,
     SKF_STUN       = 1 << 9,
-    SKF_NEVER_MISS = 1 << 10
+    SKF_NEVER_MISS = 1 << 10,
+    /* Recovered from the original's own skill scripts. */
+    SKF_PASSIVE      = 1 << 11,  /* never chosen in battle; folds into stats */
+    SKF_PURE_MAGIC   = 1 << 12,  /* magic only: no strength, no shield damage */
+    SKF_MISSING_LIFE = 1 << 13,  /* adds (rank+1) x the life you are missing  */
+    SKF_TARGET_LIFE  = 1 << 14   /* adds a percentage of the target's life    */
 } SkillFlags;
 
 typedef struct {
@@ -175,8 +181,11 @@ typedef struct {
     int         reqLevel;
     int         prereq[2];     /* skills that must be learned first, -1 = none */
     int         manaCost, engCost;
-    float       power;         /* multiplier on the relevant damage stat     */
-    float       powerPerRank;
+    /* The original scales a skill as a percentage of the relevant stat:
+       (stat / 100) * (pctBase + pctPerRank * rank).  Passives instead add
+       flatPerRank to a stat for every rank held. */
+    int         pctBase, pctPerRank;
+    int         flatPerRank;
     DamageType  dmgType;
     SkillTarget target;
     unsigned    flags;

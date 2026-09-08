@@ -291,12 +291,14 @@ void ui_scene_menu(Game *g)
                             ui_text(b, right.x + 20, y, 18, C_KI); y += 26; }
         if (sk->engCost) { snprintf(b, sizeof b, "Energy cost %d", sk->engCost);
                            ui_text(b, right.x + 20, y, 18, C_GOLD); y += 26; }
-        if (sk->power > 0) {
-            float pw = sk->power + sk->powerPerRank * (p->skillRank[g->menuIdx] > 0 ?
-                                                       p->skillRank[g->menuIdx] - 1 : 0);
-            snprintf(b, sizeof b, "Power %.0f%% of %s damage", pw * 100,
-                     sk->dmgType == DMG_MAGIC ? "magic" :
-                     (sk->dmgType == DMG_PURE ? "best" : "physical"));
+        if (sk->flags & SKF_PASSIVE) {
+            snprintf(b, sizeof b, "Passive: +%d per rank (currently +%d)",
+                     sk->flatPerRank, sk->flatPerRank * p->skillRank[g->menuIdx]);
+            ui_text(b, right.x + 20, y, 18, C_JADE); y += 26;
+        } else if (sk->pctBase > 0) {
+            int r = p->skillRank[g->menuIdx];
+            snprintf(b, sizeof b, "Power %d%% (+%d%% per rank, now %d%%)",
+                     sk->pctBase, sk->pctPerRank, sk->pctBase + sk->pctPerRank * r);
             ui_text(b, right.x + 20, y, 18, C_PARCH); y += 26;
         }
         static const struct { unsigned f; const char *s; } FL[] = {
