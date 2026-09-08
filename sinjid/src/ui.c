@@ -304,7 +304,6 @@ void ui_scene_menu(Game *g)
         static const struct { unsigned f; const char *s; } FL[] = {
             { SKF_MULTI,      "Strikes twice" },
             { SKF_IGNORE_SHD, "Ignores shield points" },
-            { SKF_SHIELD_DMG, "Triple damage to shields" },
             { SKF_DRAIN,      "Returns life" },
             { SKF_STUN,       "May stun" },
             { SKF_NEVER_MISS, "Never misses" },

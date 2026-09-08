@@ -24,7 +24,9 @@
 #define MAX_LOG        6
 #define MAX_FLOATERS  24
 #define MAX_PARTICLES 256
-#define DEF_CAP        80    /* defence percentages are capped here */
+/* The original applies defence percentages raw -- its Shadow Reaper carries
+   85% -- so the cap only exists to stop total immunity. */
+#define DEF_CAP        95
 /* The original's overworld grid: 20 cells wide, addressed cell{x}_{y}. */
 #define MAP_W         20
 #define MAP_H         13
@@ -158,7 +160,6 @@ typedef enum {
     SKF_RESTORE_MP = 1 << 1,
     SKF_SHIELD_UP  = 1 << 2,
     SKF_IGNORE_SHD = 1 << 3,   /* bypasses the shield-point layer entirely  */
-    SKF_SHIELD_DMG = 1 << 4,   /* extra damage dealt to shield points       */
     SKF_MULTI      = 1 << 5,   /* strikes twice                             */
     SKF_BUFF_ATK   = 1 << 6,
     SKF_BUFF_DEF   = 1 << 7,
@@ -184,7 +185,9 @@ typedef struct {
        (stat / 100) * (pctBase + pctPerRank * rank).  Passives instead add
        flatPerRank to a stat for every rank held. */
     int         pctBase, pctPerRank;
-    int         flatPerRank;
+    /* Some skills add a flat amount on top of the stat instead of scaling it:
+       the original's magic bolts are magdmg + flatBase + flatPerRank * rank. */
+    int         flatBase, flatPerRank;
     DamageType  dmgType;
     SkillTarget target;
     unsigned    flags;

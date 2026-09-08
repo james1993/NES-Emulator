@@ -50,6 +50,9 @@ Talk to the shrine in the village to rest and save; the save file is written to
 
 ## Fidelity: what is taken from the original, and what is not
 
+A full field-by-field audit, including what is *not* reproduced, lives in
+[docs/FIDELITY.md](docs/FIDELITY.md).
+
 The original is a Flash file, so its logic is recoverable: the ActionScript
 bytecode still carries named functions (`heroDamage`, `enemyDamage`,
 `speedorder`, `EnemyMeet`, `ItemRand`, `EquipItem`) and the full variable

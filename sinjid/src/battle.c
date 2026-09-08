@@ -197,7 +197,7 @@ typedef struct { int toShield, toLife; bool missed, broke, killed; } Hit;
    only skills scale them.  Selected in the menu as "Attack" (id -1). */
 static const SkillDef BASIC_ATTACK = {
     "Attack", "A plain swing with what you are holding.",
-    0, 1, 0, { -1, -1 }, 0, 0,  100, 0, 0,
+    0, 1, 0, { -1, -1 }, 0, 0,  100, 0, 0, 0,
     DMG_PHYSICAL, SK_TARGET_ONE_FOE, SKF_NONE, ANIM_ATTACK, P_STEEL
 };
 
@@ -205,7 +205,7 @@ static const SkillDef BASIC_ATTACK = {
    nineteen, so it lives here rather than in the table. */
 static const SkillDef BASIC_GUARD = {
     "Guard", "Brace behind the shield and mend it.",
-    0, 1, 0, { -1, -1 }, 0, 0,  0, 0, 0,
+    0, 1, 0, { -1, -1 }, 0, 0,  0, 0, 0, 0,
     DMG_PHYSICAL, SK_TARGET_SELF, SKF_SHIELD_UP, ANIM_BLOCK, P_KI
 };
 
@@ -253,10 +253,19 @@ static Hit resolve_hit(Battle *b, Combatant *a, Combatant *t, const SkillDef *sk
     if (sk->dmgType == DMG_MAGIC)         { phy = 0; str = 0; }
     else if (sk->dmgType == DMG_PHYSICAL) { mag = 0; }
     if (sk->flags & SKF_PURE_MAGIC)       { phy = 0; str = 0; }
+    /* Flat bonus on top of the stat, as the original's bolts are written:
+       magdmg + flatBase + flatPerRank * rank. */
+    if (!(sk->flags & SKF_PASSIVE)) {
+        int flat = sk->flatBase + sk->flatPerRank * rank;
+        if (flat > 0) {
+            if (sk->dmgType == DMG_MAGIC) mag += flat;
+            else                          phy += flat;
+        }
+    }
     /* Two scalers the original carries: one off your own missing life, one
        off a share of whatever life the target still has. */
     if (sk->flags & SKF_MISSING_LIFE)
-        phy += (rank + 1) * (a->lifeMax - a->life) / 8;
+        phy += (rank + 1) * (a->lifeMax - a->life);
     if (sk->flags & SKF_TARGET_LIFE)
         phy += t->life * (sk->pctBase + sk->pctPerRank * rank) / 100;
     int ran = rnd(0, (a->phyDmg / 3) + 1);   /* the original's random(phydmg/3) */
@@ -266,7 +275,6 @@ static Hit resolve_hit(Battle *b, Combatant *a, Combatant *t, const SkillDef *sk
     if (shieldLayer) {
         float d = (float)(cut(phy, t->shdPhyDef) + cut(mag, t->shdMagDef) +
                           cut(str, t->shdPhyDef) + a->shdDmg);
-        if (sk->flags & SKF_SHIELD_DMG) d *= 3.0f;
         if (t->guarding) d *= 0.5f;
         h.toShield = (int)(d + 0.5f) + ran;
         if (h.toShield < 1) h.toShield = 1;
