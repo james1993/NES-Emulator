@@ -60,7 +60,7 @@ make RAYLIB=./raylib
 | key | action |
 | --- | --- |
 | arrows / WASD | walk, move the cursor |
-| ENTER / SPACE | talk, confirm |
+| ENTER / SPACE | talk, confirm, and **take an exit** when you are standing on one |
 | ESC | back, open the menu |
 | I | character, pack and skills |
 | T | training (spend stat and skill points) |
@@ -154,8 +154,27 @@ Strength, 15 Speed, zero physical/magic damage and no shield points, 75 gold,
 **The map layouts** are the original's own. Its stage scripts build each screen
 by setting `game.cell{x}_{y}.type = 2` on a 20-wide grid, and all eleven of
 those layouts are reproduced cell for cell, with the stage names and backdrop
-each one selects. The village screen is laid out on the original's timeline
-rather than in a stage script, so that one screen is ours.
+each one selects.
+
+**The temple is a room graph.** The eleven screens are rooms on the original's
+root timeline, reached with `gotoAndStop` on a per-exit `stagelabel`. Each room
+carries edge trigger clips: stand on one, press space, and it calls
+`NewStage(dir, x, y)` and jumps to that exit's destination. All twenty exits are
+reproduced with their entry cell and facing:
+
+```
+Arena0 -up->    Arena1
+Arena1 -down->  Arena0   -left->  Arena2   -right-> Arena3
+Arena3 -up->    Arena4   -left->  Arena5
+Arena5 -left->  Arena6   -up->    Arena7
+Arena7 -right-> Arena8   -left->  Arena9
+Arena9 -up->    Arena10  (gated on portal progress)
+```
+
+Leaving by a side edge keeps the row you left on -- the original passes
+`Math.ceil` of your position -- while the top and bottom exits pass a fixed
+column. The entrance room is labelled both `Arena` and `Arena0` and doubles as
+the hub, so there is no separate village screen.
 
 **The NPC and prop cast** is the original's, taken from its clip labels --
 Elder, Scribe, Healer, Item Vendor and Item Vendor 2, Food Vendor, Potion
@@ -219,9 +238,9 @@ every 5th level: +2 Strength, +2 Speed, and a bonus skill point
 leftover experience carries over, capped at expmaxb - 1
 ```
 
-**The village layout** is the original's `Arena0` hub grid -- the hub screens
-live in the same `area` as the stages, so the village is one of the eleven
-recovered layouts rather than a separate map.
+**The hub** is the original's `Arena0` -- the entrance room is one of the eleven
+rooms rather than a separate map, and the cast is spread across all of them at
+the cells its clips occupy, not gathered into one village screen.
 
 **The trainable stat list** matches the original's own: Life Points, Mana
 Points, Strength, Physical Damage, Magic Damage, Physical Defence, Magic
@@ -282,8 +301,10 @@ For screenshots and CI the game can play itself:
 ```
 
 Tokens are key names (`up`, `down`, `left`, `right`, `ret`, `esc`, `tab`, single
-letters), `waitN` frames, `shot:name` to write `name.png`, and `quit`. It runs
-fine under Xvfb with software GL.
+letters), `waitN` frames, `shot:name` to write `name.png`, and `quit`. A
+movement token is exactly one step at any frame rate. It runs fine under Xvfb
+with software GL; set `SJ_NOFIGHT=1` to suppress random encounters so a scripted
+walk is deterministic.
 
 ## Licence and attribution
 

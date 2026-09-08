@@ -53,7 +53,8 @@ void ui_toast(Game *g, const char *fmt, ...)
    `./sinjid --script "ret,wait20,right,right,shot:create,..."` replays a key
    sequence and writes screenshots, so the game can be driven head-lessly in
    CI or for capturing stills.  Tokens:
-       <key>       one press, held HOLD_FRAMES frames
+       <key>       one press; the key is down for a single frame, so a
+                   movement token is exactly one step at any frame rate
        waitN       idle for N frames
        shot:name   write name.png
        quit        close the window
@@ -63,7 +64,7 @@ void ui_toast(Game *g, const char *fmt, ...)
 #undef GetCharPressed
 
 #define SCRIPT_MAX 256
-#define HOLD_FRAMES 8
+#define HOLD_FRAMES 1
 #define GAP_FRAMES  10
 
 typedef struct { int key; int wait; char shot[64]; bool quit; } ScriptStep;

@@ -1,12 +1,16 @@
 /* ===========================================================================
-   world.c -- the tile overworld: zone maps, walking, NPCs, encounters.
+   world.c -- the temple: rooms, walking, NPCs, encounters.
 
-   Each zone is a single 28x18 screen (the original's overworld worked the
-   same way), joined by portal tiles.  Wild zones roll random encounters
-   against a per-zone enemy pool as you walk.
+   The original's temple is eleven single-screen rooms on its root timeline,
+   joined by edge trigger clips: stand on one, press space, and it calls
+   NewStage(dir, x, y) and jumps to that exit's own destination.  That is
+   reproduced here -- the graph, the entry cell and facing for all twenty
+   exits, and the gate on the last one.  Rooms roll random encounters
+   against a per-room enemy pool as you walk.
    =========================================================================== */
 #include "game.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
@@ -284,105 +288,149 @@ static const StageDef STAGES[] = {
 /* The original's own NPC and prop cast, taken from its clip labels.  Their
    roles match the roles they fill in the original; every line of dialogue
    below is written for this remake. */
+/* The original's own cast, placed room by room exactly where its clips sit.
+   The roles are the original's; every line of dialogue below is written for
+   this remake.  Cell coordinates are floor(pixel / 30) on the 20x13 grid. */
 typedef struct {
-    NpcKind kind; int tx, ty; const char *name; const char *line; int arg;
+    int room; NpcKind kind; int tx, ty; const char *name; const char *line; int arg;
 } NpcSeed;
 
-static const NpcSeed VILLAGE_NPCS[] = {
-  { NPC_ELDER,   10, 3, "Elder",
-    "You were away on the mountain when it came. Now the road\nsouth belongs to the reaper, and we are what is left.", 0 },
-  { NPC_HEALER,  16, 3, "Healer",
-    "Sit. Breathe out. I can close most of what the road opens.", 0 },
-  { NPC_SMITH,    4, 3, "Item Vendor",
+static const NpcSeed ROOM_NPCS[] = {
+  /* --- Arena0, the entrance, and the closest thing to a hub ------------ */
+  { 0, NPC_ELDER,    16, 7, "Elder",
+    "You were away on the mountain when it came.  What is left of\nus is standing in this room.", 0 },
+  { 0, NPC_HEALER,    3, 5, "Healer",
+    "Sit.  Breathe out.  I can close most of what the road opens.", 0 },
+  { 0, NPC_VILLAGER,  6, 8, "Student",
+    "They say the deeper rooms are worse.  I have not gone far\nenough to argue.", 0 },
+  /* --- Arena1 --------------------------------------------------------- */
+  { 1, NPC_VENDOR,   13, 4, "Food Vendor",
+    "Eat before you walk.  It is cheaper than bleeding.", 1 },
+  { 1, NPC_VENDOR,    6, 4, "Potion Vendor",
+    "Life and mana, bottled.  You will want both.", 1 },
+  { 1, NPC_VILLAGER, 16, 9, "Ninja",
+    "West is quiet.  East is not.  Choose by what you can carry.", 0 },
+  /* --- Arena2 --------------------------------------------------------- */
+  { 2, NPC_VILLAGER,  4, 9, "Apprentice",
+    "I sweep this room so I do not have to think about the next one.", 0 },
+  { 2, NPC_VILLAGER, 14, 5, "Guard",
+    "Nothing through here but dust.  Go back the way you came.", 0 },
+  /* --- Arena3 --------------------------------------------------------- */
+  { 3, NPC_SMITH,     6, 4, "Item Vendor",
     "Steel, leather, and a wrist guard if you have the sense.\nStrength first -- you cannot swing what you cannot lift.", 0 },
-  { NPC_VILLAGER, 7, 3, "Lady",
-    "My husband went south with the guard. Three of them came\nback. He was not one of the three.", 0 },
-  { NPC_VILLAGER, 2, 3, "Statue",
-    "A stone warrior, worn smooth. Someone keeps the moss off it.", 0 },
-  { NPC_VILLAGER,18, 3, "Wounded Warrior",
-    "Their guard soaks up everything you have. Break it first,\nor you will never touch the man behind it.", 0 },
-  { NPC_SMITH,    5, 4, "Item Vendor 2",
-    "The heavy stock. Come back when your arm is worth it.", 3 },
-  { NPC_VENDOR,  14, 4, "Food Vendor",
-    "Rice and broth. It is not a blade, but it keeps you\nstanding long enough to use one.", 1 },
-  { NPC_VILLAGER,18, 4, "Drunkard",
-    "You are the one from the mountain. Ha. They will feel\nbetter now. I will not, but they will.", 0 },
-  { NPC_VILLAGER, 1, 4, "Apprentice",
-    "The Elder says you trained where the air is thin.\nIs it true you never once came down?", 0 },
-  { NPC_VENDOR,  16, 5, "Potion Vendor",
-    "Medicine, tea, white leaves. Buy more than you think\nyou need; everyone always does.", 2 },
-  { NPC_TRAINER, 10, 5, "Ninja",
-    "Points are worth nothing in your pocket. Put them into\nthe arm, the guard, or the breath -- but put them in.", 0 },
-  { NPC_PROP,     8, 5, "Posted Note",
-    "A notice: the south road is closed. Nobody has taken it down.", 0 },
-  { NPC_VILLAGER, 5, 6, "Drinker",
-    "Cheapest cup in the village and it still costs too much.", 0 },
-  { NPC_VILLAGER,12, 6, "Relaxing Ninja",
-    "Rest while the gate holds. It will not hold long.", 0 },
-  { NPC_PROP,    18, 6, "Barrel", "Rainwater, and a drowned moth.", 0 },
-  { NPC_SAVE,     4, 7, "Scribe",
-    "I keep the names of the dead and the deeds of the living.\nRest here and I will write yours down.", 0 },
-  { NPC_ARENA,   14, 7, "Dark Ninja",
-    "The ward is through here. It hits back, and it does not\nstop when you are tired.", 0 },
-  { NPC_VILLAGER, 8, 7, "Meditating Ninja",
-    "Speed is not hurry. The fast fighter is the one who is\nalready where the blade is going.", 0 },
-  { NPC_VILLAGER,12, 8, "Student",
-    "I can hold a knife. That is not the same as using one,\nthe Ninja keeps telling me.", 0 },
-  { NPC_PROP,     3, 8, "Crate", "A crate, nailed shut.", 0 },
-  { NPC_PROP,     6, 9, "Urn", "Chipped at the lip. Empty.", 0 },
-  { NPC_PROP,    15, 9, "Bamboo", "Cut stalks, drying in a bundle.", 0 },
-  { NPC_PORTAL,  10, 9, "The Three Roads",
-    "Three roads run south. The human road, the beast road, and\nthe one nobody walks back up.", 0 },
-  { NPC_TRAINER2,13, 9, "Training Post",
-    "A post wrapped in old rope. Work it until the breath goes.", 0 },
-  { NPC_PICKUP,   2, 9, "Loose Flagstone",
-    "Something is wedged under the stone.", 0 },
-  { NPC_PICKUP,  17, 9, "Hollow Trunk",
-    "A split trunk with a hollow behind the bark.", 1 },
-  { NPC_GATE,    10,11, "South Road", "The road out of the valley.", ZONE_STAGE0 },
+  { 3, NPC_VILLAGER,  7, 9, "Apprentice",
+    "Two vendors in one room.  They argue about prices all day.", 0 },
+  { 3, NPC_SMITH,    14,10, "Item Vendor 2",
+    "Better stock than his, and I will not pretend otherwise.", 3 },
+  /* --- Arena4 --------------------------------------------------------- */
+  { 4, NPC_VILLAGER,  3,10, "Drinker",
+    "One more and I will go home.  I have said that four times.", 0 },
+  { 4, NPC_VILLAGER,  8,10, "Drunkard",
+    "The statues move.  I have watched them.  Nobody believes me.", 0 },
+  { 4, NPC_VILLAGER, 15, 5, "Drinker",
+    "Do not mind him.  He is right, but do not mind him.", 0 },
+  { 4, NPC_VILLAGER,  4, 3, "Ninja",
+    "Drink here if you must.  Do not drink past this room.", 0 },
+  /* --- Arena5 --------------------------------------------------------- */
+  { 5, NPC_VENDOR,   14, 4, "Vendor 2",
+    "Relics.  Odd things.  They do more than they look like they do.", 2 },
+  { 5, NPC_VILLAGER, 11, 7, "Apprentice",
+    "Up from here is the hall of statues.  Mind your footing.", 0 },
+  { 5, NPC_VENDOR,    7, 9, "Vendor",
+    "Supplies, same as the last room, worse light.", 1 },
+  /* --- Arena6 --------------------------------------------------------- */
+  { 6, NPC_SAVE,      5, 4, "Scribe",
+    "Rest, and I will write down where you stood.", 0 },
+  { 6, NPC_VILLAGER,  7, 8, "Lady",
+    "My husband went east with the guard.  Three came back.\nHe was not one of the three.", 0 },
+  { 6, NPC_VILLAGER, 15, 9, "Relaxing Ninja",
+    "I have earned this floor and I intend to keep sitting on it.", 0 },
+  /* --- Arena7, the hall of statues: the three gateways ----------------- */
+  { 7, NPC_PORTAL,   10, 5, "Statue",
+    "Three gateways, and a long walk behind each.", 0 },
+  { 7, NPC_PROP,      5, 5, "Statue",
+    "Carved mid-step, as though it meant to leave.", 0 },
+  { 7, NPC_PROP,     14, 5, "Statue",
+    "The same face as the other, worn smoother.", 0 },
+  /* --- Arena8 --------------------------------------------------------- */
+  { 8, NPC_TRAINER2,  3, 2, "Posted Note",
+    "Training room.  Strike the ward for experience, and break its\nguard for more.", 0 },
+  { 8, NPC_VENDOR,   10, 4, "Vendor 3",
+    "Everything here is overpriced.  You will buy it anyway.", 2 },
+  { 8, NPC_VILLAGER, 11, 9, "Dark Ninja",
+    "You smell like the shallow rooms.  That will change.", 0 },
+  { 8, NPC_VILLAGER, 17, 5, "Guard",
+    "Train first.  The rooms past here do not offer a second try.", 0 },
+  /* --- Arena9 --------------------------------------------------------- */
+  { 9, NPC_VILLAGER,  4, 6, "Dark Ninja",
+    "The gate above opens for whoever finishes the human gateway.\nNot before.", 0 },
+  { 9, NPC_TRAINER,   8, 7, "Meditating Ninja",
+    "Sit.  Spend what you have earned before you spend your life.", 0 },
+  /* --- Arena10 -------------------------------------------------------- */
+  {10, NPC_VILLAGER, 13, 5, "Guard",
+    "You came up the stairs.  Few do.", 0 },
+  {10, NPC_VENDOR,    3, 7, "Vendor 4",
+    "Last of the stock, and the last room that sells any.", 3 },
+  {10, NPC_ARENA,    17, 7, "Shadow",
+    "Stand and be counted, one after another.", 0 },
+  {10, NPC_VILLAGER,  5, 4, "Wounded Warrior",
+    "I got this far.  That is the whole of what I have to teach.", 0 },
 };
+
+/* The room graph, recovered from the original's edge trigger clips.  Each
+   clip fires NewStage(dir, x, y) on space and jumps to its own stagelabel.
+   ty < 0 marks an edge exit that spans its whole column; entryY < 0 keeps
+   the row you left on, which is what the original's Math.ceil does. */
+static const Exit ROOM_EXITS[] = {
+  /* room 0 */ { EX_UP,    10, 4, ZONE_ARENA1,  10,  9, -1, 0 },
+  /* room 1 */ { EX_DOWN,  10,10, ZONE_ARENA0,  10,  5, -1, 0 },
+               { EX_LEFT,   0,-1, ZONE_ARENA2,  18, -1, -1, 0 },
+               { EX_RIGHT, 19,-1, ZONE_ARENA3,   1, -1, -1, 0 },
+  /* room 2 */ { EX_RIGHT, 19,-1, ZONE_ARENA1,   1, -1, -1, 0 },
+  /* room 3 */ { EX_LEFT,   0,-1, ZONE_ARENA1,  18, -1, -1, 0 },
+               { EX_UP,    15, 4, ZONE_ARENA4,  13,  9, -1, 0 },
+  /* room 4 */ { EX_DOWN,  13,10, ZONE_ARENA3,  13,  5, -1, 0 },
+               { EX_LEFT,   0,-1, ZONE_ARENA5,  18, -1, -1, 0 },
+  /* room 5 */ { EX_LEFT,   0,-1, ZONE_ARENA6,  18, -1, -1, 0 },
+               { EX_RIGHT, 19,-1, ZONE_ARENA4,   1, -1, -1, 0 },
+               { EX_UP,    10, 4, ZONE_ARENA7,  10,  9, -1, 0 },
+  /* room 6 */ { EX_RIGHT, 19,-1, ZONE_ARENA5,   1, -1, -1, 0 },
+  /* room 7 */ { EX_DOWN,  10,10, ZONE_ARENA5,  10,  5, -1, 0 },
+               { EX_RIGHT, 19,-1, ZONE_ARENA8,   1, -1, -1, 0 },
+               { EX_LEFT,   0,-1, ZONE_ARENA9,  18, -1, -1, 0 },
+  /* room 8 */ { EX_LEFT,   0,-1, ZONE_ARENA7,  18, -1, -1, 0 },
+  /* room 9 */ { EX_RIGHT, 19,-1, ZONE_ARENA7,   1, -1, -1, 0 },
+               { EX_UP,    10, 4, ZONE_ARENA10, 10,  9,  0,20 },
+  /* room 10*/ { EX_DOWN,  10,10, ZONE_ARENA9,  10,  5, -1, 0 },
+};
+static const int EXIT_ROOM[] = { 0, 1,1,1, 2, 3,3, 4,4, 5,5,5, 6, 7,7,7, 8, 9,9, 10 };
 
 void data_init_zones(Zone *zones)
 {
     memset(zones, 0, sizeof(Zone) * ZONE_COUNT);
 
-    /* ------------------------------------------------------- the village
-       The original's village is laid out on its timeline rather than in a
-       stage script, so this screen is ours; the cast standing in it is not. */
-    {
-        Zone *z = &zones[ZONE_VILLAGE];
-        z->id = ZONE_VILLAGE; z->name = "Kaido Village";
-        z->encounterRate = 0; z->bgStyle = BG_VILLAGE;
-        z->ground = (Color){ 104, 122, 82, 255 };
-        z->groundDark = (Color){ 78, 94, 62, 255 };
-        z->propA = (Color){ 150, 132, 96, 255 };
-        z->propB = (Color){ 126, 110, 80, 255 };
-        /* The hub screen uses the original's own Arena0 layout. */
-        fill_zone(z, STAGES[0].rows);
-        z->entryX = 10; z->entryY = 10;
-        z->exitX  = 10; z->exitY  = 10;
-        for (unsigned i = 0; i < sizeof VILLAGE_NPCS / sizeof VILLAGE_NPCS[0]; i++) {
-            const NpcSeed *s = &VILLAGE_NPCS[i];
-            Look lk = npc_look_for(s->name);
-            add_npc(z, s->kind, s->tx, s->ty, s->name, s->line, s->arg, lk);
-        }
-    }
-
-    /* ------------------------------- the original's eleven stage layouts */
     static const int POOLS[11][5] = {
         { 0, 1, 3, 6, 7 }, { 1, 3, 6, 7, 8 }, { 4, 8,11,12,13 },
         {11,12,13,14,15 }, {14,15,17,18,21 }, {17,18,19,20,22 },
         {19,20,22,23,24 }, {25,26,27,28,31 }, {28,31,34,35,37 },
         {37,40,41,42,43 }, {43,44,45,46,46 },
     };
+    /* The temple is a graph, not a ladder, so difficulty follows the walk
+       out from the entrance rather than the room number. */
+    static const int DEPTH[11] = { 0, 1, 2, 2, 3, 4, 5, 5, 6, 6, 7 };
+
     for (int i = 0; i < 11; i++) {
-        Zone *z = &zones[ZONE_STAGE0 + i];
-        z->id = (ZoneId)(ZONE_STAGE0 + i);
+        Zone *z = &zones[ZONE_ARENA0 + i];
+        z->id = (ZoneId)(ZONE_ARENA0 + i);
         z->name = STAGES[i].name;
         z->bgStyle = STAGES[i].bg;
-        z->encounterRate = 10 + i / 2;
+        /* The entrance room is safe; it is where the Elder and Healer stand. */
+        z->encounterRate = (i == 0) ? 0 : 8 + DEPTH[i];
+        z->minLevel = 1 + DEPTH[i] * 2;
+        z->maxLevel = z->minLevel + 2;
         z->enemyPoolCount = 5;
         for (int k = 0; k < 5; k++) z->enemyPool[k] = POOLS[i][k];
+
         switch (STAGES[i].bg) {
         case BG_ARENA2:
             z->ground = (Color){ 150, 138, 104, 255 };
@@ -404,24 +452,22 @@ void data_init_zones(Zone *zones)
             for (int x = 0; x < MAP_W; x++)
                 if (z->tiles[y][x] == T_WALL) z->tiles[y][x] = T_ROCK;
 
-        /* Row 3 of the original's grid is a solid wall, so the gates go on
-           the first and last walkable rows of the play area. */
-        int bx = -1, fx = -1;
-        for (int x = 1; x < MAP_W - 1; x++)
-            if (!tile_solid(z->tiles[3][x])) { bx = x; break; }
-        for (int x = MAP_W - 2; x > 0; x--)
-            if (!tile_solid(z->tiles[MAP_H - 3][x])) { fx = x; break; }
-        if (bx < 0) bx = 1;
-        if (fx < 0) fx = MAP_W - 2;
-        z->entryX = bx; z->entryY = 4;
-        z->exitX  = fx; z->exitY  = MAP_H - 4;
+        z->entryX = 10; z->entryY = 5;
+        z->exitX  = 10; z->exitY  = 9;
+    }
 
-        ZoneId back = (i == 0) ? ZONE_VILLAGE : (ZoneId)(ZONE_STAGE0 + i - 1);
-        add_npc(z, NPC_GATE, bx, 3, "Back", "The way you came.", back,
-                npc_look_for("Guard"));
-        if (i < 10)
-            add_npc(z, NPC_GATE, fx, MAP_H - 3, "Onward", "Deeper in.",
-                    (ZoneId)(ZONE_STAGE0 + i + 1), npc_look_for("Guard"));
+    /* the exits */
+    for (unsigned e = 0; e < sizeof ROOM_EXITS / sizeof ROOM_EXITS[0]; e++) {
+        Zone *z = &zones[ZONE_ARENA0 + EXIT_ROOM[e]];
+        if (z->exitCount < 4) z->exits[z->exitCount++] = ROOM_EXITS[e];
+    }
+
+    /* the cast */
+    for (unsigned i = 0; i < sizeof ROOM_NPCS / sizeof ROOM_NPCS[0]; i++) {
+        const NpcSeed *s = &ROOM_NPCS[i];
+        Zone *z = &zones[ZONE_ARENA0 + s->room];
+        add_npc(z, s->kind, s->tx, s->ty, s->name, s->line, s->arg,
+                npc_look_for(s->name));
     }
 }
 
@@ -457,6 +503,7 @@ static bool walkable(Game *g, Zone *z, int tx, int ty)
 static void roll_encounter(Game *g, Zone *z)
 {
     if (z->encounterRate <= 0 || z->enemyPoolCount <= 0) return;
+    if (getenv("SJ_NOFIGHT")) return;   /* deterministic scripted walkthroughs */
     g->stepsSinceFight++;
     if (g->stepsSinceFight < 4) return;
     if (rnd(0, 100) >= z->encounterRate) return;
@@ -573,6 +620,44 @@ static void interact(Game *g, Npc *n)
     }
 }
 
+/* The exit trigger under a cell, if any.  Edge exits (ty < 0) span their
+   whole column, which is how the original's tall edge clips behave. */
+static const Exit *exit_at(const Zone *z, int tx, int ty)
+{
+    for (int i = 0; i < z->exitCount; i++) {
+        const Exit *e = &z->exits[i];
+        if (e->ty < 0) { if (tx == e->tx) return e; }
+        else if (tx == e->tx && ty == e->ty) return e;
+    }
+    return NULL;
+}
+
+/* Take an exit: NewStage(dir, x, y).  A horizontal exit keeps the row you
+   walked in on, as the original's Math.ceil does. */
+static void take_exit(Game *g, const Exit *e)
+{
+    Player *p = &g->p;
+    if (e->gatePortal >= 0 && p->portalLevel[e->gatePortal] <= e->gateNeed) {
+        ui_toast(g, "Sealed. Finish the gateway below and come back.");
+        return;
+    }
+    int nx = e->entryX;
+    int ny = (e->entryY < 0) ? p->ty : e->entryY;
+    if (ny < 0) ny = 0;
+    if (ny >= MAP_H) ny = MAP_H - 1;
+    /* the original drops you on the entry cell; nudge off a blocked one */
+    Zone *dst = &g->zones[e->dest];
+    if (tile_solid(dst->tiles[ny][nx])) {
+        for (int r = 1; r < MAP_H && tile_solid(dst->tiles[ny][nx]); r++) {
+            if (ny + r < MAP_H && !tile_solid(dst->tiles[ny + r][nx])) { ny += r; break; }
+            if (ny - r >= 0    && !tile_solid(dst->tiles[ny - r][nx])) { ny -= r; break; }
+        }
+    }
+    world_enter_zone(g, e->dest, nx, ny);
+    go_scene(g, e->dest == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
+    ui_toast(g, "%s", dst->name);
+}
+
 /* ---------------------------------------------------------------- update */
 
 void world_update(Game *g, float dt)
@@ -596,9 +681,6 @@ void world_update(Game *g, float dt)
             /* stepping onto a gate tile travels immediately */
             Npc *n = npc_at(z, p->tx, p->ty);
             if (n && n->kind == NPC_GATE) { interact(g, n); return; }
-            if (z->tiles[p->ty][p->tx] == T_PORTAL) {
-                ui_toast(g, "The way down is sealed. The reaper waits.");
-            }
             roll_encounter(g, z);
         }
         return;
@@ -615,6 +697,8 @@ void world_update(Game *g, float dt)
         Npc *n = npc_at(z, p->tx + ddx[p->dir], p->ty + ddy[p->dir]);
         if (!n) n = npc_at(z, p->tx, p->ty);
         if (n) { interact(g, n); return; }
+        const Exit *e = exit_at(z, p->tx, p->ty);
+        if (e) { take_exit(g, e); return; }
     }
 
     if (dx || dy) {

@@ -101,13 +101,17 @@ typedef enum {
 
 typedef enum { DMG_PHYSICAL, DMG_MAGIC, DMG_PURE } DamageType;
 
-/* One id per screen: the village, then the original's eleven stage layouts. */
+/* One id per room.  The original's temple is eleven rooms on its root
+   timeline, labelled Arena0 (also just "Arena", the entrance) through
+   Arena10, reached with gotoAndStop on a per-exit `stagelabel`.  There is no
+   separate village screen: the entrance room *is* the hub. */
 typedef enum {
-    ZONE_VILLAGE,
-    ZONE_STAGE0, ZONE_STAGE1, ZONE_STAGE2, ZONE_STAGE3, ZONE_STAGE4, ZONE_STAGE5,
-    ZONE_STAGE6, ZONE_STAGE7, ZONE_STAGE8, ZONE_STAGE9, ZONE_STAGE10,
+    ZONE_ARENA0, ZONE_ARENA1, ZONE_ARENA2, ZONE_ARENA3, ZONE_ARENA4,
+    ZONE_ARENA5, ZONE_ARENA6, ZONE_ARENA7, ZONE_ARENA8, ZONE_ARENA9,
+    ZONE_ARENA10,
     ZONE_COUNT
 } ZoneId;
+#define ZONE_VILLAGE ZONE_ARENA0    /* the entrance room is the hub */
 
 /* Backdrop styles, kept separate from the map so a stage can pick any of them. */
 typedef enum {
@@ -285,6 +289,22 @@ typedef struct {
     float   bob;
 } Npc;
 
+/* An edge exit.  In the original each room carries trigger clips at its
+   edges; standing on one and pressing space calls NewStage(dir, x, y) and
+   jumps to that exit's own destination room.  Horizontal exits keep your
+   row (the original passes Math.ceil of your position), so entryY < 0 here
+   means "keep the row you walked in on". */
+typedef enum { EX_UP, EX_DOWN, EX_LEFT, EX_RIGHT } ExitDir;
+
+typedef struct {
+    int    dir;              /* ExitDir                                    */
+    int    tx, ty;           /* trigger cell; edge exits span their column */
+    ZoneId dest;
+    int    entryX, entryY;   /* entryY < 0 => keep the current row         */
+    int    gatePortal;       /* -1, else the portal that must be cleared   */
+    int    gateNeed;
+} Exit;
+
 typedef struct {
     ZoneId id;
     const char *name;
@@ -295,6 +315,8 @@ typedef struct {
     int  minLevel, maxLevel;
     int  enemyPool[8], enemyPoolCount;
     int  entryX, entryY, exitX, exitY;   /* where travel drops you */
+    Exit exits[4];
+    int  exitCount;
     Color skyTop, skyBot, ground, groundDark, fog, propA, propB;
     int  bgStyle;
 } Zone;
