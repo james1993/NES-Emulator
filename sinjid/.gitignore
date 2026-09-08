@@ -2,3 +2,6 @@
 /sinjid
 sinjid_save.dat
 /*.png
+
+# the checked-in prebuilt binary is deliberately tracked
+!/bin/sinjid-linux-x86_64

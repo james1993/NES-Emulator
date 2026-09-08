@@ -12,6 +12,27 @@ skills, enemies, maps and writing are all original to this remake.
 
 ![turn-based combat](docs/battle.png)
 
+## Running without building
+
+A prebuilt Linux x86-64 binary is checked in, so you can pull and run:
+
+```sh
+./bin/sinjid-linux-x86_64
+```
+
+It is dynamically linked against only `libc`, `libm` and `libX11`, and loads
+`libGL.so.1` at runtime, so on a desktop Fedora there is nothing to install.
+It needs **glibc 2.38 or newer**, which means Fedora 39 and up (every
+currently supported release). On a distro older than that, or on ARM, build
+from source as below.
+
+It was built on Ubuntu 24.04, not on Fedora -- the symbol versions above are
+what make it portable, not the build host. Verify with:
+
+```sh
+objdump -T bin/sinjid-linux-x86_64 | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1
+```
+
 ## Building
 
 Requires a C99 compiler and **raylib 6.0 or newer** (developed and tested
