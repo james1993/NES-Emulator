@@ -94,9 +94,38 @@ nineteen rather than members of the table, as in the original.
 
 * **The second hero.** The engine supports two fighters a side and the original
   tracks `hero1`/`hero2`; only one is ever fielded.
-* **Per-stage layouts for the portal ladders.** The portals are battle ladders
-  here; the original's walkable screens are the eleven hub layouts, which are
-  reproduced exactly.
+* **The temple as a connected room graph.** This is a real defect, not a
+  simplification, and the audit above previously overstated the position. The
+  eleven cell layouts were recovered correctly, but the way they join was not.
+
+  In the original the eleven screens are rooms on the root timeline, reached by
+  `_root.gotoAndStop(stagelabel)`. Each room carries edge trigger clips; when
+  the player's `stepper` overlaps one **and space is pressed**, it calls
+  `NewStage(charposx, charposy, chardir)` and jumps to that exit's own
+  `stagelabel`. Left and right exits preserve your vertical position through
+  `Math.ceil`; vertical exits pass a fixed column. Cells are 30px on a 20x13
+  grid. The recovered graph and NPC scatter are in `docs/roomgraph.json`:
+
+  ```
+  Arena  -up->    Arena1
+  Arena1 -down->  Arena0   -left->  Arena2   -right-> Arena3
+  Arena3 -up->    Arena4   -left->  Arena5
+  Arena5 -left->  Arena6   -up->    Arena7
+  Arena7 -right-> Arena8   -left->  Arena9
+  Arena9 -up->    Arena10  (gated on portallevel[0] > 20)
+  ```
+
+  This remake instead joins zones with portal tiles and walks a free tile grid,
+  which is the wrong travel model.
+
+* **NPCs scattered through the temple.** The original spreads the cast across
+  all eleven rooms -- Elder, Healer and Student at the entrance; Food and Potion
+  Vendors in Arena1; both Item Vendors in Arena3; the drinkers in Arena4; two
+  more vendors in Arena5; Scribe, Lady and Relaxing Ninja in Arena6; statues in
+  Arena7; a vendor, Dark Ninja and Guard in Arena8; and Vendor4, a Guard, a
+  Wounded Warrior and Shadow in Arena10. This remake concentrates them into a
+  single village hub screen, which is wrong. Placements are in
+  `docs/roomgraph.json`.
 * **One guard-destroying attack** that passes `dmgtoshd = 999` with every other
   component zeroed. It is not tied to any player skill rank in the scripts, so
   it has not been attributed to one here.

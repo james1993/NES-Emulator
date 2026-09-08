@@ -1,0 +1,346 @@
+{
+ "graph": {
+  "Arena": [
+   [
+    "up",
+    "Arena1",
+    9.5,
+    10.5
+   ]
+  ],
+  "Arena1": [
+   [
+    "down",
+    "Arena0",
+    5.5,
+    10.5
+   ],
+   [
+    "left",
+    "Arena2",
+    null,
+    19
+   ],
+   [
+    "right",
+    "Arena3",
+    null,
+    2
+   ]
+  ],
+  "Arena2": [
+   [
+    "right",
+    "Arena1",
+    null,
+    2
+   ]
+  ],
+  "Arena3": [
+   [
+    "left",
+    "Arena1",
+    null,
+    19
+   ],
+   [
+    "up",
+    "Arena4",
+    9.5,
+    14
+   ]
+  ],
+  "Arena4": [
+   [
+    "down",
+    "Arena3",
+    5.5,
+    14
+   ],
+   [
+    "left",
+    "Arena5",
+    null,
+    19
+   ]
+  ],
+  "Arena5": [
+   [
+    "left",
+    "Arena6",
+    null,
+    19
+   ],
+   [
+    "right",
+    "Arena4",
+    null,
+    2
+   ],
+   [
+    "up",
+    "Arena7",
+    9.5,
+    10.5
+   ]
+  ],
+  "Arena6": [
+   [
+    "right",
+    "Arena5",
+    null,
+    2
+   ]
+  ],
+  "Arena7": [
+   [
+    "down",
+    "Arena5",
+    5.5,
+    10.5
+   ],
+   [
+    "right",
+    "Arena8",
+    null,
+    2
+   ],
+   [
+    "left",
+    "Arena9",
+    null,
+    19
+   ]
+  ],
+  "Arena8": [
+   [
+    "left",
+    "Arena7",
+    null,
+    19
+   ]
+  ],
+  "Arena9": [
+   [
+    "right",
+    "Arena7",
+    null,
+    2
+   ],
+   [
+    "up",
+    "Arena10",
+    10,
+    10.5,
+    "portallevel[0]>20"
+   ]
+  ],
+  "Arena10": [
+   [
+    "down",
+    "Arena9",
+    6,
+    10.5
+   ]
+  ]
+ },
+ "npcs": {
+  "Arena": [
+   [
+    16.4,
+    7.8,
+    "Elder"
+   ],
+   [
+    3.5,
+    5.8,
+    "Healer"
+   ],
+   [
+    6.4,
+    8.9,
+    "Student"
+   ]
+  ],
+  "Arena1": [
+   [
+    13.5,
+    4.9,
+    "Food Vendor"
+   ],
+   [
+    6.4,
+    4.9,
+    "Potion Vendor"
+   ],
+   [
+    16.5,
+    9.9,
+    "Ninja"
+   ]
+  ],
+  "Arena2": [
+   [
+    4.5,
+    9.0,
+    "Apprentice"
+   ],
+   [
+    14.4,
+    5.8,
+    "Guard"
+   ]
+  ],
+  "Arena3": [
+   [
+    6.5,
+    4.9,
+    "Item Vendor"
+   ],
+   [
+    7.4,
+    9.8,
+    "Apprentice"
+   ],
+   [
+    14.4,
+    10.0,
+    "Item Vendor2"
+   ]
+  ],
+  "Arena4": [
+   [
+    3.4,
+    10.0,
+    "Drinker"
+   ],
+   [
+    8.7,
+    10.2,
+    "Drunkard"
+   ],
+   [
+    15.5,
+    5.9,
+    "Drinker"
+   ],
+   [
+    4.5,
+    3.9,
+    "Ninja"
+   ]
+  ],
+  "Arena5": [
+   [
+    14.5,
+    4.9,
+    "Vendor2"
+   ],
+   [
+    11.5,
+    7.9,
+    "Apprentice"
+   ],
+   [
+    7.5,
+    9.9,
+    "Vendor"
+   ]
+  ],
+  "Arena6": [
+   [
+    5.8,
+    4.5,
+    "Scribe"
+   ],
+   [
+    7.5,
+    8.9,
+    "Lady"
+   ],
+   [
+    15.4,
+    9.1,
+    "Relaxing Ninja"
+   ]
+  ],
+  "Arena7": [
+   [
+    10.0,
+    5.9,
+    "Statue"
+   ],
+   [
+    5.5,
+    5.9,
+    "Statue2"
+   ],
+   [
+    14.4,
+    5.9,
+    "Statue2"
+   ]
+  ],
+  "Arena8": [
+   [
+    3.5,
+    2.9,
+    "Posted Note"
+   ],
+   [
+    10.5,
+    4.2,
+    "Vendor3"
+   ],
+   [
+    11.5,
+    9.9,
+    "Dark Ninja"
+   ],
+   [
+    17.7,
+    5.0,
+    "Guard"
+   ]
+  ],
+  "Arena9": [
+   [
+    4.5,
+    6.8,
+    "Dark Ninja"
+   ],
+   [
+    8.4,
+    7.2,
+    "Meditating Ninja"
+   ]
+  ],
+  "Arena10": [
+   [
+    13.4,
+    5.9,
+    "Guard"
+   ],
+   [
+    3.6,
+    7.9,
+    "Vendor4"
+   ],
+   [
+    17.4,
+    7.9,
+    "Shadow"
+   ],
+   [
+    5.6,
+    4.8,
+    "Wounded Warrior"
+   ]
+  ]
+ },
+ "cell_px": 30,
+ "cols": 20,
+ "rows": 13,
+ "trigger": "hitTest(char.stepper) && Key.isDown(32)",
+ "entry": "NewStage(charposx,charposy,chardir); left/right exits keep y via Math.ceil"
+}
