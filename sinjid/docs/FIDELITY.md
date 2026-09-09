@@ -109,6 +109,16 @@ The Healer's `inventorytype` is `"Heal"`, so talking to them opens a Heal panel
 and pauses the game; it never deducts gold the moment you walk up. That panel
 is reproduced here.
 
+**The screen layout is the original's.** Its stage is 600 wide, with the room
+in the top 335 pixels on a 30px cell grid and the `walkmenu` bar in the 116
+below. That whole arrangement is reproduced scaled by 1.6, so room and bar keep
+their proportions: a 48px cell, a 960px room, and a 186px bar. The bar's
+contents sit at the positions its own clip gives them -- portrait at the left
+with the name beneath, class/gold/level on the line above four bars (`lifebar`,
+`manabar`, `engbar` and the exp bar, 108x5.5 at x=144.7 on rows 377.3, 392.6,
+408.3 and 425.3), their values to the right, the two potion counts beside
+`lifepotmc` and `manapotmc`, and Inventory and Skills at the far right.
+
 **Per-room scenery is placed, not scattered.** Every object in each room was
 read out of the original's display list -- 197 of them across the eleven rooms,
 from 11 in the sparsest to 39 in Arena4 -- and each is reproduced at its own
@@ -166,9 +176,6 @@ several things the bytecode alone could not:
 * **Each class grants a starting skill**: Balanced/Shurikens, Warrior/Stab,
   Spell Caster/Charge, Shadow Ninja/Shadow Blend. This remake starts you with
   no skill at all.
-* **The HUD** is a single bottom bar: portrait, class, gold, level, life/mana/
-  energy/exp bars, life- and mana-potion counts with their tallies, and
-  Inventory and Skills buttons.
 
 The exit doorway itself is centred on the room's top wall, which matches the
 recovered trigger position; the corner indicator is a separate object.

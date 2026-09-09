@@ -14,9 +14,18 @@
 #include <string.h>
 #include <math.h>
 
-#define TILE   52
-#define OX     120         /* 20 x 13 cells of 52px, centred */
-#define OY     22
+/* The original's stage is 600 wide: the room occupies the top 335 pixels and
+   the walkmenu bar the 116 below it, on a 30px cell grid.  Everything here is
+   that layout scaled by HUD_S, so the room and the bar keep their proportions.
+   600 * 1.6 = 960 wide, and 451 * 1.6 = 722, which is the window height. */
+#define HUD_S  1.6f                     /* original pixels -> ours          */
+#define TILE   48                       /* 30 * HUD_S                       */
+#define OX     160                      /* (1280 - 20 * TILE) / 2           */
+#define OY     0
+#define HUD_Y  536                      /* 335 * HUD_S                      */
+#define HUD_H  186                      /* 116 * HUD_S                      */
+#define HX(v)  (OX + (int)((v) * HUD_S))   /* original x -> screen          */
+#define HY(v)  ((int)((v) * HUD_S))        /* original y -> screen          */
 
 /* Map legend:  . grass   , path   # wall   D door   ~ water   T tree
                 R rock    s sand   w snow   m mat    = floor   L lava
@@ -817,33 +826,84 @@ void world_draw(Game *g)
     art_draw_walker(&lk, at, p->dir, g->moving ? g->walkT : 0.0f, 0.66f);
 
     /* dark edges so the 28x18 grid reads as a stage */
+    /* Letterbox either side of the room, and mask the strip the bar covers. */
     DrawRectangle(0, 0, OX, SCREEN_H, (Color){ 12, 10, 16, 255 });
-    DrawRectangle(SCREEN_W - OX, 0, OX, SCREEN_H, (Color){ 12, 10, 16, 255 });
-    DrawRectangleGradientV(OX, 0, SCREEN_W - OX * 2, 60, (Color){ 12, 10, 16, 190 },
-                           (Color){ 12, 10, 16, 0 });
-    DrawRectangleGradientV(OX, SCREEN_H - 90, SCREEN_W - OX * 2, 90, (Color){ 12, 10, 16, 0 },
-                           (Color){ 12, 10, 16, 210 });
+    DrawRectangle(OX + MAP_W * TILE, 0, SCREEN_W, SCREEN_H, (Color){ 12, 10, 16, 255 });
+    DrawRectangleGradientV(OX, HUD_Y - 70, MAP_W * TILE, 70, (Color){ 12, 10, 16, 0 },
+                           (Color){ 12, 10, 16, 220 });
 
-    /* status strip */
+    /* ------------------------------------------------------------ the bar
+       The original's walkmenu: one panel across the foot of the stage, with
+       the portrait and name at the left, the class / gold / level line above
+       four bars, the two potion counts to their right, and Inventory and
+       Skills at the far right.  Positions below are its own, in its 600x451
+       pixel space, mapped through HX/HY. */
     Combatant c;
     player_recalc(p, &c);
     int life = p->curLife > 0 ? p->curLife : c.lifeMax;
-    int mana = p->curMana;
-    ui_text(z->name, 20, 20, 26, C_GOLD);
-    char sub[96];
-    snprintf(sub, sizeof sub, "%s  Lv%d  %s", p->name, p->level, CLASS_NAMES[p->cls]);
-    ui_text(sub, 20, 52, 17, C_PARCH2);
 
-    ui_bar((Rectangle){ SCREEN_W - 250, 22, 230, 16 }, (float)life / c.lifeMax, C_BLOOD,
-           (Color){ 40, 20, 20, 220 }, NULL);
-    ui_bar((Rectangle){ SCREEN_W - 250, 42, 230, 12 }, c.manaMax ? (float)mana / c.manaMax : 0,
-           C_KI, (Color){ 22, 34, 44, 220 }, NULL);
-    char g1[64];
-    snprintf(g1, sizeof g1, "%d gold", p->gold);
-    ui_text(g1, SCREEN_W - 250, 60, 18, C_GOLD);
+    Rectangle bar = { (float)OX, (float)HUD_Y, (float)(MAP_W * TILE), (float)HUD_H };
+    DrawRectangleRec(bar, (Color){ 26, 22, 18, 245 });
+    DrawRectangleLinesEx(bar, 2, (Color){ 122, 100, 62, 255 });
+    DrawRectangleLinesEx((Rectangle){ bar.x + 5, bar.y + 5, bar.width - 10, bar.height - 10 },
+                         1, (Color){ 78, 64, 40, 255 });
+
+    /* portrait, and the name under it */
+    Rectangle por = { (float)HX(30.8f), (float)HY(355.5f),
+                      59 * HUD_S, 54 * HUD_S };
+    DrawRectangleRec(por, (Color){ 40, 34, 28, 255 });
+    DrawRectangleLinesEx(por, 2, (Color){ 122, 100, 62, 255 });
+    BeginScissorMode((int)por.x + 2, (int)por.y + 2, (int)por.width - 4, (int)por.height - 4);
+    art_draw_walker(&p->look, (Vector2){ por.x + por.width * 0.5f,
+                                         por.y + por.height * 1.25f }, 1, 0.0f, 1.15f);
+    EndScissorMode();
+    ui_text(p->name, HX(9.3f), HY(413.7f), 20, C_PARCH);
+
+    /* class, gold and level share the line above the bars */
+    ui_text(CLASS_NAMES[p->cls], HX(105.4f), HY(349.7f), 21, C_PARCH);
+    char buf[64];
+    ui_text("GOLD:", HX(208), HY(352), 18, C_GOLD2);
+    snprintf(buf, sizeof buf, "%d", p->gold);
+    ui_text(buf, HX(259), HY(352), 18, C_GOLD);
+    ui_text("Level", HX(288), HY(352), 18, C_KI2);
+    snprintf(buf, sizeof buf, "%d", p->level);
+    ui_text(buf, HX(322), HY(352), 18, C_KI);
+
+    /* the four bars, at the original's own rows */
+    struct { const char *lab; float y; int cur, max; Color fill, back; } rows[4] = {
+        { "LIFE", 377.3f, life,         c.lifeMax, C_BLOOD, { 46, 20, 20, 220 } },
+        { "MANA", 392.6f, p->curMana,   c.manaMax, C_KI,    { 22, 34, 48, 220 } },
+        { "ENG",  408.3f, p->curEnergy, c.engMax,  C_GOLD,  { 46, 38, 16, 220 } },
+        { "EXP",  425.3f, p->exp,       p->expNext, C_JADE,  { 22, 40, 26, 220 } },
+    };
+    for (int i = 0; i < 4; i++) {
+        ui_text(rows[i].lab, HX(104), HY(rows[i].y) - 5, 14, C_PARCH2);
+        float frac = rows[i].max > 0 ? (float)rows[i].cur / rows[i].max : 0.0f;
+        ui_bar((Rectangle){ (float)HX(144.7f), (float)HY(rows[i].y),
+                            108 * HUD_S, 7 * HUD_S },
+               frac, rows[i].fill, rows[i].back, NULL);
+        snprintf(buf, sizeof buf, "%d/%d", rows[i].cur, rows[i].max);
+        ui_text(buf, HX(256), HY(rows[i].y) - 5, 15, C_PARCH2);
+    }
+
+    /* potion counts */
+    ui_text("Life Potion", HX(367.4f), HY(352.5f), 15, C_PARCH2);
+    DrawCircle(HX(374), HY(371), 9, (Color){ 96, 176, 96, 255 });
+    DrawCircleLines(HX(374), HY(371), 9, C_INK);
+    snprintf(buf, sizeof buf, "X %d", p->lifePots);
+    ui_text(buf, HX(390), HY(365), 17, C_PARCH);
+
+    ui_text("Mana Potion", HX(367.4f), HY(392.5f), 15, C_PARCH2);
+    DrawCircle(HX(374), HY(411), 9, (Color){ 96, 140, 200, 255 });
+    DrawCircleLines(HX(374), HY(411), 9, C_INK);
+    snprintf(buf, sizeof buf, "X %d", p->manaPots);
+    ui_text(buf, HX(390), HY(405), 17, C_PARCH);
+
+    /* the two buttons at the far right */
+    ui_text("Inventory", HX(470), HY(374), 19, C_PARCH);
+    ui_text("Skills",    HX(470), HY(399), 19, C_PARCH);
+    ui_text("I", HX(452), HY(374), 17, C_GOLD2);
+    ui_text("T", HX(452), HY(399), 17, C_GOLD2);
     if (p->statPts > 0 || p->skillPts > 0)
-        ui_text("T -- points to spend", SCREEN_W - 250, 84, 16, C_JADE);
-
-    ui_text("ENTER talk    I inventory    T training", 20, SCREEN_H - 34, 17,
-            (Color){ 206, 192, 164, 150 });
+        ui_text("points to spend", HX(452), HY(424), 15, C_JADE);
 }
