@@ -91,6 +91,15 @@ of your position -- while vertical exits pass a fixed column. The entrance
 room, labelled both `Arena` and `Arena0`, is the hub; there is no separate
 village screen, and this remake no longer invents one.
 
+**`type = 2` marks an occupied cell, not scenery.** `NewStage` resets every
+cell to 1 and the stage script then blocks the cells something stands on, so
+the scattered type-2 cells are props *and* the figures standing on them; only
+the full-width row-3 band is a back wall. 24 of the 34 recovered clip
+positions land exactly on a type-2 cell, against 1.8 expected by chance, which
+both settles the meaning and independently confirms the pixel-to-cell
+conversion. An NPC blocks its own cell here, so the floor under one is cleared
+rather than drawn as rock with a figure on top.
+
 **The cast is scattered across the rooms**, at the cells its clips occupy:
 Elder, Healer and Student at the entrance; Food and Potion Vendors in Arena1;
 both Item Vendors in Arena3; the drinkers in Arena4; two more vendors in
@@ -122,6 +131,13 @@ placements are in `docs/roomgraph.json`.
 
 * **The second hero.** The engine supports two fighters a side and the original
   tracks `hero1`/`hero2`; only one is ever fielded.
+**Per-room scenery is not reproduced.** Each room places between 15 and 45
+objects, of which only 2 to 4 are the cast; the remaining 10 to 40 are
+decorative and structural pieces whose individual positions are not extracted
+here. The blocked cells are honoured and props are scattered procedurally over
+them, so a room's *shape* and traffic are the original's, but its furniture
+arrangement is not.
+
 ## Out of scope
 
 **Art** is drawn procedurally in `art.c` and **audio is synthesised** in

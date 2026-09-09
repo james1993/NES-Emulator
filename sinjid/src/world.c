@@ -178,7 +178,7 @@ static const StageDef STAGES[] = {
       "....................",
       "....................",
   } },
-  { "Arena0", BG_ARENA3, {
+  { "Arena4", BG_ARENA3, {
       "....................",
       "....................",
       "####################",
@@ -193,7 +193,7 @@ static const StageDef STAGES[] = {
       "....................",
       "....................",
   } },
-  { "Arena0", BG_ARENA3, {
+  { "Arena5", BG_ARENA3, {
       "....................",
       "....................",
       "####################",
@@ -208,7 +208,7 @@ static const StageDef STAGES[] = {
       "....................",
       "....................",
   } },
-  { "Arena0", BG_ARENA3, {
+  { "Arena6", BG_ARENA3, {
       "....................",
       "....................",
       "####################",
@@ -223,7 +223,7 @@ static const StageDef STAGES[] = {
       "....................",
       "....................",
   } },
-  { "Arena0", BG_ARENA, {
+  { "Arena7", BG_ARENA, {
       "....................",
       "....................",
       "####################",
@@ -462,10 +462,18 @@ void data_init_zones(Zone *zones)
         if (z->exitCount < 4) z->exits[z->exitCount++] = ROOM_EXITS[e];
     }
 
-    /* the cast */
+    /* The cast.  `type = 2` in the original's stage scripts marks a cell as
+       *occupied*, not as scenery: NewStage resets every cell to 1 and the
+       script then blocks the cells that something stands on.  24 of these 34
+       clip positions land on a type-2 cell, against 1.8 expected by chance,
+       so the standing figure is what blocks it.  An NPC already makes its own
+       cell impassable here, so clear the floor under one rather than drawing
+       a rock and standing the NPC on top of it. */
     for (unsigned i = 0; i < sizeof ROOM_NPCS / sizeof ROOM_NPCS[0]; i++) {
         const NpcSeed *s = &ROOM_NPCS[i];
         Zone *z = &zones[ZONE_ARENA0 + s->room];
+        if (s->tx >= 0 && s->tx < MAP_W && s->ty >= 0 && s->ty < MAP_H)
+            z->tiles[s->ty][s->tx] = T_GRASS;
         add_npc(z, s->kind, s->tx, s->ty, s->name, s->line, s->arg,
                 npc_look_for(s->name));
     }
