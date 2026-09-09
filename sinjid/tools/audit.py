@@ -453,6 +453,42 @@ gridskills = {s_["skill"] for s_ in gt('battle_layout.json')['commandBar']['grid
 check('skills', sorted(set(range(19)) - gridskills) == sn['passive'],
       "passives ours=%s theirs=%s" % (sorted(set(range(19)) - gridskills), sn['passive']))
 
+# ---- NPC roster -------------------------------------------------------
+npcs = gt('npcs.json')
+wl2 = SRC('world.c')
+i = wl2.index('static const NpcSeed ROOM_NPCS[]')
+nblk = wl2[i:wl2.index('\n};', i)]
+ours_npc = sorted((int(a), n, int(c), int(d)) for a, b, c, d, n in
+                  re.findall(r'\{\s*(\d+),\s*(NPC_\w+),\s*(-?\d+),\s*(\d+),\s*"([^"]+)"', nblk))
+want_npc = sorted((e['room'], e['name'], e['tx'], e['ty']) for e in npcs)
+check('npcs', ours_npc == want_npc,
+      "roster differs: ours-only=%s theirs-only=%s"
+      % ([o for o in ours_npc if o not in want_npc],
+         [t for t in want_npc if t not in ours_npc]))
+
+# ---- no wandering encounters -----------------------------------------
+check('encounters', 'roll_encounter' not in wl2,
+      "the original has no random encounters while walking a room")
+check('encounters', re.search(r'encounterRate\s*=\s*0\b', wl2) is not None,
+      "room encounter rate should be zero")
+check('encounters', 'stepsSinceFight % 24' not in wl2,
+      "movement must not roll for a fight")
+
+# ---- the miss check ---------------------------------------------------
+bat2 = SRC('battle.c')
+check('battle', 'spdran2 > spdran1' in bat2,
+      "the original misses only when spdran2 is strictly greater")
+check('battle', 'spdran2 >= spdran1' not in bat2,
+      "a tied speed roll is a hit in the original, not a miss")
+check('battle', re.search(r'spdran1\s*=\s*rnd\(0,\s*a->atkSpd / 2\)\s*\+\s*a->atkSpd / 2', bat2) is not None,
+      "spdran1 = random(atkspd/2) + atkspd/2")
+
+# ---- room changes are covered by the wipe -----------------------------
+check('rooms', 'pendMove' in wl2 and 'pendMove' in SRC('main.c'),
+      "a room change should be held until the screen is black")
+check('rooms', re.search(r'ui_toast\(g,\s*"%s",\s*dst->name\)', wl2) is None,
+      "the original does not name the room you walk into")
+
 print()
 if not FAIL:
     print("PASS -- deep checks clean too.")

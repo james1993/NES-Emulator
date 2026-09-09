@@ -499,6 +499,11 @@ static void update_fade(Game *g, float dt)
             g->prevScene = g->scene;
             g->scene = g->fadeTarget;
             g->fadeDir = -1;
+            /* the screen is black here, so a held room change lands unseen */
+            if (g->pendMove) {
+                g->pendMove = false;
+                world_enter_zone(g, g->pendZone, g->pendX, g->pendY);
+            }
             if (g->scene == SCENE_VILLAGE || g->scene == SCENE_WORLD)
                 world_lock_exit_underfoot(g);
         }

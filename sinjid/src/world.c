@@ -331,7 +331,7 @@ static const NpcSeed ROOM_NPCS[] = {
     "Steel, leather, and a wrist guard if you have the sense.\nStrength first -- you cannot swing what you cannot lift.", SHOP_ITEMS0 },
   { 3, NPC_VILLAGER,  7, 9, "Apprentice",
     "Two vendors in one room.  They argue about prices all day.", 0 },
-  { 3, NPC_VENDOR,   14,10, "Item Vendor 2",
+  { 3, NPC_VENDOR,   14,10, "Item Vendor2",
     "Better stock than his, and I will not pretend otherwise.", SHOP_TRADE },
   /* --- Arena4 --------------------------------------------------------- */
   { 4, NPC_VILLAGER,  3,10, "Drinker",
@@ -343,7 +343,7 @@ static const NpcSeed ROOM_NPCS[] = {
   { 4, NPC_VILLAGER,  4, 3, "Ninja",
     "Drink here if you must.  Do not drink past this room.", 0 },
   /* --- Arena5 --------------------------------------------------------- */
-  { 5, NPC_VENDOR,   14, 4, "Vendor 2",
+  { 5, NPC_VENDOR,   14, 4, "Vendor2",
     "Relics.  Odd things.  They do more than they look like they do.", SHOP_ITEMS1 },
   { 5, NPC_VILLAGER, 11, 7, "Apprentice",
     "Up from here is the hall of statues.  Mind your footing.", 0 },
@@ -357,18 +357,16 @@ static const NpcSeed ROOM_NPCS[] = {
   { 6, NPC_VILLAGER, 15, 9, "Relaxing Ninja",
     "I have earned this floor and I intend to keep sitting on it.", 0 },
   /* --- Arena7, the hall of statues: the three gateways ----------------- */
-  { 7, NPC_PROP,     10, 5, "Statue",
-    "Three gateways, and a long walk behind each.", 0 },
+  { 7, NPC_QUEST,    10, 5, "Statue",
+    "Three gateways, and a long walk behind each.  A worn dish is set\ninto the plinth, waiting for something.", 1 },
   { 7, NPC_PROP,      5, 5, "Statue2",
     "Carved mid-step, as though it meant to leave.", 0 },
-  { 7, NPC_QUEST,    13, 3, "Offering Stone",
-    "A worn dish set into the stone, waiting for something.", 1 },
   { 7, NPC_PROP,     14, 5, "Statue2",
     "The same face as the other, worn smoother.", 0 },
   /* --- Arena8 --------------------------------------------------------- */
   { 8, NPC_TRAINER2,  3, 2, "Posted Note",
     "Training room.  Strike the ward for experience, and break its\nguard for more.", 0 },
-  { 8, NPC_VENDOR,   10, 4, "Vendor 3",
+  { 8, NPC_VENDOR,   10, 4, "Vendor3",
     "Everything here is overpriced.  You will buy it anyway.", SHOP_ITEMS3 },
   { 8, NPC_VILLAGER, 11, 9, "Dark Ninja",
     "You smell like the shallow rooms.  That will change.", 0 },
@@ -382,7 +380,7 @@ static const NpcSeed ROOM_NPCS[] = {
   /* --- Arena10 -------------------------------------------------------- */
   {10, NPC_VILLAGER, 13, 5, "Guard",
     "You came up the stairs.  Few do.", 0 },
-  {10, NPC_VENDOR,    3, 7, "Vendor 4",
+  {10, NPC_VENDOR,    3, 7, "Vendor4",
     "Last of the stock, and the last room that sells any.", SHOP_ITEMS4 },
   {10, NPC_VENDOR,   17, 7, "Shadow",
     "Stand and be counted, one after another.", SHOP_ITEMS5 },
@@ -450,7 +448,7 @@ void data_init_zones(Zone *zones)
         z->name = STAGES[i].name;
         z->bgStyle = STAGES[i].bg;
         /* The entrance room is safe; it is where the Elder and Healer stand. */
-        z->encounterRate = (i == 0) ? 0 : 8 + DEPTH[i];
+        z->encounterRate = 0;   /* rooms are safe; fights come from gateways */
         z->minLevel = 1 + DEPTH[i] * 2;
         z->maxLevel = z->minLevel + 2;
         z->enemyPoolCount = 5;
@@ -557,22 +555,10 @@ void world_enter_zone(Game *g, ZoneId z, int tx, int ty)
     world_lock_exit_underfoot(g);
 }
 
-static void roll_encounter(Game *g, Zone *z)
-{
-    if (z->encounterRate <= 0 || z->enemyPoolCount <= 0) return;
-    if (getenv("SJ_NOFIGHT")) return;   /* deterministic scripted walkthroughs */
-    g->stepsSinceFight++;
-    if (g->stepsSinceFight < 4) return;
-    if (rnd(0, 100) >= z->encounterRate) return;
-
-    g->stepsSinceFight = 0;
-    int defs[MAX_FOES];
-    int n = (g->p.level >= z->minLevel + 3 && rnd(0, 100) < 45) ? 2 : 1;
-    for (int i = 0; i < n; i++)
-        defs[i] = z->enemyPool[rnd(0, z->enemyPoolCount - 1)];
-    int lvl = rnd(z->minLevel, z->maxLevel);
-    battle_start(g, defs, n, lvl, false, false);
-}
+/* The original has no wandering encounters: its movechar() is movement and
+   collision only, its rooms mark cells walkable or occupied and nothing else,
+   and the one "meet" flag it carries is cleared by every room and never set.
+   Every fight comes from a gateway.  So walking a room is safe. */
 
 static void interact(Game *g, Npc *n)
 {
@@ -581,11 +567,11 @@ static void interact(Game *g, Npc *n)
     case NPC_GATE: {
         Zone *dst = &g->zones[n->arg];
         bool deeper = (int)n->arg > (int)p->zone;
-        int tx = deeper ? dst->entryX : dst->exitX;
-        int ty = deeper ? dst->entryY : dst->exitY;
-        world_enter_zone(g, (ZoneId)n->arg, tx, ty);
+        g->pendZone = (ZoneId)n->arg;
+        g->pendX = deeper ? dst->entryX : dst->exitX;
+        g->pendY = deeper ? dst->entryY : dst->exitY;
+        g->pendMove = true;
         go_scene(g, n->arg == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
-        ui_toast(g, "%s", dst->name);
     } break;
     case NPC_SMITH:
     case NPC_VENDOR:
@@ -787,9 +773,11 @@ static void take_exit(Game *g, const Exit *e)
             if (ny - r >= 0    && !tile_solid(dst->tiles[ny - r][nx])) { ny -= r; break; }
         }
     }
-    world_enter_zone(g, e->dest, nx, ny);
+    /* Hold the move until the wipe covers it -- doing it now would show the
+       next room first and fade it in afterwards.  The original never names
+       the room you walk into either, so there is no toast. */
+    g->pendZone = e->dest; g->pendX = nx; g->pendY = ny; g->pendMove = true;
     go_scene(g, e->dest == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
-    ui_toast(g, "%s", dst->name);
 }
 
 /* ---------------------------------------------------------------- update */
@@ -875,8 +863,6 @@ void world_update(Game *g, float dt)
            bar, and straight past the gateway standing at the room's foot. */
         if (p->py > 335.0f - 9.0f) p->py = 335.0f - 9.0f;
         g->walkT += dt;
-        g->stepsSinceFight++;
-        if ((g->stepsSinceFight % 24) == 0) roll_encounter(g, z);
     } else {
         g->walkT = 0;
     }
@@ -964,10 +950,12 @@ void world_draw(Game *g)
     for (int i = 0; i < z->propCount; i++)
         art_draw_scenery(&z->props[i], z, t);
 
-    /* Every way out of a room is a doorway you can see and walk up to -- the
-       original draws its trigger clip (22.8 x 38.4) in every room, and lights
-       it when you are standing in it.  Without them a gateway is an invisible
-       patch of floor, and pressing space to talk drops you into it. */
+    /* The way out of a room is the original's trigger clip (22.8 x 38.4)
+       standing on the floor.  For an ordinary door that clip is the threshold
+       under the archway the room's own scenery already draws -- drawing a
+       second framed opening there reads as two exits -- so it is a plate on
+       the ground that lights when you are standing in it.  A gateway has no
+       arch above it and is drawn as the lit doorway it is. */
     {
         const Exit *arm = exit_near(z, p->px, p->py);
         if (arm && (int)(arm - z->exits) == g->exitLock) arm = NULL;
@@ -980,16 +968,14 @@ void world_draw(Game *g)
             float pulse = 0.6f + 0.4f * sinf(t * 4.2f);
 
             if (e->ty < 0) {
-                /* a side exit: an arch against the wall at the room's edge */
+                /* a side exit: the room's edge, marked only when you reach it */
+                if (!lit) continue;
                 float ex = OX + (e->tx * 30.0f + 15.0f) * HUD_S;
-                float ey = OY + p->py * HUD_S;
-                if (ey < TILE) ey = TILE;
-                Color c = lit ? (Color){ 120, 224, 255, 255 } : (Color){ 96, 120, 132, 255 };
-                float a2 = lit ? 0.30f + 0.25f * pulse : 0.16f;
-                Rectangle bar = { ex - TILE * 0.30f, OY + TILE * 0.6f,
-                                  TILE * 0.60f, 335.0f * HUD_S - TILE * 0.9f };
-                DrawRectangleRec(bar, Fade(c, a2 * 0.5f));
-                DrawRectangleLinesEx(bar, lit ? 2.0f : 1.0f, Fade(c, a2 + 0.2f));
+                Color c = (Color){ 120, 224, 255, 255 };
+                Rectangle bar = { ex - TILE * 0.26f, OY + TILE * 0.6f,
+                                  TILE * 0.52f, 335.0f * HUD_S - TILE * 0.9f };
+                DrawRectangleRec(bar, Fade(c, 0.10f + 0.10f * pulse));
+                DrawRectangleLinesEx(bar, 2.0f, Fade(c, 0.40f + 0.35f * pulse));
                 continue;
             }
 
@@ -998,36 +984,41 @@ void world_draw(Game *g)
             float hw = 11.4f * HUD_S, hh = 19.2f * HUD_S;
             Rectangle frame = { ex - hw, ey - hh, hw * 2, hh * 2 };
 
-            /* the opening itself */
-            Color jamb = portal ? (Color){ 92, 62, 120, 255 } : (Color){ 96, 74, 48, 255 };
-            Color mouth = portal ? (Color){ 26, 12, 40, 255 } : (Color){ 14, 12, 16, 255 };
-            if (sealed) { jamb = (Color){ 78, 72, 66, 255 }; mouth = (Color){ 20, 19, 18, 255 }; }
-            DrawRectangleRec(frame, mouth);
-            DrawRectangleLinesEx(frame, 3.0f, jamb);
-            /* a lintel across the top so it reads as a door, not a hole */
-            DrawRectangleRec((Rectangle){ frame.x - 4, frame.y - 6, frame.width + 8, 8 },
-                             art_shade(jamb, 1.15f));
-
-            if (portal && !sealed) {
-                /* the gateway shimmers so it is unmistakably not a door */
-                for (int k = 0; k < 3; k++) {
-                    float ph = t * 1.6f + k * 0.7f;
-                    float yy = frame.y + frame.height * (0.15f + 0.7f * (0.5f + 0.5f * sinf(ph)));
-                    DrawRectangle((int)(frame.x + 4), (int)yy, (int)(frame.width - 8), 2,
-                                  Fade((Color){ 186, 140, 255, 255 }, 0.35f));
+            if (portal) {
+                Color jamb  = sealed ? (Color){ 78, 72, 66, 255 } : (Color){ 92, 62, 120, 255 };
+                Color mouth = sealed ? (Color){ 20, 19, 18, 255 } : (Color){ 26, 12, 40, 255 };
+                DrawRectangleRec(frame, mouth);
+                DrawRectangleLinesEx(frame, 3.0f, jamb);
+                DrawRectangleRec((Rectangle){ frame.x - 4, frame.y - 6,
+                                              frame.width + 8, 8 }, art_shade(jamb, 1.15f));
+                if (!sealed) {
+                    for (int k = 0; k < 3; k++) {
+                        float ph = t * 1.6f + k * 0.7f;
+                        float yy = frame.y + frame.height *
+                                   (0.15f + 0.7f * (0.5f + 0.5f * sinf(ph)));
+                        DrawRectangle((int)(frame.x + 4), (int)yy,
+                                      (int)(frame.width - 8), 2,
+                                      Fade((Color){ 186, 140, 255, 255 }, 0.35f));
+                    }
+                    DrawRectangleLinesEx(frame, 1.5f,
+                        Fade((Color){ 186, 140, 255, 255 }, 0.4f + 0.3f * pulse));
+                } else {
+                    ui_text_c("sealed", ex, frame.y + frame.height + 2, 15,
+                              (Color){ 150, 140, 130, 255 });
                 }
-                DrawRectangleLinesEx(frame, 1.5f,
-                                     Fade((Color){ 186, 140, 255, 255 }, 0.4f + 0.3f * pulse));
+            } else {
+                /* a threshold plate, flat on the floor under the archway */
+                Rectangle plate = { frame.x, ey - hh * 0.30f, frame.width, hh * 0.60f };
+                Color c = lit ? (Color){ 120, 224, 255, 255 } : (Color){ 118, 106, 84, 255 };
+                float a2 = lit ? 0.22f + 0.20f * pulse : 0.13f;
+                DrawRectangleRec(plate, Fade(c, a2));
+                DrawRectangleLinesEx(plate, lit ? 2.0f : 1.0f,
+                                     Fade(c, lit ? 0.55f + 0.35f * pulse : 0.28f));
             }
-            if (sealed)
-                ui_text_c("sealed", ex, frame.y + frame.height + 2, 15, (Color){ 150, 140, 130, 255 });
 
             if (lit) {
                 Color glow = portal ? (Color){ 200, 150, 255, 255 }
                                     : (Color){ 120, 224, 255, 255 };
-                DrawRectangleLinesEx((Rectangle){ frame.x - 3, frame.y - 3,
-                                                  frame.width + 6, frame.height + 6 },
-                                     2.5f, Fade(glow, 0.5f + 0.4f * pulse));
                 ui_text_c(portal ? "ENTER  gateway" : "ENTER", ex,
                           frame.y - TILE * 0.62f, 16, Fade(glow, 0.7f + 0.3f * pulse));
             }

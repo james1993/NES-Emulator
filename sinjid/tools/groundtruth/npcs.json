@@ -1,0 +1,206 @@
+[
+ {
+  "room": 0,
+  "name": "Elder",
+  "tx": 16,
+  "ty": 7
+ },
+ {
+  "room": 0,
+  "name": "Healer",
+  "tx": 3,
+  "ty": 5
+ },
+ {
+  "room": 0,
+  "name": "Student",
+  "tx": 6,
+  "ty": 8
+ },
+ {
+  "room": 1,
+  "name": "Food Vendor",
+  "tx": 13,
+  "ty": 4
+ },
+ {
+  "room": 1,
+  "name": "Ninja",
+  "tx": 16,
+  "ty": 9
+ },
+ {
+  "room": 1,
+  "name": "Potion Vendor",
+  "tx": 6,
+  "ty": 4
+ },
+ {
+  "room": 2,
+  "name": "Apprentice",
+  "tx": 4,
+  "ty": 9
+ },
+ {
+  "room": 2,
+  "name": "Guard",
+  "tx": 14,
+  "ty": 5
+ },
+ {
+  "room": 3,
+  "name": "Apprentice",
+  "tx": 7,
+  "ty": 9
+ },
+ {
+  "room": 3,
+  "name": "Item Vendor",
+  "tx": 6,
+  "ty": 4
+ },
+ {
+  "room": 3,
+  "name": "Item Vendor2",
+  "tx": 14,
+  "ty": 10
+ },
+ {
+  "room": 4,
+  "name": "Drinker",
+  "tx": 3,
+  "ty": 10
+ },
+ {
+  "room": 4,
+  "name": "Drinker",
+  "tx": 15,
+  "ty": 5
+ },
+ {
+  "room": 4,
+  "name": "Drunkard",
+  "tx": 8,
+  "ty": 10
+ },
+ {
+  "room": 4,
+  "name": "Ninja",
+  "tx": 4,
+  "ty": 3
+ },
+ {
+  "room": 5,
+  "name": "Apprentice",
+  "tx": 11,
+  "ty": 7
+ },
+ {
+  "room": 5,
+  "name": "Vendor",
+  "tx": 7,
+  "ty": 9
+ },
+ {
+  "room": 5,
+  "name": "Vendor2",
+  "tx": 14,
+  "ty": 4
+ },
+ {
+  "room": 6,
+  "name": "Lady",
+  "tx": 7,
+  "ty": 8
+ },
+ {
+  "room": 6,
+  "name": "Relaxing Ninja",
+  "tx": 15,
+  "ty": 9
+ },
+ {
+  "room": 6,
+  "name": "Scribe",
+  "tx": 5,
+  "ty": 4
+ },
+ {
+  "room": 7,
+  "name": "Statue",
+  "tx": 10,
+  "ty": 5
+ },
+ {
+  "room": 7,
+  "name": "Statue2",
+  "tx": 5,
+  "ty": 5
+ },
+ {
+  "room": 7,
+  "name": "Statue2",
+  "tx": 14,
+  "ty": 5
+ },
+ {
+  "room": 8,
+  "name": "Dark Ninja",
+  "tx": 11,
+  "ty": 9
+ },
+ {
+  "room": 8,
+  "name": "Guard",
+  "tx": 17,
+  "ty": 5
+ },
+ {
+  "room": 8,
+  "name": "Posted Note",
+  "tx": 3,
+  "ty": 2
+ },
+ {
+  "room": 8,
+  "name": "Vendor3",
+  "tx": 10,
+  "ty": 4
+ },
+ {
+  "room": 9,
+  "name": "Dark Ninja",
+  "tx": 4,
+  "ty": 6
+ },
+ {
+  "room": 9,
+  "name": "Meditating Ninja",
+  "tx": 8,
+  "ty": 7
+ },
+ {
+  "room": 10,
+  "name": "Guard",
+  "tx": 13,
+  "ty": 5
+ },
+ {
+  "room": 10,
+  "name": "Shadow",
+  "tx": 17,
+  "ty": 7
+ },
+ {
+  "room": 10,
+  "name": "Vendor4",
+  "tx": 3,
+  "ty": 7
+ },
+ {
+  "room": 10,
+  "name": "Wounded Warrior",
+  "tx": 5,
+  "ty": 4
+ }
+]

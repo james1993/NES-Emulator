@@ -444,6 +444,11 @@ typedef struct {
        index of that exit until you step clear of it. */
     int     exitLock;
     float   exitLockX, exitLockY;   /* where we arrived, for the test below */
+    /* A room change is held until the screen is actually black: the fade has
+       to cover the swap, or the next room is on screen before the wipe. */
+    ZoneId  pendZone;
+    int     pendX, pendY;
+    bool    pendMove;
     Font    font, fontBig;
     bool    fontLoaded;
     /* menus */

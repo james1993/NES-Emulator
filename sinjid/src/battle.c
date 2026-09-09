@@ -284,11 +284,17 @@ static Hit resolve_hit(Battle *b, Combatant *a, Combatant *t, const SkillDef *sk
 
     /* Hit check: the attacker's attack speed rolled against the target's
        speed.  A guarding target is harder to catch. */
-    if (!(sk->flags & SKF_NEVER_MISS)) {
+    /* The original's own check, from its damage function:
+           spdran1 = random(atkspd / 2) + atkspd / 2
+           spdran2 = random(enemytarget.speed / 2)
+           if (nomiss) spdran2 = -1
+       and the blow misses only when spdran2 is strictly greater.  A tie is a
+       hit, and "nomiss" is expressed by putting the defender's roll below
+       every possible attacker roll rather than by skipping the test. */
+    {
         int spdran1 = rnd(0, a->atkSpd / 2) + a->atkSpd / 2;
-        int spdran2 = rnd(0, t->speed / 2);
-        if (t->guarding) spdran2 += t->speed / 4;
-        if (spdran2 >= spdran1) { h.missed = true; return h; }
+        int spdran2 = (sk->flags & SKF_NEVER_MISS) ? -1 : rnd(0, t->speed / 2);
+        if (spdran2 > spdran1) { h.missed = true; return h; }
     }
 
     /* Three damage components, scaled by the skill and any attack buff. */
