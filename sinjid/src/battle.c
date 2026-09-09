@@ -1003,11 +1003,7 @@ void battle_draw(Game *g)
     Battle *b = &g->b;
     Combatant *h = &b->heroes[0];
     float t = g->time;
-    Camera2D cam = { 0 };
-    cam.zoom = 1.0f;
-    cam.offset = (Vector2){ frnd(-1, 1) * b->shake * 9, frnd(-1, 1) * b->shake * 7 };
-
-    BeginMode2D(cam);
+    gfx_shake_begin(frnd(-1, 1) * b->shake * 9, frnd(-1, 1) * b->shake * 7);
     art_draw_battle_bg(b->bgStyle, t);
 
     /* fighters, back row first */
@@ -1026,7 +1022,7 @@ void battle_draw(Game *g)
         c.a = (unsigned char)(255 * (a > 1 ? 1 : a));
         DrawCircleV(p->pos, p->size * (0.4f + a * 0.6f), c);
     }
-    EndMode2D();
+    gfx_shake_end();
 
     /* The target marker sits over the enemy, where the original's pointer clip
        does, rather than on a nameplate. */

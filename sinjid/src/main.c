@@ -580,13 +580,68 @@ static void load_fonts(Game *g)
         "C:/Windows/Fonts/arial.ttf",
     };
     const unsigned n = sizeof paths / sizeof paths[0];
-    if (load_face(paths, n, 32, &g->font)) {
-        if (!load_face(paths, n, 72, &g->fontBig)) g->fontBig = g->font;
+    /* Rasterise the atlases at the device resolution, or the text is the one
+       thing still blown up from 720p. */
+    int small_px = (int)(32.0f * gfx_scale() + 0.5f);
+    int big_px   = (int)(72.0f * gfx_scale() + 0.5f);
+    if (load_face(paths, n, small_px, &g->font)) {
+        if (!load_face(paths, n, big_px, &g->fontBig)) g->fontBig = g->font;
         g->fontLoaded = true;
         return;
     }
     g->font = g->fontBig = GetFontDefault();
     g->fontLoaded = false;
+}
+
+/* --------------------------------------------------------------- render */
+/* One logical pixel is gfx_scale() device pixels.  Every screen is laid out
+   in the 1280x720 logical space; the offscreen buffer is that times the
+   scale, and one camera applies it, so no layout constant changes. */
+static float RENDER_SCALE = 1.0f;
+
+float gfx_scale(void) { return RENDER_SCALE; }
+
+static Camera2D gfx_base_cam(void)
+{
+    Camera2D c = { 0 };
+    c.zoom = RENDER_SCALE;
+    return c;
+}
+
+void gfx_shake_begin(float ox, float oy)
+{
+    Camera2D c = { 0 };
+    c.zoom = RENDER_SCALE;
+    c.offset = (Vector2){ ox * RENDER_SCALE, oy * RENDER_SCALE };
+    BeginMode2D(c);
+}
+
+/* raylib's EndMode2D drops back to the identity matrix, so the plain scale
+   camera has to be put back for whatever is drawn after the shake. */
+void gfx_shake_end(void)
+{
+    EndMode2D();
+    BeginMode2D(gfx_base_cam());
+}
+
+/* How much bigger than 720p to open.  Fills most of the monitor without
+   covering it, on whole steps so text lands on device pixels; SJ_SCALE
+   overrides it for testing. */
+static float pick_render_scale(void)
+{
+    const char *env = getenv("SJ_SCALE");
+    if (env) {
+        float v = (float)atof(env);
+        if (v >= 1.0f && v <= 4.0f) return v;
+    }
+    int mw = GetMonitorWidth(GetCurrentMonitor());
+    int mh = GetMonitorHeight(GetCurrentMonitor());
+    if (mw <= 0 || mh <= 0) return 1.0f;
+    float fit = fminf(mw * 0.92f / SCREEN_W, mh * 0.92f / SCREEN_H);
+    float step = floorf(fit * 2.0f) / 2.0f;      /* whole and half steps */
+    if (step < 1.0f) step = 1.0f;
+    if (step > 4.0f) step = 4.0f;
+    return step;
 }
 
 int main(int argc, char **argv)
@@ -597,6 +652,17 @@ int main(int argc, char **argv)
     InitWindow(SCREEN_W, SCREEN_H, "Sinjid: Shadow of the Warrior -- raylib remake");
     SetTargetFPS(60);
     SetExitKey(0);
+
+    /* The monitor is only known once there is a window, so open at 720p and
+       then grow to the size we actually want. */
+    RENDER_SCALE = pick_render_scale();
+    if (RENDER_SCALE > 1.0f) {
+        int ww = (int)(SCREEN_W * RENDER_SCALE), wh = (int)(SCREEN_H * RENDER_SCALE);
+        SetWindowSize(ww, wh);
+        int mw = GetMonitorWidth(GetCurrentMonitor());
+        int mh = GetMonitorHeight(GetCurrentMonitor());
+        if (mw > ww && mh > wh) SetWindowPosition((mw - ww) / 2, (mh - wh) / 2);
+    }
     load_fonts(&G);
     sound_init();
     data_init_zones(G.zones);
@@ -607,7 +673,8 @@ int main(int argc, char **argv)
     snprintf(G.nameBuf, sizeof G.nameBuf, "Sinjid");
     G.nameLen = 6;
 
-    RenderTexture2D target = LoadRenderTexture(SCREEN_W, SCREEN_H);
+    RenderTexture2D target = LoadRenderTexture((int)(SCREEN_W * RENDER_SCALE),
+                                               (int)(SCREEN_H * RENDER_SCALE));
     SetTextureFilter(target.texture, TEXTURE_FILTER_BILINEAR);
 
     while (!WindowShouldClose()) {
@@ -717,6 +784,7 @@ int main(int argc, char **argv)
         /* --------------------------------------------------------- draw */
         BeginTextureMode(target);
         ClearBackground(C_INK);
+        BeginMode2D(gfx_base_cam());
         switch (G.scene) {
         case SCENE_TITLE:    ui_scene_title(&G); break;
         case SCENE_CREATE:   ui_scene_create(&G); break;
@@ -776,6 +844,7 @@ int main(int argc, char **argv)
         if (G.fade > 0.001f)
             DrawRectangle(0, 0, SCREEN_W, SCREEN_H,
                           (Color){ 0, 0, 0, (unsigned char)(G.fade * 255) });
+        EndMode2D();
         EndTextureMode();
 
         /* Letterboxed scale to whatever the window is. */

@@ -14,6 +14,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/* The logical coordinate space every screen is laid out in.  The window can
+   be larger: the whole frame is rendered into an offscreen buffer of
+   SCREEN_W*gfx_scale() x SCREEN_H*gfx_scale() with the drawing scaled to
+   match, so the procedural art is rasterised at the real device resolution
+   rather than blown up from a 720p image.  Nothing below needs to know. */
 #define SCREEN_W 1280
 #define SCREEN_H 720
 
@@ -522,6 +527,11 @@ void  ui_scene_create(Game *g);
 void  ui_scene_dialog(Game *g);
 void  ui_scene_heal(Game *g);
 void  ui_scene_save(Game *g);
+
+/* ------------------------------------------------------------- rendering */
+float gfx_scale(void);                  /* device pixels per logical pixel  */
+void  gfx_shake_begin(float ox, float oy);  /* world camera, shake included */
+void  gfx_shake_end(void);                  /* back to the plain scale view */
 void  ui_scene_portal(Game *g);
 void  ui_scene_training(Game *g);
 void  ui_toast(Game *g, const char *fmt, ...);
