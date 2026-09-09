@@ -67,7 +67,7 @@ void ui_toast(Game *g, const char *fmt, ...)
 #define HOLD_FRAMES 1
 #define GAP_FRAMES  10
 
-typedef struct { int key, key2; int wait; char shot[64]; bool quit; } ScriptStep;
+typedef struct { int key, key2; int wait; int hold; char shot[64]; bool quit; } ScriptStep;
 static ScriptStep SCRIPT[SCRIPT_MAX];
 static int  scriptLen = 0, scriptAt = 0, scriptFrame = 0;
 static bool scriptOn = false;
@@ -100,7 +100,17 @@ static void script_parse(const char *spec)
         else if (!strncmp(tok, "shot:", 5)) snprintf(st->shot, sizeof st->shot, "%s", tok + 5);
         else if (!strcmp(tok, "quit")) st->quit = true;
         else {
-            /* "up+left" holds both, so a diagonal can be scripted */
+            /* "up:30" holds for 30 frames; "up+left" holds both at once */
+            char tmp[32];
+            const char *colon = strchr(tok, ':');
+            if (colon) {
+                size_t n = (size_t)(colon - tok);
+                if (n >= sizeof tmp) n = sizeof tmp - 1;
+                memcpy(tmp, tok, n); tmp[n] = 0;
+                st->hold = atoi(colon + 1);
+                st->wait = st->hold + 2;
+                tok = tmp;
+            }
             const char *plus = strchr(tok, '+');
             if (plus) {
                 char a[16];
@@ -151,7 +161,7 @@ bool sj_key_down(int key)
     if (scriptAt >= scriptLen) return false;
     ScriptStep *st = &SCRIPT[scriptAt];
     return (st->key == key || (st->key2 && st->key2 == key))
-           && scriptFrame <= HOLD_FRAMES;
+           && scriptFrame <= (st->hold ? st->hold : HOLD_FRAMES);
 }
 
 int sj_char_pressed(void)

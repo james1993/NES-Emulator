@@ -519,27 +519,11 @@ void world_enter_zone(Game *g, ZoneId z, int tx, int ty)
 {
     g->p.zone = z;
     g->p.tx = tx; g->p.ty = ty;
+    g->p.px = tx * 30.0f + 15.0f;    /* cell centre, in the original's px  */
+    g->p.py = ty * 30.0f + 15.0f;
     g->fromX = tx; g->fromY = ty;
     g->moving = false; g->moveT = 0;
     g->stepsSinceFight = 0;
-}
-
-static Npc *npc_at(Zone *z, int tx, int ty)
-{
-    for (int i = 0; i < z->npcCount; i++)
-        if (z->npcs[i].kind != NPC_NONE && z->npcs[i].tx == tx && z->npcs[i].ty == ty)
-            return &z->npcs[i];
-    return NULL;
-}
-
-static bool walkable(Game *g, Zone *z, int tx, int ty)
-{
-    if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H) return false;
-    if (tile_solid(z->tiles[ty][tx])) return false;
-    Npc *n = npc_at(z, tx, ty);
-    if (n && n->kind != NPC_GATE) return false;    /* gates are walk-through */
-    (void)g;
-    return true;
 }
 
 static void roll_encounter(Game *g, Zone *z)
@@ -699,12 +683,34 @@ static void interact(Game *g, Npc *n)
 
 /* The exit trigger under a cell, if any.  Edge exits (ty < 0) span their
    whole column, which is how the original's tall edge clips behave. */
-static const Exit *exit_at(const Zone *z, int tx, int ty)
+/* The original's exit triggers are clips with real area, tested against the
+   player with hitTest, so a way out lights up as you come near it rather than
+   on one exact cell.  Edge triggers are tall strips down their whole column. */
+/* Is the character's footprint blocked at this pixel position?  Cells are 30
+   pixels in the original, and a type-2 cell is impassable. */
+static bool blocked_at(const Zone *z, float px, float py)
+{
+    const float r = 8.0f;                      /* a small body, not a whole cell */
+    const float ox[4] = { -r, r, -r, r }, oy[4] = { -r, -r, r, r };
+    for (int i = 0; i < 4; i++) {
+        int cx = (int)((px + ox[i]) / 30.0f), cy = (int)((py + oy[i]) / 30.0f);
+        if (cx < 0 || cy < 0 || cx >= MAP_W || cy >= MAP_H) return true;
+        if (tile_solid(z->tiles[cy][cx])) return true;
+    }
+    return false;
+}
+
+static const Exit *exit_near(const Zone *z, float px, float py)
 {
     for (int i = 0; i < z->exitCount; i++) {
         const Exit *e = &z->exits[i];
-        if (e->ty < 0) { if (tx == e->tx) return e; }
-        else if (tx == e->tx && ty == e->ty) return e;
+        float ex = e->tx * 30.0f + 15.0f;
+        if (e->ty < 0) {                       /* an edge strip */
+            if (fabsf(px - ex) <= 34.0f) return e;
+        } else {
+            float ey = e->ty * 30.0f + 15.0f;
+            if (fabsf(px - ex) <= 40.0f && fabsf(py - ey) <= 44.0f) return e;
+        }
     }
     return NULL;
 }
@@ -749,68 +755,64 @@ void world_update(Game *g, float dt)
     }
     if (IsKeyPressed(KEY_T)) { g->menuIdx = 0; g->menuTab = 0; go_scene(g, SCENE_TRAIN); return; }
 
-    if (g->moving) {
-        g->moveT += dt * 5.4f;
-        g->walkT += dt;
-        if (g->moveT >= 1.0f) {
-            g->moving = false;
-            g->moveT = 0;
-            /* stepping onto a gate tile travels immediately */
-            Npc *n = npc_at(z, p->tx, p->ty);
-            if (n && n->kind == NPC_GATE) { interact(g, n); return; }
-            roll_encounter(g, z);
-        }
-        return;
-    }
+    /* Movement is free, not tile-stepped.  The original runs an onEnterFrame
+       that walks the character by game.speed pixels: 6 a frame while energy
+       lasts and 4 once it is spent, at 24fps, so 144 and 96 pixels a second.
+       Each axis is read on its own chain, which is what makes a diagonal work. */
+    Combatant cc;
+    player_recalc(p, &cc);
+    float speed = (p->curEnergy > 0 ? 144.0f : 96.0f) * dt;
 
-    /* Both axes are read independently, so holding two arrows walks a
-       diagonal as the original does.  Facing follows the horizontal key when
-       one is held, since that is what the puppet has a pose for. */
-    int dx = 0, dy = 0;
-    if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) dy = -1;
-    if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) dy = (dy == -1) ? 0 : 1;
-    if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) dx = -1;
-    if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) dx = (dx == -1) ? 0 : 1;
-    if (dx < 0)      p->dir = 2;
-    else if (dx > 0) p->dir = 3;
-    else if (dy < 0) p->dir = 0;
-    else if (dy > 0) p->dir = 1;
+    float vx = 0, vy = 0;
+    if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D))     vx =  1;
+    else if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) vx = -1;
+    if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W))        vy = -1;
+    else if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) vy =  1;
+
+    if (vx < 0)      p->dir = 2;
+    else if (vx > 0) p->dir = 3;
+    else if (vy < 0) p->dir = 0;
+    else if (vy > 0) p->dir = 1;
 
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-        const int ddx[4] = { 0, 0, -1, 1 }, ddy[4] = { -1, 1, 0, 0 };
-        /* The original tests the player against the character's clip, which
-           is bigger than one cell, so a vendor standing behind a counter is
-           still reachable.  Look one cell ahead, then the one past it. */
-        Npc *n = npc_at(z, p->tx + ddx[p->dir], p->ty + ddy[p->dir]);
-        if (!n) n = npc_at(z, p->tx + ddx[p->dir] * 2, p->ty + ddy[p->dir] * 2);
-        if (!n) n = npc_at(z, p->tx, p->ty);
-        if (n) { interact(g, n); return; }
-        const Exit *e = exit_at(z, p->tx, p->ty);
+        /* The original tests the player against the character's clip, so
+           reach is a radius rather than the next cell along. */
+        Npc *best = NULL; float bestD = 46.0f;
+        for (int i = 0; i < z->npcCount; i++) {
+            Npc *n = &z->npcs[i];
+            if (n->kind == NPC_NONE) continue;
+            float dx2 = (n->tx * 30.0f + 15.0f) - p->px;
+            float dy2 = (n->ty * 30.0f + 15.0f) - p->py;
+            float d = sqrtf(dx2 * dx2 + dy2 * dy2);
+            if (d < bestD) { bestD = d; best = n; }
+        }
+        if (best) { interact(g, best); return; }
+        const Exit *e = exit_near(z, p->px, p->py);
         if (e) { take_exit(g, e); return; }
     }
 
-    if (dx || dy) {
-        /* Take the diagonal when it is clear; when it is not, slide along
-           whichever single axis still is, so a corner does not stop you dead. */
-        int nx = p->tx + dx, ny = p->ty + dy;
-        if (!(dx && dy && walkable(g, z, nx, ny))) {
-            if (dx && dy) {
-                if (walkable(g, z, p->tx + dx, p->ty))      { nx = p->tx + dx; ny = p->ty; }
-                else if (walkable(g, z, p->tx, p->ty + dy)) { nx = p->tx;      ny = p->ty + dy; }
-            }
-        }
-        if (walkable(g, z, nx, ny)) {
-            g->fromX = p->tx; g->fromY = p->ty;
-            p->tx = nx; p->ty = ny;
-            g->moving = true;
-            g->moveT = 0;
-            sound_play(SFX_STEP);
-        } else {
-            g->walkT += dt;   /* keep the legs moving while pushing a wall */
-        }
+    if (vx || vy) {
+        if (vx && vy) { vx *= 0.7071f; vy *= 0.7071f; }   /* even diagonal pace */
+        float nx = p->px + vx * speed, ny = p->py + vy * speed;
+        /* Collide per axis so a wall is slid along rather than stuck on. */
+        if (!blocked_at(z, nx, p->py)) p->px = nx;
+        if (!blocked_at(z, p->px, ny)) p->py = ny;
+        if (p->px < 6)   p->px = 6;
+        if (p->py < 6)   p->py = 6;
+        if (p->px > MAP_W * 30 - 6) p->px = MAP_W * 30 - 6;
+        if (p->py > MAP_H * 30 - 6) p->py = MAP_H * 30 - 6;
+        g->walkT += dt;
+        g->stepsSinceFight++;
+        if ((g->stepsSinceFight % 24) == 0) roll_encounter(g, z);
     } else {
         g->walkT = 0;
     }
+    p->tx = (int)(p->px / 30.0f);
+    p->ty = (int)(p->py / 30.0f);
+    if (p->tx < 0) p->tx = 0;
+    if (p->ty < 0) p->ty = 0;
+    if (p->tx >= MAP_W) p->tx = MAP_W - 1;
+    if (p->ty >= MAP_H) p->ty = MAP_H - 1;
 }
 
 /* ------------------------------------------------------------------ draw */
@@ -865,7 +867,7 @@ void world_draw(Game *g)
     /* The original lights the exit trigger under your feet, so a way out is
        visible rather than something you only find by pressing space on it. */
     {
-        const Exit *e = exit_at(z, p->tx, p->ty);
+        const Exit *e = exit_near(z, p->px, p->py);
         if (e) {
             float cx = OX + p->tx * TILE + TILE * 0.5f;
             float cy = OY + p->ty * TILE + TILE * 0.72f;

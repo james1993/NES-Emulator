@@ -358,7 +358,8 @@ typedef struct {
     int       equip[SLOT_COUNT];   /* index into item table, -1 = empty     */
     Look      look;
     ZoneId    zone;
-    int       tx, ty, dir;
+    float     px, py;        /* position in the original's pixel space     */
+    int       tx, ty, dir;   /* the cell that position falls in            */
     int       curLife, curMana, curEnergy;  /* carried between fights     */
     ZoneId    saveZone; int saveX, saveY;
     int       arenaWave;

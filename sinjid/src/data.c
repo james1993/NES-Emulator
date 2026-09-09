@@ -464,11 +464,11 @@ void data_class_base(Player *p, ClassId c)
 }
 
 /* Shop stock (indices into ITEMS). */
-static const int SHOP_GOODS[]  = { 63,64,65,66,67,62, -1 };
+static const int SHOP_GOODS[]  = { 63,64,65,66,67, -1 };
 /* Mendo's Ring is a quest item, not stock: the Meditating Ninja gives exactly
    one, and the offering stone pays a skill point for each one handed over, so
    letting a merchant sell them would make skill points farmable. */
-static const int SHOP_RELIC[]  = { 62,63,66, -1 };
+static const int SHOP_RELIC[]  = { 63,66, -1 };
 
 /* The original's six equipment screens, Items_0 through Items_5, recovered
    from the stock each one assigns.  Its interface clip has a separate frame
