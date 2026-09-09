@@ -663,22 +663,15 @@ static void interact(Game *g, Npc *n)
         g->healSel = 0;
         go_panel(g, SCENE_HEAL);
         break;
-    case NPC_SAVE: {
-        Combatant c;
-        player_recalc(p, &c);
-        if (p->rests <= 0) {
-            ui_toast(g, "You have no rests left. The shrine only gives so much.");
-            break;
-        }
-        p->rests--;
-        p->curLife = c.lifeMax;
-        p->curMana = c.manaMax;
-        p->curEnergy = c.engMax;
-        p->saveZone = p->zone; p->saveX = p->tx; p->saveY = p->ty;
-        if (save_write(g)) { g->hasSave = true;
-            ui_toast(g, "Rested and saved. %d rests left.", p->rests); }
-        else ui_toast(g, "The shrine is silent. (save failed)");
-    } break;
+    case NPC_SAVE:
+        /* The Elder's inventorytype is "Save": the original raises a panel
+           with your character sheet and two separate buttons -- saving the
+           game, which is free, and resting, which spends one of your rests.
+           It does neither the moment you walk up. */
+        g->saveSel = 0;
+        g->savedFlash = 0.0f;
+        go_panel(g, SCENE_SAVE);
+        break;
     case NPC_ARENA: {
         int wave = p->arenaWave;
         int defs[MAX_FOES];

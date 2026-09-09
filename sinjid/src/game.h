@@ -81,7 +81,8 @@ enum { SHOP_ITEMS0, SHOP_ITEMS1, SHOP_ITEMS2, SHOP_ITEMS3, SHOP_ITEMS4,
 typedef enum {
     SCENE_TITLE, SCENE_CREATE, SCENE_VILLAGE, SCENE_WORLD, SCENE_BATTLE,
     SCENE_MENU, SCENE_SHOP, SCENE_TRAIN, SCENE_ARENA, SCENE_DIALOG,
-    SCENE_GAMEOVER, SCENE_CREDITS, SCENE_PORTAL, SCENE_TRAINING, SCENE_HEAL
+    SCENE_GAMEOVER, SCENE_CREDITS, SCENE_PORTAL, SCENE_TRAINING, SCENE_HEAL,
+    SCENE_SAVE
 } Scene;
 
 /* The original runs three portals of stages -- HUMAN, MONSTER and DARK -- each
@@ -445,6 +446,8 @@ typedef struct {
     int     shopIdx, shopMode, shopVendor;
     int     dialogNpc;
     int     healSel;      /* the Heal panel's cursor: 0 = accept, 1 = leave */
+    int     saveSel;      /* the Save panel's cursor: 0 = save, 1 = rest      */
+    float   savedFlash;   /* the original's "saved" confirmation clip         */
     char    toast[96];
     float   toastT;
     int     createIdx, createField;
@@ -508,6 +511,7 @@ void  ui_scene_title(Game *g);
 void  ui_scene_create(Game *g);
 void  ui_scene_dialog(Game *g);
 void  ui_scene_heal(Game *g);
+void  ui_scene_save(Game *g);
 void  ui_scene_portal(Game *g);
 void  ui_scene_training(Game *g);
 void  ui_toast(Game *g, const char *fmt, ...);

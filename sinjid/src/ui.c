@@ -661,6 +661,214 @@ void ui_scene_dialog(Game *g)
     ui_text("ENTER to close", box.x + box.width - 160, box.y + box.height - 30, 17, C_GOLD);
 }
 
+/* ---------------------------------------------------------------- save */
+
+/* The Elder's panel (the interface clip's "Save" frame).  It is a character
+   sheet with two action plates down the left: one saves the game, which costs
+   nothing, and one rests -- refilling life, mana and energy -- which spends
+   one of the rests you carry.  The original keeps those separate; walking up
+   to him does neither on its own.  Coordinates below are the clip's own, as
+   extracted into tools/groundtruth/save_layout.json, mapped through PX/PY:
+   the clip sits at (287.85, 223.55) on the 600-wide stage and is placed at
+   0.85 scale, and the stage maps onto ours at 1.6. */
+#define PSC      0.85f
+#define PX(v)    (160.0f + (287.85f + (v) * PSC) * 1.6f)
+#define PY(v)    ((223.55f + (v) * PSC) * 1.6f)
+#define PW(v)    ((v) * PSC * 1.6f)
+
+static void sheet_bar(float x0, float x1, float y, float frac, Color hi, Color lo)
+{
+    Rectangle r = { PX(x0), PY(y) - PW(4.0f), PX(x1) - PX(x0), PW(8.0f) };
+    DrawRectangleRec(r, (Color){ 26, 24, 22, 255 });
+    if (frac > 0) {
+        if (frac > 1) frac = 1;
+        DrawRectangleGradientV((int)(r.x + 1), (int)(r.y + 1),
+                               (int)((r.width - 2) * frac), (int)(r.height - 2), hi, lo);
+    }
+    DrawRectangleLinesEx(r, 1, (Color){ 180, 168, 150, 110 });
+}
+
+static void sheet_num(const char *label, float lx, float vx, float y,
+                      int cur, int max, Color col)
+{
+    char b[32];
+    if (label) ui_text(label, PX(lx), PY(y) - PW(9.0f), 15, C_PARCH2);
+    snprintf(b, sizeof b, "%d", cur);
+    ui_text(b, PX(vx), PY(y) - PW(9.0f), 16, col);
+    if (max >= 0) {
+        snprintf(b, sizeof b, "/ %d", max);
+        ui_text(b, PX(vx + 44.3f), PY(y) - PW(9.0f), 16, C_PARCH2);
+    }
+}
+
+static void action_plate(Rectangle r, const char *title, const char *body,
+                         const char *btn, bool sel, bool enabled)
+{
+    DrawRectangleRec(r, (Color){ 38, 33, 28, 255 });
+    DrawRectangleLinesEx(r, sel ? 2.5f : 1.5f, sel ? C_GOLD : (Color){ 115, 89, 66, 255 });
+    ui_text(title, r.x + 12, r.y + 8, 19, enabled ? C_GOLD : (Color){ 120, 108, 92, 255 });
+    /* the blurb, wrapped by hand */
+    char line[80]; int li = 0, ly = 0;
+    for (const char *q = body;; q++) {
+        if (*q == 0 || *q == '\n' || (li > 30 && *q == ' ')) {
+            line[li] = 0;
+            ui_text(line, r.x + 12, r.y + 34 + ly * 20, 16, C_PARCH2);
+            ly++; li = 0;
+            if (*q == 0) break;
+            continue;
+        }
+        if (li < 78) line[li++] = *q;
+    }
+    Rectangle b = { r.x + 12, r.y + r.height - 34, r.width - 24, 26 };
+    DrawRectangleRounded(b, 0.3f, 6, sel && enabled ? (Color){ 72, 60, 40, 250 }
+                                                    : (Color){ 28, 25, 22, 230 });
+    DrawRectangleRoundedLines(b, 0.3f, 6,
+                              enabled ? (sel ? C_GOLD : (Color){ 92, 78, 52, 255 })
+                                      : (Color){ 60, 54, 48, 255 });
+    ui_text_c(btn, b.x + b.width * 0.5f, b.y + 4, 17,
+              enabled ? (sel ? C_PARCH : C_PARCH2) : (Color){ 100, 92, 84, 255 });
+}
+
+void ui_scene_save(Game *g)
+{
+    Player *p = &g->p;
+    Combatant c;
+    player_recalc(p, &c);
+    bool canRest = p->rests > 0;
+
+    if (g->savedFlash > 0) g->savedFlash -= GetFrameTime();
+
+    if (ui_input_ready(g)) {
+        if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W) ||
+            IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) g->saveSel ^= 1;
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            go_panel(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
+            return;
+        }
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+            if (g->saveSel == 0) {
+                p->saveZone = p->zone; p->saveX = p->tx; p->saveY = p->ty;
+                if (save_write(g)) { g->hasSave = true; g->savedFlash = 1.4f; }
+                else ui_toast(g, "The shrine is silent. (save failed)");
+            } else if (canRest) {
+                p->rests--;
+                p->curLife = c.lifeMax;
+                p->curMana = c.manaMax;
+                p->curEnergy = c.engMax;
+                sound_play(SFX_HEAL);
+                ui_toast(g, "Rested. %d rests left.", p->rests);
+            } else {
+                ui_toast(g, "You have no rests left.");
+            }
+        }
+    }
+
+    /* ---- the character sheet on the right ---- */
+    Rectangle sheet = { PX(36.0f), PY(-180.2f), PX(322.8f) - PX(36.0f),
+                        PY(232.1f) - PY(-180.2f) };
+    DrawRectangleRec(sheet, (Color){ 30, 27, 24, 255 });
+    DrawRectangleLinesEx(sheet, 2, (Color){ 115, 89, 66, 255 });
+
+    /* The original's name field starts at x=127 and is drawn over the portrait
+       plate at 156.9.  Ours is opaque, so right-align the name to finish just
+       before the plate rather than run under it. */
+    ui_text(p->name, PX(154.0f) - ui_text_w(p->name, 19), PY(-151.2f) - PW(9.0f),
+            19, C_GOLD);
+
+    /* portrait, class and level */
+    {
+        Rectangle pr = { PX(156.9f), PY(-208.3f), PX(218.8f) - PX(156.9f),
+                         PY(-150.0f) - PY(-208.3f) };
+        DrawRectangleRec(pr, (Color){ 22, 20, 18, 255 });
+        BeginScissorMode((int)pr.x + 1, (int)pr.y + 1, (int)pr.width - 2, (int)pr.height - 2);
+        Combatant t = c;
+        t.anim = ANIM_STAND; t.animT = 0;
+        art_draw_puppet(&t, (Vector2){ pr.x + pr.width * 0.5f, pr.y + pr.height * 1.22f },
+                        1.0f, 0.0f, 1.30f);
+        EndScissorMode();
+        DrawRectangleLinesEx(pr, 1.5f, (Color){ 115, 89, 66, 255 });
+    }
+    ui_text(CLASS_NAMES[p->cls], PX(94.5f), PY(-101.8f) - PW(9.0f), 17, C_PARCH);
+    {
+        char lv[24];
+        snprintf(lv, sizeof lv, "Level %d", p->level);
+        ui_text(lv, PX(225.4f), PY(-100.5f) - PW(9.0f), 17, (Color){ 0, 204, 255, 255 });
+    }
+
+    /* life / mana / energy, each a bar with its numbers to the right */
+    sheet_bar(93.0f, 231.2f, -68.3f, c.lifeMax ? (float)p->curLife / c.lifeMax : 0,
+              (Color){ 21, 202, 21, 255 }, (Color){ 15, 124, 14, 255 });
+    sheet_num("Life", 46.0f, 237.6f, -73.0f, p->curLife, c.lifeMax, (Color){ 36, 224, 36, 255 });
+    sheet_bar(93.0f, 231.2f, -46.6f, c.manaMax ? (float)p->curMana / c.manaMax : 0,
+              (Color){ 37, 149, 186, 255 }, (Color){ 26, 77, 113, 255 });
+    sheet_num("Mana", 46.0f, 237.6f, -49.3f, p->curMana, c.manaMax, (Color){ 4, 204, 254, 255 });
+    sheet_bar(93.0f, 231.2f, -24.2f, c.engMax ? (float)p->curEnergy / c.engMax : 0,
+              (Color){ 214, 172, 60, 255 }, (Color){ 128, 100, 30, 255 });
+    sheet_num("Eng", 46.0f, 237.6f, -25.2f, p->curEnergy, c.engMax, C_GOLD);
+
+    /* the two stat columns */
+    {
+        const char *LN[4] = { "Phys dmg", "Magic dmg", "Phys def", "Magic def" };
+        const int   LV[4] = { c.phyDmg, c.magDmg, c.phyDef, c.magDef };
+        const float LY[4] = { 9.8f, 27.4f, 43.5f, 61.1f };
+        const char *RN[4] = { "Strength", "Speed", "Max life", "Max mana" };
+        const int   RV[4] = { c.str, c.speed, c.lifeMax, c.manaMax };
+        char b[24];
+        for (int i = 0; i < 4; i++) {
+            ui_text(LN[i], PX(44.0f), PY(LY[i]) - PW(2.0f), 15, C_PARCH2);
+            snprintf(b, sizeof b, "%d", LV[i]);
+            ui_text(b, PX(146.3f), PY(LY[i]) - PW(2.0f), 16, C_PARCH);
+            ui_text(RN[i], PX(194.9f), PY(LY[i]) - PW(2.0f), 15, C_PARCH2);
+            snprintf(b, sizeof b, "%d", RV[i]);
+            ui_text(b, PX(277.3f), PY(LY[i]) - PW(2.0f), 16, C_PARCH);
+        }
+    }
+
+    /* purse and potions */
+    {
+        char b[32];
+        ui_text("Gold", PX(48.4f), PY(97.5f) - PW(9.0f), 16, C_PARCH2);
+        snprintf(b, sizeof b, "%d", p->gold);
+        ui_text(b, PX(126.8f), PY(97.5f) - PW(9.0f), 17, C_GOLD);
+        Rectangle lp = { PX(208.1f), PY(109.9f), PW(18.1f), PW(21.0f) };
+        Rectangle mp = { PX(208.5f), PY(149.6f), PW(18.1f), PW(21.0f) };
+        DrawCircle((int)(lp.x + lp.width * 0.5f), (int)(lp.y + lp.height * 0.6f),
+                   lp.width * 0.42f, (Color){ 190, 48, 48, 255 });
+        DrawCircle((int)(mp.x + mp.width * 0.5f), (int)(mp.y + mp.height * 0.6f),
+                   mp.width * 0.42f, (Color){ 46, 132, 190, 255 });
+        snprintf(b, sizeof b, "x %d", p->lifePots);
+        ui_text(b, PX(238.2f), PY(112.2f), 17, C_PARCH);
+        snprintf(b, sizeof b, "x %d", p->manaPots);
+        ui_text(b, PX(238.6f), PY(151.7f), 17, C_PARCH);
+    }
+
+    /* ---- the two action plates on the left ---- */
+    {
+        Rectangle a = { PX(-295.0f), PY(-155.2f), PX(-9.9f) - PX(-295.0f),
+                        PY(-37.7f) - PY(-155.2f) };
+        Rectangle r = { PX(-295.0f), PY(6.8f), PX(-9.9f) - PX(-295.0f),
+                        PY(124.3f) - PY(6.8f) };
+        action_plate(a, "Save", "Saves the game.", "Save game",
+                     g->saveSel == 0, true);
+        char rl[64];
+        snprintf(rl, sizeof rl, "Completely fills up mana, life, and energy.\n"
+                                "Rests Remaining: %d", p->rests);
+        action_plate(r, "Rest", rl, canRest ? "Rest" : "No rests left",
+                     g->saveSel == 1, canRest);
+    }
+
+    ui_text_c("ENTER choose   ESC leave", (sheet.x + sheet.width * 0.5f),
+             sheet.y + sheet.height - PW(24.0f), 17, C_GOLD);
+
+    /* the original flashes a "saved" clip over the whole panel */
+    if (g->savedFlash > 0) {
+        float a = g->savedFlash > 1.0f ? 1.0f : g->savedFlash;
+        DrawRectangle(0, (int)PY(-40.0f), SCREEN_W, (int)PW(70.0f),
+                      Fade((Color){ 12, 10, 14, 255 }, 0.82f * a));
+        ui_text_c("SAVED", (float)SCREEN_W / 2, PY(-30.0f), 44, Fade(C_GOLD, a));
+    }
+}
+
 /* The Healer opens an interface rather than taking your gold on contact:
    the original's clip sets inventorytype = "Heal" and does
    _root.inventory.gotoAndStop(inventorytype) with _root.pause = true, so

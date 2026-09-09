@@ -1,0 +1,30 @@
+{
+ "_note": "The Elder's panel -- frame 16 (\"Save\") of the original's interface clip 1458, whose npc_panels.json inventorytype for the Elder is \"Save\". Coordinates are the clip's own space; the clip is placed on the 600x470 stage at (287.85, 223.55) with scale 0.85.",
+ "clipOrigin": [287.85, 223.55],
+ "clipScale": 0.85,
+ "actions": [
+  {"name": "Save", "plate": [-295.0, -9.9, -155.2, -37.7],
+   "text": "Saves the game.", "textAt": [-283.9, -106.9], "button": [-211.0, -121.05]},
+  {"name": "Rest", "plate": [-295.0, -9.9, 6.8, 124.3],
+   "text": "Completely fills up mana, life, and energy.", "textAt": [-281.6, 67.2],
+   "restsLabel": [-281.9, 51.6], "restsValue": [-167.6, 52.8], "button": [-218.15, 38.25]}
+ ],
+ "sheet": [36.0, 322.8, -180.2, 232.1],
+ "portrait": [156.9, 218.8, -208.3, -150.0],
+ "playerName": [127.0, -151.2],
+ "className": [94.5, -101.8],
+ "level": [268.7, -100.5],
+ "bars": [
+  {"var": "life",   "x": [93.0, 231.2], "y": -68.3, "cur": [237.6, -79.0], "max": [281.9, -78.7]},
+  {"var": "mana",   "x": [93.0, 231.2], "y": -46.6, "cur": [237.6, -55.3], "max": [281.9, -55.2]},
+  {"var": "energy", "x": [93.0, 231.2], "y": -24.2, "cur": [237.6, -31.2], "max": [281.9, -30.9]}
+ ],
+ "statsLeft":  {"labelX": 24.9, "valueX": 146.3, "y": [9.8, 27.4, 43.5, 61.1],
+                "vars": ["phydmgb", "magdmgb", "phydefb", "magdefb"]},
+ "statsRight": {"labelX": 194.9, "valueX": 277.3, "y": [9.8, 26.5, 44.4, 61.1],
+                "vars": ["strb", "speedb", "lifemaxb", "manamaxb"]},
+ "gold": [126.8, 97.5],
+ "lifePots": {"icon": [208.1, 226.2, 109.9, 130.9], "count": [238.2, 112.2]},
+ "manaPots": {"icon": [208.5, 226.6, 149.6, 170.6], "count": [238.6, 151.7]},
+ "savedOverlay": [-380.3, 375.6, -276.5, 269.5]
+}

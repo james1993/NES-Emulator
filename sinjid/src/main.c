@@ -676,6 +676,7 @@ int main(int argc, char **argv)
         case SCENE_TRAINING:
         case SCENE_DIALOG:
         case SCENE_HEAL:
+        case SCENE_SAVE:
             /* handled inside their draw/update helpers in ui.c            */
             break;
 
@@ -709,6 +710,7 @@ int main(int argc, char **argv)
         case SCENE_TRAIN:    world_draw(&G); ui_scene_train(&G); break;
         case SCENE_DIALOG:   world_draw(&G); ui_scene_dialog(&G); break;
         case SCENE_HEAL:     world_draw(&G); ui_scene_heal(&G); break;
+        case SCENE_SAVE:     world_draw(&G); ui_scene_save(&G); break;
         case SCENE_PORTAL:   ui_scene_portal(&G); break;
         case SCENE_TRAINING: world_draw(&G); ui_scene_training(&G); break;
         case SCENE_GAMEOVER: {

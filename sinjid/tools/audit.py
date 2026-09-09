@@ -408,6 +408,38 @@ for tag, val in (("hero life bar", st['hero']['lifeBarCx']),
 check('battle', ("%.1ff" % st['barSlot'][0]) in bat and ("%.1ff" % st['barSlot'][1]) in bat,
       "bar slots should be %gx%g" % tuple(st['barSlot']))
 
+# ---- the Elder's save panel -------------------------------------------
+sv = gt('save_layout.json')
+npcp = gt('npc_panels.json')
+check('save', npcp.get('Elder') == 'Save',
+      "the Elder's panel type ours=%s theirs=Save" % npcp.get('Elder'))
+check('save', 'SCENE_SAVE' in hdr and 'ui_scene_save' in ui,
+      "talking to the Elder should raise a panel, not act on contact")
+wl = SRC('world.c')
+check('save', 'go_panel(g, SCENE_SAVE)' in wl,
+      "NPC_SAVE should open the panel")
+check('save', 'p->rests--' not in wl,
+      "resting is the panel's own button, not something walking up does")
+# the panel carries both of the original's actions, separately
+check('save', 'save_write(g)' in ui, "the panel should hold the save action")
+check('save', 'p->rests--' in ui, "the panel should hold the rest action")
+check('save', ('%.2ff' % sv['clipScale']) in ui,
+      "the interface clip is placed at %.2f scale" % sv['clipScale'])
+for a in sv['actions']:
+    for v in a['plate']:
+        check('save', ("%.1ff" % v) in ui,
+              "%s plate edge %.1f missing" % (a['name'], v))
+for v in sv['sheet']:
+    check('save', ("%.1ff" % v) in ui, "sheet edge %.1f missing" % v)
+for bar in sv['bars']:
+    check('save', ("%.1ff" % bar['y']) in ui,
+          "%s bar should sit at y=%.1f" % (bar['var'], bar['y']))
+check('save', ("%.1ff" % sv['statsLeft']['valueX']) in ui
+          and ("%.1ff" % sv['statsRight']['labelX']) in ui
+          and ("%.1ff" % sv['statsRight']['valueX']) in ui,
+      "the two stat columns should sit at the original's x")
+check('save', ("%.1ff" % sv['gold'][0]) in ui, "gold should sit at x=%.1f" % sv['gold'][0])
+
 print()
 if not FAIL:
     print("PASS -- deep checks clean too.")
