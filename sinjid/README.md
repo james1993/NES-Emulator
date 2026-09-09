@@ -59,7 +59,7 @@ make RAYLIB=./raylib
 
 | key | action |
 | --- | --- |
-| arrows / WASD | walk, move the cursor |
+| arrows / WASD | walk -- hold two at once to walk a diagonal |
 | ENTER / SPACE | talk, confirm, and **take an exit** when you are standing on one |
 | ESC | back, open the menu |
 | I | character, pack and skills |
@@ -316,7 +316,8 @@ For screenshots and CI the game can play itself:
 ```
 
 Tokens are key names (`up`, `down`, `left`, `right`, `ret`, `esc`, `tab`, single
-letters), `waitN` frames, `shot:name` to write `name.png`, and `quit`. A
+letters, or two joined with `+` such as `up+left` to hold both), `waitN`
+frames, `shot:name` to write `name.png`, and `quit`. A
 movement token is exactly one step at any frame rate. It runs fine under Xvfb
 with software GL; set `SJ_NOFIGHT=1` to suppress random encounters so a scripted
 walk is deterministic.

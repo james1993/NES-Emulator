@@ -109,6 +109,17 @@ The Healer's `inventorytype` is `"Heal"`, so talking to them opens a Heal panel
 and pauses the game; it never deducts gold the moment you walk up. That panel
 is reproduced here.
 
+**The interface is set in Arial.** The original's `DefineFont2` tags name
+`Arial` and Flash's device `_sans`, at regular weight, alongside a pixel face
+and a display face used for its logo. Arial cannot be shipped, so this loads
+Liberation Sans or Arimo, which are metric-compatible with it, and falls back
+through the real Arial on macOS and Windows to DejaVu. It was previously
+DejaVu Sans *Bold*, which sat noticeably heavier than the original.
+
+**Movement is on both axes at once.** Holding two arrows walks a diagonal, as
+the original does; where the diagonal is blocked the step slides along whichever
+axis is still clear rather than stopping dead on a corner.
+
 **The merchant screen is laid out as the original's is.** Its interface clip
 places the pack as `slot4`..`slot11` in two rows of four, the worn gear as
 `slot0`..`slot3` in a small figure below it (head above body, weapon left,

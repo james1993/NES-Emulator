@@ -763,11 +763,18 @@ void world_update(Game *g, float dt)
         return;
     }
 
+    /* Both axes are read independently, so holding two arrows walks a
+       diagonal as the original does.  Facing follows the horizontal key when
+       one is held, since that is what the puppet has a pose for. */
     int dx = 0, dy = 0;
-    if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) { dy = -1; p->dir = 0; }
-    else if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) { dy = 1; p->dir = 1; }
-    else if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) { dx = -1; p->dir = 2; }
-    else if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) { dx = 1; p->dir = 3; }
+    if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) dy = -1;
+    if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) dy = (dy == -1) ? 0 : 1;
+    if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) dx = -1;
+    if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) dx = (dx == -1) ? 0 : 1;
+    if (dx < 0)      p->dir = 2;
+    else if (dx > 0) p->dir = 3;
+    else if (dy < 0) p->dir = 0;
+    else if (dy > 0) p->dir = 1;
 
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
         const int ddx[4] = { 0, 0, -1, 1 }, ddy[4] = { -1, 1, 0, 0 };
@@ -783,7 +790,15 @@ void world_update(Game *g, float dt)
     }
 
     if (dx || dy) {
+        /* Take the diagonal when it is clear; when it is not, slide along
+           whichever single axis still is, so a corner does not stop you dead. */
         int nx = p->tx + dx, ny = p->ty + dy;
+        if (!(dx && dy && walkable(g, z, nx, ny))) {
+            if (dx && dy) {
+                if (walkable(g, z, p->tx + dx, p->ty))      { nx = p->tx + dx; ny = p->ty; }
+                else if (walkable(g, z, p->tx, p->ty + dy)) { nx = p->tx;      ny = p->ty + dy; }
+            }
+        }
         if (walkable(g, z, nx, ny)) {
             g->fromX = p->tx; g->fromY = p->ty;
             p->tx = nx; p->ty = ny;

@@ -67,7 +67,7 @@ void ui_toast(Game *g, const char *fmt, ...)
 #define HOLD_FRAMES 1
 #define GAP_FRAMES  10
 
-typedef struct { int key; int wait; char shot[64]; bool quit; } ScriptStep;
+typedef struct { int key, key2; int wait; char shot[64]; bool quit; } ScriptStep;
 static ScriptStep SCRIPT[SCRIPT_MAX];
 static int  scriptLen = 0, scriptAt = 0, scriptFrame = 0;
 static bool scriptOn = false;
@@ -99,7 +99,18 @@ static void script_parse(const char *spec)
         if (!strncmp(tok, "wait", 4)) st->wait = atoi(tok + 4);
         else if (!strncmp(tok, "shot:", 5)) snprintf(st->shot, sizeof st->shot, "%s", tok + 5);
         else if (!strcmp(tok, "quit")) st->quit = true;
-        else st->key = key_from_name(tok);
+        else {
+            /* "up+left" holds both, so a diagonal can be scripted */
+            const char *plus = strchr(tok, '+');
+            if (plus) {
+                char a[16];
+                size_t n = (size_t)(plus - tok);
+                if (n >= sizeof a) n = sizeof a - 1;
+                memcpy(a, tok, n); a[n] = 0;
+                st->key  = key_from_name(a);
+                st->key2 = key_from_name(plus + 1);
+            } else st->key = key_from_name(tok);
+        }
         scriptLen++;
         tok = strtok(NULL, ",");
     }
@@ -130,7 +141,8 @@ bool sj_key_pressed(int key)
     if (!scriptOn) return IsKeyPressed(key);
     if (scriptAt >= scriptLen) return false;
     ScriptStep *st = &SCRIPT[scriptAt];
-    return st->key == key && scriptFrame == 1;
+    return (st->key == key || (st->key2 && st->key2 == key))
+           && scriptFrame == 1;
 }
 
 bool sj_key_down(int key)
@@ -138,7 +150,8 @@ bool sj_key_down(int key)
     if (!scriptOn) return IsKeyDown(key);
     if (scriptAt >= scriptLen) return false;
     ScriptStep *st = &SCRIPT[scriptAt];
-    return st->key == key && scriptFrame <= HOLD_FRAMES;
+    return (st->key == key || (st->key2 && st->key2 == key))
+           && scriptFrame <= HOLD_FRAMES;
 }
 
 int sj_char_pressed(void)
@@ -499,16 +512,23 @@ bool use_consumable(Game *g, int invIdx, Combatant *on)
 /* --------------------------------------------------------------- startup */
 static void load_fonts(Game *g)
 {
+    /* The original's interface is set in Arial (its DefineFont2 tags name
+       "Arial" and Flash's device "_sans"), at regular weight.  Arial itself
+       cannot be shipped, but Liberation Sans and Arimo are metric-compatible
+       with it and are what a Linux box will usually have, so prefer those and
+       fall back through the real Arial on macOS and Windows to DejaVu. */
     const char *paths[] = {
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
-        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-        "C:/Windows/Fonts/arialbd.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/croscore/Arimo-Regular.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
     };
     for (unsigned i = 0; i < sizeof paths / sizeof paths[0]; i++) {
         if (!FileExists(paths[i])) continue;
-        g->font = LoadFontEx(paths[i], 32, NULL, 0);
+        g->font = LoadFontEx(paths[i], 64, NULL, 0);
         if (g->font.texture.id != 0) {
             SetTextureFilter(g->font.texture, TEXTURE_FILTER_BILINEAR);
             g->fontLoaded = true;
