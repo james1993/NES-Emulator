@@ -426,6 +426,11 @@ typedef struct {
     float   fade;         /* 1 = black                                     */
     int     fadeDir;
     Scene   fadeTarget;
+    /* Panels raise on the same frame the world reads the key that opened
+       them, and they read input from their draw helper -- which runs later
+       in that very frame.  Without a one-frame lock-out the opening ENTER
+       is still down and the panel dismisses itself instantly. */
+    int     inputLock;
     Font    font, fontBig;
     bool    fontLoaded;
     /* menus */

@@ -483,6 +483,7 @@ void go_panel(Game *g, Scene s)
     g->scene = s;
     g->fadeDir = 0;
     g->fade = 0.0f;
+    g->inputLock = 1;
 }
 
 static void update_fade(Game *g, float dt)
@@ -533,32 +534,47 @@ bool use_consumable(Game *g, int invIdx, Combatant *on)
 }
 
 /* --------------------------------------------------------------- startup */
-static void load_fonts(Game *g)
+
+/* Two atlases: the interface draws mostly at 16-24px and occasionally at
+   48-64px, and a single 64px atlas minified down to 16 turns to mush under
+   bilinear filtering -- which is what made the old text hard to read.  Rasterise
+   near the sizes actually used and let ui_text pick. */
+static bool load_face(const char *const *paths, unsigned n, int px, Font *out)
 {
-    /* The original's interface is set in Arial (its DefineFont2 tags name
-       "Arial" and Flash's device "_sans"), and the Arial it embeds is the bold cut.  Arial itself
-       cannot be shipped, but Liberation Sans and Arimo are metric-compatible
-       with it and are what a Linux box will usually have, so prefer those and
-       fall back through the real Arial on macOS and Windows to DejaVu. */
-    const char *paths[] = {
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-        "/usr/share/fonts/liberation-sans/LiberationSans-Bold.ttf",
-        "/usr/share/fonts/truetype/croscore/Arimo-Bold.ttf",
-        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-        "C:/Windows/Fonts/arialbd.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
-    };
-    for (unsigned i = 0; i < sizeof paths / sizeof paths[0]; i++) {
+    for (unsigned i = 0; i < n; i++) {
         if (!FileExists(paths[i])) continue;
-        g->font = LoadFontEx(paths[i], 64, NULL, 0);
-        if (g->font.texture.id != 0) {
-            SetTextureFilter(g->font.texture, TEXTURE_FILTER_BILINEAR);
-            g->fontLoaded = true;
-            return;
+        *out = LoadFontEx(paths[i], px, NULL, 0);
+        if (out->texture.id != 0) {
+            SetTextureFilter(out->texture, TEXTURE_FILTER_BILINEAR);
+            return true;
         }
     }
-    g->font = GetFontDefault();
+    return false;
+}
+
+static void load_fonts(Game *g)
+{
+    /* The original sets its interface in Arial's bold cut.  Arial bold at
+       small sizes on a dark ground closes up its counters and reads badly, so
+       prefer DejaVu Sans -- a screen face with a tall x-height and open
+       apertures -- and fall back through the metric-compatible Arial stand-ins. */
+    static const char *const paths[] = {
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/croscore/Arimo-Regular.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+    };
+    const unsigned n = sizeof paths / sizeof paths[0];
+    if (load_face(paths, n, 32, &g->font)) {
+        if (!load_face(paths, n, 72, &g->fontBig)) g->fontBig = g->font;
+        g->fontLoaded = true;
+        return;
+    }
+    g->font = g->fontBig = GetFontDefault();
     g->fontLoaded = false;
 }
 
@@ -586,6 +602,7 @@ int main(int argc, char **argv)
     while (!WindowShouldClose()) {
         if (script_done()) break;
         script_tick();
+        if (G.inputLock > 0) G.inputLock--;
         float dt = GetFrameTime();
         if (dt > 0.05f) dt = 0.05f;
         G.time += dt;

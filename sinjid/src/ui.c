@@ -13,13 +13,22 @@
 float ui_text_w(const char *s, float size)
 {
     if (G.fontLoaded)
-        return MeasureTextEx(G.font, s, size, size * 0.06f).x;
+        return MeasureTextEx(size > 30 ? G.fontBig : G.font, s, size, size * 0.06f).x;
     return MeasureTextEx(GetFontDefault(), s, size, size * 0.1f).x;
+}
+
+/* Panels never fade, so the guard is the one-frame lock-out set by
+   go_panel plus the usual "not mid-transition" test. */
+static bool ui_input_ready(const Game *g)
+{
+    return g->fadeDir <= 0 && g->inputLock == 0;
 }
 
 void ui_text(const char *s, float x, float y, float size, Color col)
 {
-    if (G.fontLoaded) DrawTextEx(G.font, s, (Vector2){ x, y }, size, size * 0.06f, col);
+    if (G.fontLoaded)
+        DrawTextEx(size > 30 ? G.fontBig : G.font, s, (Vector2){ x, y },
+                   size, size * 0.06f, col);
     else DrawTextEx(GetFontDefault(), s, (Vector2){ x, y }, size, size * 0.1f, col);
 }
 
@@ -126,9 +135,9 @@ void ui_scene_menu(Game *g)
     if (p->curMana < c.manaMax) c.mana = p->curMana;
 
     /* ---- input ---- */
-    if (g->fadeDir <= 0) {
+    if (ui_input_ready(g)) {
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_I)) {
-            go_scene(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
+            go_panel(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
             return;
         }
         if (IsKeyPressed(KEY_TAB) || IsKeyPressed(KEY_E)) { g->menuTab = (g->menuTab + 1) % 3; g->menuIdx = 0; }
@@ -361,9 +370,9 @@ void ui_scene_shop(Game *g)
     int count = g->shopMode ? p->invCount : n;
     if (count < 0) count = 0;
 
-    if (g->fadeDir <= 0) {
+    if (ui_input_ready(g)) {
         if (IsKeyPressed(KEY_ESCAPE)) {
-            go_scene(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
+            go_panel(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
             return;
         }
         if (IsKeyPressed(KEY_TAB)) { g->shopMode = !g->shopMode; g->shopIdx = 0; }
@@ -503,9 +512,9 @@ void ui_scene_train(Game *g)
                         &p->basePhyDef, &p->baseMagDef, &p->baseShdPts, &p->baseSpeed };
     const int STEP[9] = { 30, 20, 1, 5, 5, 2, 2, 20, 2 };
 
-    if (g->fadeDir <= 0) {
+    if (ui_input_ready(g)) {
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_T)) {
-            go_scene(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
+            go_panel(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
             return;
         }
         if (IsKeyPressed(KEY_TAB)) { g->menuTab = !g->menuTab; g->menuIdx = 0; }
@@ -625,17 +634,16 @@ void ui_scene_dialog(Game *g)
 {
     Zone *z = &g->zones[g->p.zone];
     if (g->dialogNpc < 0 || g->dialogNpc >= z->npcCount) {
-        go_scene(g, g->p.zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
+        go_panel(g, g->p.zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
         return;
     }
     Npc *n = &z->npcs[g->dialogNpc];
-    if (g->fadeDir <= 0 && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) ||
-                            IsKeyPressed(KEY_ESCAPE))) {
-        go_scene(g, g->p.zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
+    if (ui_input_ready(g) && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) ||
+                              IsKeyPressed(KEY_ESCAPE))) {
+        go_panel(g, g->p.zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
         return;
     }
-    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 150 });
-    Rectangle box = { 120, SCREEN_H - 250, SCREEN_W - 240, 200 };
+    Rectangle box = { 180, 320, SCREEN_W - 360, 200 };
     ui_panel(box, n->name);
     art_draw_walker(&n->look, (Vector2){ box.x + 80, box.y + 170 }, 1, 0.0f, 0.85f);
     float y = box.y + 52;
@@ -666,13 +674,13 @@ void ui_scene_heal(Game *g)
     bool whole = (p->curLife >= c.lifeMax && p->curMana >= c.manaMax);
     bool afford = p->gold >= cost;
 
-    if (g->fadeDir <= 0) {
+    if (ui_input_ready(g)) {
         if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A) ||
             IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D) ||
             IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN))
             g->healSel ^= 1;
         if (IsKeyPressed(KEY_ESCAPE)) {
-            go_scene(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
+            go_panel(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
             return;
         }
         if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
@@ -687,12 +695,11 @@ void ui_scene_heal(Game *g)
             } else if (g->healSel == 0) {
                 ui_toast(g, "You need %d gold.", cost);
             }
-            go_scene(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
+            go_panel(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
             return;
         }
     }
 
-    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 150 });
     Rectangle box = { 300, 170, SCREEN_W - 600, 300 };
     ui_panel(box, "Healer");
 
@@ -819,8 +826,8 @@ void ui_scene_create(Game *g)
 void ui_scene_portal(Game *g)
 {
     Player *p = &g->p;
-    if (g->fadeDir <= 0) {
-        if (IsKeyPressed(KEY_ESCAPE)) { go_scene(g, SCENE_VILLAGE); return; }
+    if (ui_input_ready(g)) {
+        if (IsKeyPressed(KEY_ESCAPE)) { go_panel(g, SCENE_VILLAGE); return; }
         if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) g->portalIdx = (g->portalIdx + 1) % 3;
         if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) g->portalIdx = (g->portalIdx + 2) % 3;
         if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
@@ -880,8 +887,8 @@ void ui_scene_training(Game *g)
     Combatant c;
     player_recalc(p, &c);
 
-    if (g->fadeDir <= 0) {
-        if (IsKeyPressed(KEY_ESCAPE)) { go_scene(g, SCENE_VILLAGE); return; }
+    if (ui_input_ready(g)) {
+        if (IsKeyPressed(KEY_ESCAPE)) { go_panel(g, SCENE_VILLAGE); return; }
         if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
             if (p->curEnergy <= 0) ui_toast(g, "You have nothing left to burn.");
             else {
