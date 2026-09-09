@@ -116,14 +116,123 @@ void ui_tooltip_item(const ItemDef *it, Rectangle at)
 
 /* ------------------------------------------------------------ inventory */
 
-static const char *SLOT_NAMES[SLOT_COUNT] = { "Weapon", "Shield", "Armour", "Helm", "Relic" };
 
-static void draw_hero_preview(Game *g, Vector2 at, float scale)
+
+/* The interface clip's own space.  Every panel drawn from clip 1458 -- the
+   inventory, the skill tree, the merchant, the Elder's save sheet -- shares
+   it: the clip sits at (287.85, 223.55) on the 600-wide stage at 0.85 scale,
+   and the stage maps onto ours at 1.6. */
+#define PSC      0.85f
+#define PX(v)    (160.0f + (287.85f + (v) * PSC) * 1.6f)
+#define PY(v)    ((223.55f + (v) * PSC) * 1.6f)
+#define PW(v)    ((v) * PSC * 1.6f)
+
+static const char *item_type_name(int t)
 {
-    Combatant c;
-    player_recalc(&g->p, &c);
-    c.anim = ANIM_STAND;
-    art_draw_puppet(&c, at, 1.0f, g->time, scale);
+    switch (t) {
+    case ITEM_WEAPON:     return "Weapon";
+    case ITEM_SHIELD:     return "Shield";
+    case ITEM_ARMOUR:     return "Armour";
+    case ITEM_HELM:       return "Head Gear";
+    case ITEM_RELIC:      return "Relic";
+    case ITEM_CONSUMABLE: return "Drink";
+    default:              return "";
+    }
+}
+
+/* ----------------------------------------------------------- inventory */
+
+/* The interface clip's Inventory frame: an eight-cell pack in two rows of
+   four, the worn gear arranged as a figure below it, the character's stats in
+   two columns on the right, and an explain box above them that reads out
+   whatever cell is under the cursor.  Coordinates are the clip's own, from
+   tools/groundtruth/panels.json, mapped through PX/PY. */
+
+/* pack cells: slot4..slot11 */
+static const float PACK_X[4] = { -258.0f, -183.0f, -108.0f, -33.0f };
+static const float PACK_Y[2] = { -121.0f, -52.5f };
+/* worn: the original places four -- weapon, armour, shield, helm.  Our fifth
+   (a relic) has no cell of its own there, so it sits under the armour. */
+static const float WORN_XY[SLOT_COUNT][2] = {
+    { -226.2f, 161.1f },   /* SLOT_WEAPON */
+    {  -76.2f, 161.1f },   /* SLOT_SHIELD */
+    { -151.2f, 161.1f },   /* SLOT_ARMOUR */
+    { -151.2f,  84.7f },   /* SLOT_HELM   */
+    {  -76.2f,  84.7f },   /* relic, ours -- the cell the original leaves empty */
+};
+static const char *WORN_LABEL[SLOT_COUNT] =
+    { "Weapon", "Shield", "Armour", "Head Gear", "Relic" };
+
+#define INV_CELL   51.0f
+#define INV_PACK_N 8
+#define INV_N      (INV_PACK_N + SLOT_COUNT)
+
+static Rectangle inv_cell_rect(float cx, float cy)
+{
+    float w = PW(INV_CELL);
+    return (Rectangle){ PX(cx) - w * 0.5f, PY(cy) - w * 0.5f, w, w };
+}
+
+static void inv_cell(Rectangle r, const ItemDef *it, bool sel, bool dim)
+{
+    DrawRectangleRec(r, (Color){ 38, 32, 26, 245 });
+    DrawRectangleLinesEx(r, sel ? 3 : 1, sel ? C_GOLD : (Color){ 92, 78, 52, 255 });
+    if (it) {
+        art_draw_item_icon((int)(it - ITEMS),
+                           (Rectangle){ r.x + 4, r.y + 4, r.width - 8, r.height - 8 });
+        if (dim) DrawRectangleRec(r, Fade(C_INK, 0.45f));
+    }
+}
+
+/* what the cursor is over: a pack entry, a worn slot, or nothing */
+static const ItemDef *inv_focus(Game *g, int idx, int *packSlot, int *wornSlot)
+{
+    Player *p = &g->p;
+    *packSlot = *wornSlot = -1;
+    if (idx < INV_PACK_N) {
+        if (idx >= p->invCount) return NULL;
+        *packSlot = idx;
+        return &ITEMS[p->inv[idx].def];
+    }
+    int w = idx - INV_PACK_N;
+    if (w < 0 || w >= SLOT_COUNT || p->equip[w] < 0) return NULL;
+    *wornSlot = w;
+    return &ITEMS[p->equip[w]];
+}
+
+static void inv_move(Game *g, int dx, int dy)
+{
+    int i = g->menuIdx;
+    if (i < INV_PACK_N) {
+        int col = i % 4, row = i / 4;
+        if (dx) { col = (col + 4 + dx) % 4; }
+        if (dy > 0) { if (row == 1) { g->menuIdx = INV_PACK_N + SLOT_HELM; return; } row = 1; }
+        if (dy < 0) { if (row == 0) { g->menuIdx = INV_PACK_N + SLOT_HELM; return; } row = 0; }
+        g->menuIdx = row * 4 + col;
+        return;
+    }
+    int w = i - INV_PACK_N;
+    if (w == SLOT_HELM) {
+        if (dy > 0) g->menuIdx = INV_PACK_N + SLOT_ARMOUR;
+        else if (dy < 0) g->menuIdx = 4;                  /* pack, lower row */
+        else if (dx > 0) g->menuIdx = INV_PACK_N + SLOT_RELIC;
+        else g->menuIdx = INV_PACK_N + SLOT_WEAPON;
+        return;
+    }
+    if (w == SLOT_ARMOUR) {
+        if (dy < 0) g->menuIdx = INV_PACK_N + SLOT_HELM;
+        else g->menuIdx = INV_PACK_N + (dx > 0 ? SLOT_SHIELD : SLOT_WEAPON);
+        return;
+    }
+    if (w == SLOT_RELIC) {
+        if (dy > 0) g->menuIdx = INV_PACK_N + SLOT_SHIELD;
+        else if (dy < 0) g->menuIdx = 4;
+        else if (dx < 0) g->menuIdx = INV_PACK_N + SLOT_HELM;
+        return;
+    }
+    /* weapon or shield */
+    if (dy < 0) g->menuIdx = INV_PACK_N + SLOT_HELM;
+    else if (dx) g->menuIdx = INV_PACK_N + SLOT_ARMOUR;
 }
 
 void ui_scene_menu(Game *g)
@@ -131,206 +240,146 @@ void ui_scene_menu(Game *g)
     Player *p = &g->p;
     Combatant c;
     player_recalc(p, &c);
-    if (p->curLife > 0 && p->curLife < c.lifeMax) c.life = p->curLife;
-    if (p->curMana < c.manaMax) c.mana = p->curMana;
 
-    /* ---- input ---- */
+    if (g->menuIdx < 0 || g->menuIdx >= INV_N) g->menuIdx = 0;
+
     if (ui_input_ready(g)) {
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_I)) {
             go_panel(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
             return;
         }
-        if (IsKeyPressed(KEY_TAB) || IsKeyPressed(KEY_E)) { g->menuTab = (g->menuTab + 1) % 3; g->menuIdx = 0; }
-        if (IsKeyPressed(KEY_Q)) { g->menuTab = (g->menuTab + 2) % 3; g->menuIdx = 0; }
+        if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) inv_move(g,  1, 0);
+        if (IsKeyPressed(KEY_LEFT)  || IsKeyPressed(KEY_A)) inv_move(g, -1, 0);
+        if (IsKeyPressed(KEY_DOWN)  || IsKeyPressed(KEY_S)) inv_move(g, 0,  1);
+        if (IsKeyPressed(KEY_UP)    || IsKeyPressed(KEY_W)) inv_move(g, 0, -1);
 
-        int n = 0;
-        if (g->menuTab == 0) n = SLOT_COUNT;
-        else if (g->menuTab == 1) n = p->invCount;
-        else n = MAX_SKILLS;
-        if (n > 0) {
-            if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) g->menuIdx = (g->menuIdx + 1) % n;
-            if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) g->menuIdx = (g->menuIdx + n - 1) % n;
-        }
-        if ((IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE))) {
-            if (g->menuTab == 1 && g->menuIdx < p->invCount) {
-                const ItemDef *it = &ITEMS[p->inv[g->menuIdx].def];
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+            int ps, ws;
+            const ItemDef *it = inv_focus(g, g->menuIdx, &ps, &ws);
+            if (it && ps >= 0) {
                 if (it->type == ITEM_CONSUMABLE) {
                     c.life = p->curLife > 0 ? p->curLife : c.lifeMax;
                     c.mana = p->curMana;
-                    if (use_consumable(g, g->menuIdx, &c)) {
+                    if (use_consumable(g, ps, &c)) {
                         p->curLife = c.life;
                         p->curMana = c.mana;
                     }
-                } else if (!player_can_equip(p, p->inv[g->menuIdx].def)) {
+                } else if (!player_can_equip(p, p->inv[ps].def)) {
                     ui_toast(g, "%s needs %d Strength; you have %d.",
                              it->name, it->strNeed, p->baseStr);
                 } else {
-                    player_equip(p, g->menuIdx);
+                    player_equip(p, ps);
                     ui_toast(g, "Equipped %s.", it->name);
-                    if (g->menuIdx >= p->invCount && g->menuIdx > 0) g->menuIdx--;
                 }
-            } else if (g->menuTab == 0) {
-                int slotId = g->menuIdx;
-                if (p->equip[slotId] >= 0) {
-                    if (player_add_item(p, p->equip[slotId]) >= 0) {
-                        ui_toast(g, "Removed %s.", ITEMS[p->equip[slotId]].name);
-                        p->equip[slotId] = -1;
-                    } else ui_toast(g, "No room in the pack.");
-                }
+            } else if (it && ws >= 0) {
+                if (player_add_item(p, p->equip[ws]) >= 0) {
+                    ui_toast(g, "Removed %s.", it->name);
+                    p->equip[ws] = -1;
+                } else ui_toast(g, "No room in the pack.");
+            }
+            player_recalc(p, &c);
+        }
+    }
+
+    /* ---- the panel ---- */
+    Rectangle plate = { PX(-298.1f), PY(-200.2f),
+                        PX(322.8f) - PX(-298.1f), PY(232.1f) - PY(-200.2f) };
+    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 170 });
+    DrawRectangleRec(plate, (Color){ 30, 27, 24, 255 });
+    DrawRectangleLinesEx(plate, 2, (Color){ 115, 89, 66, 255 });
+
+    ui_text("Inventory", PX(-223.3f), PY(-188.5f), 21, C_GOLD);
+    ui_text("Equipment", PX(-223.3f), PY(4.5f), 21, C_GOLD);
+
+    int ps, ws;
+    const ItemDef *hov = inv_focus(g, g->menuIdx, &ps, &ws);
+
+    /* the pack, two rows of four */
+    for (int i = 0; i < INV_PACK_N; i++) {
+        Rectangle r = inv_cell_rect(PACK_X[i % 4], PACK_Y[i / 4]);
+        const ItemDef *it = (i < p->invCount) ? &ITEMS[p->inv[i].def] : NULL;
+        inv_cell(r, it, g->menuIdx == i, false);
+        if (it && p->inv[i].count > 1) {
+            char n[8];
+            snprintf(n, sizeof n, "%d", p->inv[i].count);
+            ui_text(n, r.x + r.width - 16, r.y + r.height - 22, 16, C_PARCH);
+        }
+    }
+
+    /* the worn figure */
+    for (int w = 0; w < SLOT_COUNT; w++) {
+        Rectangle r = inv_cell_rect(WORN_XY[w][0], WORN_XY[w][1]);
+        const ItemDef *it = (p->equip[w] >= 0) ? &ITEMS[p->equip[w]] : NULL;
+        inv_cell(r, it, g->menuIdx == INV_PACK_N + w, false);
+        ui_text_c(WORN_LABEL[w], r.x + r.width * 0.5f, r.y + r.height + 2, 15,
+                  g->menuIdx == INV_PACK_N + w ? C_GOLD : C_PARCH2);
+    }
+
+    /* stats, in the original's two columns */
+    {
+        const char *LN[4] = { "Physical Dmg:", "Magical Dmg:", "Physical Def:", "Magical Def:" };
+        const int   LV[4] = { c.phyDmg + c.strDmg, c.magDmg, c.phyDef, c.magDef };
+        const float LY[4] = { 20.0f, 37.5f, 53.8f, 71.3f };
+        const char *RN[4] = { "Strength:", "Speed:", "Max Life:", "Max Mana:" };
+        const int   RV[4] = { c.str, c.speed, c.lifeMax, c.manaMax };
+        const float RY[4] = { 20.0f, 36.7f, 54.6f, 71.3f };
+        char b[32];
+        for (int i = 0; i < 4; i++) {
+            ui_text(LN[i], PX(11.9f),  PY(LY[i]), 16, C_PARCH2);
+            snprintf(b, sizeof b, "%d", LV[i]);
+            ui_text(b,     PX(133.4f), PY(LY[i]), 17, C_PARCH);
+            ui_text(RN[i], PX(182.1f), PY(RY[i]), 16, C_PARCH2);
+            snprintf(b, sizeof b, "%d", RV[i]);
+            ui_text(b,     PX(264.4f), PY(RY[i]), 17, C_PARCH);
+        }
+        snprintf(b, sizeof b, "Level: %d", p->level);   /* b is 24 wide */
+        ui_text(b, PX(27.8f), PY(-7.8f), 18, (Color){ 0, 204, 255, 255 });
+        ui_text(CLASS_NAMES[p->cls], PX(120.0f), PY(-7.8f), 18, C_PARCH);
+        snprintf(b, sizeof b, "%d", p->gold);
+        ui_text("GOLD:", PX(196.0f), PY(205.4f), 17, C_PARCH2);
+        ui_text(b,       PX(262.2f), PY(205.4f), 17, C_GOLD);
+    }
+
+    /* the explain box, reading out the cell under the cursor */
+    {
+        Rectangle eb = { PX(39.7f), PY(-182.8f), PX(300.5f) - PX(39.7f),
+                         PY(-28.8f) - PY(-182.8f) };
+        DrawRectangleRec(eb, (Color){ 22, 20, 18, 255 });
+        DrawRectangleLinesEx(eb, 1.5f, (Color){ 92, 78, 52, 255 });
+        if (!hov) {
+            ui_text("Move the cursor over any item for its detail.",
+                    eb.x + 12, eb.y + 10, 16, C_PARCH2);
+        } else {
+            ui_text(hov->name, eb.x + 12, eb.y + 8, 19, C_GOLD);
+            ui_text(item_type_name(hov->type), eb.x + 12, eb.y + 32, 15, C_PARCH2);
+            float y = eb.y + 54;
+            char b[64];
+            struct { const char *tag; int v; } rows[] = {
+                { "Phys dmg",   hov->phyDmg }, { "Magic dmg",  hov->magDmg },
+                { "Phys def %", hov->phyDef }, { "Magic def",  hov->magDef },
+                { "Shield pts", hov->shdPts }, { "Shd damage", hov->shdDmg },
+                { "Speed",      hov->speed  }, { "Life",       hov->lifeMax },
+                { "Mana",       hov->manaMax },
+            };
+            for (unsigned i = 0; i < sizeof rows / sizeof rows[0]; i++) {
+                if (!rows[i].v) continue;
+                snprintf(b, sizeof b, "%-11s %+d", rows[i].tag, rows[i].v);
+                ui_text(b, eb.x + 12, y, 16, rows[i].v > 0 ? C_JADE : C_BLOOD2);
+                y += 19;
+                if (y > eb.y + eb.height - 34) break;
+            }
+            if (hov->strNeed > 0) {
+                snprintf(b, sizeof b, "Requires %d Strength", hov->strNeed);
+                ui_text(b, eb.x + 12, eb.y + eb.height - 26, 16,
+                        p->baseStr >= hov->strNeed ? C_JADE : C_BLOOD2);
             }
         }
     }
 
-    /* ---- draw ---- */
-    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 205 });
-    const char *tabs[3] = { "CHARACTER", "PACK", "SKILLS" };
-    for (int i = 0; i < 3; i++) {
-        Rectangle r = { 40 + i * 190, 30, 180, 40 };
-        ui_button(r, tabs[i], g->menuTab == i, true);
-    }
-    ui_text("TAB switch    ENTER use/equip    ESC back", 640, 42, 17, C_PARCH2);
-
-    Rectangle left = { 40, 90, 560, 590 };
-    Rectangle right = { 620, 90, 620, 590 };
-
-    if (g->menuTab == 0) {
-        ui_panel(left, "EQUIPMENT");
-        for (int i = 0; i < SLOT_COUNT; i++) {
-            Rectangle r = { left.x + 16, left.y + 46 + i * 52, left.width - 32, 44 };
-            char lab[96];
-            snprintf(lab, sizeof lab, "%-8s %s", SLOT_NAMES[i],
-                     p->equip[i] >= 0 ? ITEMS[p->equip[i]].name : "--");
-            ui_button(r, lab, g->menuIdx == i, true);
-        }
-        float y = left.y + 46 + SLOT_COUNT * 52 + 16;
-        char b[96];
-        snprintf(b, sizeof b, "%s   Level %d   %s", p->name, p->level, CLASS_NAMES[p->cls]);
-        ui_text(b, left.x + 16, y, 22, C_GOLD); y += 34;
-        snprintf(b, sizeof b, "Experience %d / %d", p->exp, p->expNext);
-        ui_text(b, left.x + 16, y, 18, C_PARCH2); y += 26;
-        snprintf(b, sizeof b, "Gold %d", p->gold);
-        ui_text(b, left.x + 16, y, 18, C_GOLD); y += 26;
-        if (p->statPts || p->skillPts) {
-            snprintf(b, sizeof b, "Unspent: %d stat, %d skill  (T at the trainer)",
-                     p->statPts, p->skillPts);
-            ui_text(b, left.x + 16, y, 18, C_JADE);
-        }
-
-        ui_panel(right, "STATISTICS");
-        struct { const char *tag; int v; int pct; } st[] = {
-            { "Life",             c.lifeMax,   0 },
-            { "Mana",             c.manaMax,   0 },
-            { "Strength:",         c.str,       0 },
-            { "Weapon damage",    c.phyDmg,    0 },
-            { "Strength damage",  c.strDmg,    0 },
-            { "Magic damage",     c.magDmg,    0 },
-            { "Physical defence", c.phyDef,    1 },
-            { "Magic defence",    c.magDef,    1 },
-            { "Shield points",    c.shdMax,    0 },
-            { "Shield p.defence", c.shdPhyDef, 1 },
-            { "Shield m.defence", c.shdMagDef, 1 },
-            { "Shield damage",    c.shdDmg,    0 },
-            { "Speed:",            c.speed,     0 },
-        };
-        for (unsigned i = 0; i < sizeof st / sizeof st[0]; i++) {
-            char b2[96];
-            if (st[i].pct) snprintf(b2, sizeof b2, "%-18s %4d%%", st[i].tag, st[i].v);
-            else           snprintf(b2, sizeof b2, "%-18s %5d", st[i].tag, st[i].v);
-            ui_text(b2, right.x + 20, right.y + 46 + i * 26, 19, C_PARCH);
-        }
-        draw_hero_preview(g, (Vector2){ right.x + right.width - 130, right.y + 470 }, 1.15f);
-    } else if (g->menuTab == 1) {
-        ui_panel(left, "PACK");
-        if (p->invCount == 0)
-            ui_text("Empty.", left.x + 20, left.y + 50, 20, C_PARCH2);
-        int top = g->menuIdx - 9; if (top < 0) top = 0;
-        for (int i = top; i < p->invCount && i < top + 11; i++) {
-            const ItemDef *it = &ITEMS[p->inv[i].def];
-            char lab[96];
-            if (p->inv[i].count > 1)
-                snprintf(lab, sizeof lab, "%s  x%d", it->name, p->inv[i].count);
-            else snprintf(lab, sizeof lab, "%s", it->name);
-            bool wearable = ITEMS[p->inv[i].def].type == ITEM_CONSUMABLE ||
-                            player_can_equip(p, p->inv[i].def);
-            ui_button((Rectangle){ left.x + 16, left.y + 44 + (i - top) * 48, left.width - 32, 42 },
-                      lab, g->menuIdx == i, wearable);
-        }
-        if (p->invCount > 0 && g->menuIdx < p->invCount)
-            ui_tooltip_item(&ITEMS[p->inv[g->menuIdx].def],
-                            (Rectangle){ right.x, right.y, right.width, 380 });
-        draw_hero_preview(g, (Vector2){ right.x + right.width / 2, right.y + 570 }, 1.2f);
-    } else {
-        ui_panel(left, "SKILLS");
-        int top = g->menuIdx - 9; if (top < 0) top = 0;
-        for (int i = top; i < MAX_SKILLS && i < top + 11; i++) {
-            char lab[96];
-            snprintf(lab, sizeof lab, "%-17s %s", SKILLS[i].name,
-                     p->skillRank[i] > 0
-                        ? TextFormat("rank %d/%d", p->skillRank[i], SKILLS[i].maxRank)
-                        : (p->level >= SKILLS[i].reqLevel ? "not learned"
-                                                          : TextFormat("locked (Lv%d)",
-                                                                       SKILLS[i].reqLevel)));
-            ui_button((Rectangle){ left.x + 16, left.y + 44 + (i - top) * 48, left.width - 32, 42 },
-                      lab, g->menuIdx == i, p->skillRank[i] > 0);
-        }
-        const SkillDef *sk = &SKILLS[g->menuIdx];
-        ui_panel(right, "DETAIL");
-        ui_text(sk->name, right.x + 20, right.y + 42, 26, C_GOLD);
-        ui_text(sk->tree == 0 ? "Combat discipline" : "Ki discipline",
-                right.x + 20, right.y + 76, 17, C_PARCH2);
-        /* wrapped description */
-        {
-            char line[80]; int li = 0, ly = 0;
-            for (const char *q = sk->desc;; q++) {
-                if (*q == 0 || (li > 44 && *q == ' ')) {
-                    line[li] = 0;
-                    ui_text(line, right.x + 20, right.y + 110 + ly * 24, 19, C_PARCH);
-                    ly++; li = 0;
-                    if (*q == 0) break;
-                    continue;
-                }
-                if (li < 78) line[li++] = *q;
-            }
-        }
-        char b[96];
-        float y = right.y + 200;
-        snprintf(b, sizeof b, "Requires level %d", sk->reqLevel);
-        ui_text(b, right.x + 20, y, 18, C_PARCH2); y += 26;
-        if (sk->manaCost) { snprintf(b, sizeof b, "Mana cost %d", sk->manaCost);
-                            ui_text(b, right.x + 20, y, 18, C_KI); y += 26; }
-        if (sk->engCost) { snprintf(b, sizeof b, "Energy cost %d", sk->engCost);
-                           ui_text(b, right.x + 20, y, 18, C_GOLD); y += 26; }
-        if (sk->flags & SKF_PASSIVE) {
-            snprintf(b, sizeof b, "Passive: +%d per rank (currently +%d)",
-                     sk->flatPerRank, sk->flatPerRank * p->skillRank[g->menuIdx]);
-            ui_text(b, right.x + 20, y, 18, C_JADE); y += 26;
-        } else if (sk->shdPctBase > 0) {
-            int r = p->skillRank[g->menuIdx];
-            snprintf(b, sizeof b, "Shield damage %d%% (+%d%% per rank, now %d%%)",
-                     sk->shdPctBase, sk->shdPctPerRank,
-                     sk->shdPctBase + sk->shdPctPerRank * r);
-            ui_text(b, right.x + 20, y, 18, C_KI2); y += 26;
-        } else if (sk->pctBase > 0) {
-            int r = p->skillRank[g->menuIdx];
-            snprintf(b, sizeof b, "Power %d%% (+%d%% per rank, now %d%%)",
-                     sk->pctBase, sk->pctPerRank, sk->pctBase + sk->pctPerRank * r);
-            ui_text(b, right.x + 20, y, 18, C_PARCH); y += 26;
-        }
-        static const struct { unsigned f; const char *s; } FL[] = {
-            { SKF_MULTI,      "Strikes twice" },
-            { SKF_IGNORE_SHD, "Ignores shield points" },
-            { SKF_DRAIN,      "Returns life" },
-            { SKF_STUN,       "May stun" },
-            { SKF_NEVER_MISS, "Never misses" },
-            { SKF_HEAL,       "Restores life" },
-            { SKF_SHIELD_UP,  "Braces and mends shields" },
-            { SKF_BUFF_DEF,   "Raises defence" },
-            { SKF_BUFF_ATK,   "Raises damage" },
-            { SKF_RESTORE_MP, "Restores mana and energy" },
-        };
-        for (unsigned i = 0; i < sizeof FL / sizeof FL[0]; i++)
-            if (sk->flags & FL[i].f) { ui_text(FL[i].s, right.x + 20, y, 18, C_JADE); y += 24; }
-    }
+    ui_text_c(ps >= 0 ? "ENTER equip or use   ESC close"
+                      : "ENTER take off   ESC close",
+              plate.x + plate.width * 0.5f, plate.y + plate.height - PW(22.0f),
+              17, C_GOLD);
 }
 
 /* ---------------------------------------------------------------- shop */
@@ -499,133 +548,191 @@ void ui_scene_shop(Game *g)
 
 /* ------------------------------------------------------------- training */
 
+/* ------------------------------------------------------------ skill tree */
+
+/* The interface clip's Skills frame lays the nineteen skills out as a graph:
+   two columns of nodes -- the physical tree on the left, the magic tree on the
+   right -- in six rows gated at levels 0, 1, 5, 10 and 15, each node a disc
+   with its rank in a badge.  These are its own node placements. */
+static const struct { float x, y; int levelreq; } TREE_NODE[MAX_SKILLS] = {
+    {  -126.0f,  -178.8f,  0 }, {     0.3f,  -178.2f,  0 },
+    {  -154.7f,  -111.8f,  0 }, {  -104.0f,  -111.8f,  0 },
+    {   -20.1f,  -111.8f,  0 }, {    31.6f,  -111.8f,  0 },
+    {  -156.3f,   -45.0f,  1 }, {  -103.8f,   -44.9f,  1 },
+    {   -19.4f,   -44.9f,  1 }, {    31.7f,   -45.0f,  1 },
+    {  -155.0f,    21.9f,  5 }, {   -20.1f,    21.4f,  5 },
+    {    33.2f,    21.4f,  5 }, {  -154.2f,    88.1f, 10 },
+    {  -102.0f,    88.1f, 10 }, {   -21.0f,    88.1f, 10 },
+    {    32.2f,    88.1f, 10 }, {  -128.6f,   154.8f, 15 },
+    {   -20.8f,   154.8f, 15 },
+};
+
+/* Arrow keys walk the graph: nearest node in the pressed direction. */
+static void tree_move(Game *g, int dx, int dy)
+{
+    float cx = TREE_NODE[g->menuIdx].x, cy = TREE_NODE[g->menuIdx].y;
+    int best = -1; float bestD = 1e9f;
+    for (int i = 0; i < MAX_SKILLS; i++) {
+        if (i == g->menuIdx) continue;
+        float ox = TREE_NODE[i].x - cx, oy = TREE_NODE[i].y - cy;
+        if (dx > 0 && ox <= 4) continue;
+        if (dx < 0 && ox >= -4) continue;
+        if (dy > 0 && oy <= 4) continue;
+        if (dy < 0 && oy >= -4) continue;
+        /* prefer nodes in line with the one we are on */
+        float along = dx ? fabsf(ox) : fabsf(oy);
+        float across = dx ? fabsf(oy) : fabsf(ox);
+        float d = along + across * 3.0f;
+        if (d < bestD) { bestD = d; best = i; }
+    }
+    if (best >= 0) g->menuIdx = best;
+}
+
 void ui_scene_train(Game *g)
 {
     Player *p = &g->p;
-    /* The trainable list mirrors the original's own stat screen. */
-    static const char *STAT_NAMES[9] = { "Life Points", "Mana Points", "Strength:",
-                                         "Physical Damage", "Magic Damage",
-                                         "Physical Defence", "Magic Defence",
-                                         "Shield Points", "Speed:" };
-    int *statPtr[9] = { &p->baseLife, &p->baseMana, &p->baseStr,
-                        &p->basePhyDmg, &p->baseMagDmg,
-                        &p->basePhyDef, &p->baseMagDef, &p->baseShdPts, &p->baseSpeed };
-    const int STEP[9] = { 30, 20, 1, 5, 5, 2, 2, 20, 2 };
+
+    if (g->menuIdx < 0 || g->menuIdx >= MAX_SKILLS) g->menuIdx = 0;
 
     if (ui_input_ready(g)) {
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_T)) {
             go_panel(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
             return;
         }
-        if (IsKeyPressed(KEY_TAB)) { g->menuTab = !g->menuTab; g->menuIdx = 0; }
-        int n = g->menuTab ? MAX_SKILLS : 9;
-        if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) g->menuIdx = (g->menuIdx + 1) % n;
-        if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) g->menuIdx = (g->menuIdx + n - 1) % n;
+        if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) tree_move(g,  1, 0);
+        if (IsKeyPressed(KEY_LEFT)  || IsKeyPressed(KEY_A)) tree_move(g, -1, 0);
+        if (IsKeyPressed(KEY_DOWN)  || IsKeyPressed(KEY_S)) tree_move(g, 0,  1);
+        if (IsKeyPressed(KEY_UP)    || IsKeyPressed(KEY_W)) tree_move(g, 0, -1);
         if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-            if (!g->menuTab) {
-                if (p->statPts > 0) {
-                    *statPtr[g->menuIdx] += STEP[g->menuIdx];
-                    p->statPts--;
-                    Combatant c; player_recalc(p, &c);
-                    if (p->curLife > 0 && g->menuIdx == 0) p->curLife += STEP[0] * 3;
-                    ui_toast(g, "%s raised.", STAT_NAMES[g->menuIdx]);
-                } else ui_toast(g, "No stat points left.");
-            } else {
-                int id = g->menuIdx;
-                if (p->skillPts <= 0) ui_toast(g, "No skill points left.");
-                else if (!skill_prereqs_met(p, id))
-                    ui_toast(g, "%s %s.", SKILLS[id].name, skill_lock_reason(p, id));
-                else if (p->skillRank[id] >= SKILLS[id].maxRank)
-                    ui_toast(g, "%s is already mastered.", SKILLS[id].name);
-                else {
-                    p->skillRank[id]++;
-                    p->skillPts--;
-                    sound_play(SFX_SKILL);
-                    ui_toast(g, "%s -- rank %d.", SKILLS[id].name, p->skillRank[id]);
-                }
+            int id = g->menuIdx;
+            if (p->skillPts <= 0) ui_toast(g, "No skill points left.");
+            else if (!skill_prereqs_met(p, id))
+                ui_toast(g, "%s %s.", SKILLS[id].name, skill_lock_reason(p, id));
+            else if (p->skillRank[id] >= SKILLS[id].maxRank)
+                ui_toast(g, "%s is already mastered.", SKILLS[id].name);
+            else {
+                p->skillRank[id]++;
+                p->skillPts--;
+                sound_play(SFX_SKILL);
             }
         }
     }
 
-    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 210 });
-    ui_text("TRAINING", 40, 24, 30, C_GOLD);
-    char b[128];
-    snprintf(b, sizeof b, "%d stat points     %d skill points", p->statPts, p->skillPts);
-    ui_text(b, 40, 62, 20, p->statPts || p->skillPts ? C_JADE : C_PARCH2);
-    ui_text("TAB switch    ENTER spend    ESC leave", SCREEN_W - 440, 30, 18, C_PARCH2);
+    /* ---- the panel ---- */
+    Rectangle plate = { PX(-206.2f), PY(-202.6f),
+                        PX(322.8f) - PX(-206.2f), PY(232.1f) - PY(-202.6f) };
+    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 170 });
+    DrawRectangleRec(plate, (Color){ 30, 27, 24, 255 });
+    DrawRectangleLinesEx(plate, 2, (Color){ 115, 89, 66, 255 });
 
-    Rectangle left = { 40, 100, 520, 560 }, right = { 580, 100, 660, 560 };
-    ui_panel(left, g->menuTab ? "SKILLS" : "ATTRIBUTES");
-    if (!g->menuTab) {
-        for (int i = 0; i < 9; i++) {
-            char lab[96];
-            snprintf(lab, sizeof lab, "%-17s %4d  (+%d)", STAT_NAMES[i], *statPtr[i], STEP[i]);
-            ui_button((Rectangle){ left.x + 16, left.y + 44 + i * 50, left.width - 32, 42 },
-                      lab, g->menuIdx == i, p->statPts > 0);
-        }
-        Combatant c;
-        player_recalc(p, &c);
-        float y = left.y + 44 + 9 * 50 + 10;
-        snprintf(b, sizeof b, "Life %d    Mana %d    Speed %d", c.lifeMax, c.manaMax, c.speed);
-        ui_text(b, left.x + 16, y, 19, C_PARCH);
-        snprintf(b, sizeof b, "Damage %d weapon + %d str / %d magic",
-                 c.phyDmg, c.strDmg, c.magDmg);
-        ui_text(b, left.x + 16, y + 26, 19, C_PARCH);
-    } else {
-        int top = g->menuIdx - 8; if (top < 0) top = 0;
-        for (int i = top; i < MAX_SKILLS && i < top + 10; i++) {
-            char lab[96];
-            bool ok = skill_prereqs_met(p, i);
-            const char *why = ok ? NULL : skill_lock_reason(p, i);
-            snprintf(lab, sizeof lab, "%-16s %d/%d%s%s", SKILLS[i].name, p->skillRank[i],
-                     SKILLS[i].maxRank, ok ? "" : "  -- ", ok ? "" : (why ? why : "locked"));
-            ui_button((Rectangle){ left.x + 16, left.y + 44 + (i - top) * 50, left.width - 32, 44 },
-                      lab, g->menuIdx == i, ok);
-        }
-    }
+    Rectangle tp = { PX(-174.8f), PY(-195.4f),
+                     PX(50.0f) - PX(-174.8f), PY(173.0f) - PY(-195.4f) };
+    DrawRectangleRec(tp, (Color){ 22, 20, 18, 255 });
+    DrawRectangleLinesEx(tp, 1.5f, (Color){ 92, 78, 52, 255 });
 
-    ui_panel(right, "MASTER RENJIRO");
-    if (!g->menuTab) {
-        const char *tips[9] = {
-            "Life is the only stat that stops a killing blow.",
-            "Mana feeds every ki discipline you know.",
-            "Strength decides what gear you are allowed to carry.",
-            "Physical damage is added to every strike you land.",
-            "Magic damage drives spells and everything you mend.",
-            "Physical defence cuts a percentage off each blow.",
-            "Magic defence blunts spellwork and shadow.",
-            "Shield points are spent before your life ever is.",
-            "Speed decides who moves first, and who gets missed.",
+    /* the level gates the original rules off */
+    {
+        const struct { const char *tag; float y; } GATE[3] = {
+            { "Lvl. 5", 21.6f }, { "Lvl. 10", 88.1f }, { "Lvl. 15", 154.8f }
         };
-        ui_text(STAT_NAMES[g->menuIdx], right.x + 20, right.y + 46, 26, C_GOLD);
-        ui_text(tips[g->menuIdx], right.x + 20, right.y + 84, 19, C_PARCH);
-    } else {
-        const SkillDef *sk = &SKILLS[g->menuIdx];
-        ui_text(sk->name, right.x + 20, right.y + 46, 26, C_GOLD);
-        char line[80]; int li = 0, ly = 0;
-        for (const char *q = sk->desc;; q++) {
-            if (*q == 0 || (li > 40 && *q == ' ')) {
-                line[li] = 0;
-                ui_text(line, right.x + 20, right.y + 88 + ly * 24, 19, C_PARCH);
-                ly++; li = 0;
-                if (*q == 0) break;
-                continue;
-            }
-            if (li < 78) line[li++] = *q;
-        }
-        snprintf(b, sizeof b, "Requires level %d   rank %d of %d",
-                 sk->reqLevel, p->skillRank[g->menuIdx], sk->maxRank);
-        ui_text(b, right.x + 20, right.y + 180, 18, C_PARCH2);
-        float py = right.y + 206;
-        for (int i = 0; i < 2; i++) {
-            int r = sk->prereq[i];
-            if (r < 0 || r >= MAX_SKILLS) continue;
-            snprintf(b, sizeof b, "Needs %s", SKILLS[r].name);
-            ui_text(b, right.x + 20, py, 18, p->skillRank[r] > 0 ? C_JADE : C_BLOOD2);
-            py += 24;
+        for (int i = 0; i < 3; i++) {
+            float gy = PY(GATE[i].y - 33.0f);
+            DrawLineEx((Vector2){ tp.x + 6, gy }, (Vector2){ tp.x + tp.width - 6, gy },
+                       1.0f, (Color){ 92, 78, 52, 140 });
+            int need = (i == 0) ? 5 : (i == 1) ? 10 : 15;
+            float lw = ui_text_w(GATE[i].tag, 15) + 10;
+            Rectangle lb = { PX(-62.0f) - lw * 0.5f, gy - PW(11.0f), lw, PW(20.0f) };
+            DrawRectangleRec(lb, (Color){ 22, 20, 18, 255 });
+            ui_text_c(GATE[i].tag, lb.x + lw * 0.5f, lb.y + PW(2.0f), 15,
+                      p->level >= need ? C_JADE : C_PARCH2);
         }
     }
-    draw_hero_preview(g, (Vector2){ right.x + right.width / 2, right.y + right.height - 40 }, 1.3f);
+
+    /* the edges, drawn from each skill's prerequisites */
+    for (int i = 0; i < MAX_SKILLS; i++) {
+        for (int k = 0; k < 2; k++) {
+            int pr = SKILLS[i].prereq[k];
+            if (pr < 0 || pr >= MAX_SKILLS) continue;
+            bool have = p->skillRank[pr] > 0;
+            DrawLineEx((Vector2){ PX(TREE_NODE[pr].x), PY(TREE_NODE[pr].y) },
+                       (Vector2){ PX(TREE_NODE[i].x),  PY(TREE_NODE[i].y) },
+                       2.0f, have ? Fade(C_GOLD, 0.45f) : (Color){ 70, 62, 50, 200 });
+        }
+    }
+
+    /* the nodes */
+    for (int i = 0; i < MAX_SKILLS; i++) {
+        float cx = PX(TREE_NODE[i].x), cy = PY(TREE_NODE[i].y);
+        float r = PW(19.0f);
+        int rank = p->skillRank[i];
+        bool open = skill_prereqs_met(p, i);
+        bool sel = (g->menuIdx == i);
+        DrawCircle((int)cx, (int)cy, r,
+                   rank > 0 ? (Color){ 60, 52, 38, 255 }
+                            : (open ? (Color){ 44, 40, 34, 255 }
+                                    : (Color){ 30, 28, 26, 255 }));
+        DrawCircleLines((int)cx, (int)cy, r,
+                        rank > 0 ? (Color){ 150, 122, 70, 255 } : (Color){ 78, 70, 58, 255 });
+        art_skill_glyph(&SKILLS[i], cx, cy, PW(11.0f), rank > 0 || open);
+        if (sel) {
+            float pulse = 0.6f + 0.4f * sinf((float)GetTime() * 5.0f);
+            DrawCircleLines((int)cx, (int)cy, r,        Fade(C_GOLD, pulse));
+            DrawCircleLines((int)cx, (int)cy, r - 1.5f, Fade(C_GOLD, pulse));
+            DrawCircleLines((int)cx, (int)cy, r + 2.0f, Fade(C_GOLD, pulse * 0.5f));
+        }
+        /* the rank badge, up and left of the disc as the original places it */
+        {
+            Rectangle bd = { cx + PW(-16.4f) - PW(12.6f), cy + PW(-13.9f) - PW(12.2f),
+                             PW(25.2f), PW(24.4f) };
+            DrawRectangleRec(bd, (Color){ 18, 16, 14, 235 });
+            DrawRectangleLinesEx(bd, 1.0f, (Color){ 92, 78, 52, 220 });
+            char n[8];
+            snprintf(n, sizeof n, "%d", rank);
+            ui_text_c(n, bd.x + bd.width * 0.5f, bd.y + PW(3.0f), 16,
+                      rank > 0 ? C_GOLD : (Color){ 110, 102, 92, 255 });
+        }
+    }
+
+    /* headings and the readout for the node under the cursor */
+    {
+        char b[96];
+        snprintf(b, sizeof b, "Skill Points: %d", p->skillPts);
+        ui_text(b, PX(60.0f), PY(-188.0f), 18, p->skillPts ? C_JADE : C_PARCH2);
+        snprintf(b, sizeof b, "Level: %d", p->level);
+        ui_text(b, PX(60.0f), PY(-166.0f), 18, (Color){ 0, 204, 255, 255 });
+
+        const SkillDef *sk = &SKILLS[g->menuIdx];
+        float bx = PX(60.0f), by = PY(-130.0f);
+        ui_text(sk->name, bx, by, 20, C_GOLD);
+        snprintf(b, sizeof b, "rank %d of %d", p->skillRank[g->menuIdx], sk->maxRank);
+        ui_text(b, bx, by + PW(26.0f), 16, C_PARCH2);
+        if (sk->flags & SKF_PASSIVE)      ui_text("Passive", bx, by + PW(46.0f), 16, C_STEEL2);
+        else if (sk->manaCost)  { snprintf(b, sizeof b, "Requires %d Mana", sk->manaCost);
+                                  ui_text(b, bx, by + PW(46.0f), 16, C_KI); }
+        if (TREE_NODE[g->menuIdx].levelreq > 0) {
+            snprintf(b, sizeof b, "Needs level %d", TREE_NODE[g->menuIdx].levelreq);
+            ui_text(b, bx, by + PW(66.0f), 16,
+                    p->level >= TREE_NODE[g->menuIdx].levelreq ? C_JADE : C_BLOOD2);
+        }
+        /* the description, wrapped */
+        {
+            const char *d = sk->desc;
+            char line[80]; int li = 0, ly = 0;
+            for (const char *q = d;; q++) {
+                if (*q == 0 || (li > 30 && *q == ' ')) {
+                    line[li] = 0;
+                    ui_text(line, bx, by + PW(92.0f) + ly * PW(20.0f), 16, C_PARCH2);
+                    ly++; li = 0;
+                    if (*q == 0) break;
+                    continue;
+                }
+                if (li < 78) line[li++] = *q;
+            }
+        }
+    }
+
+    ui_text_c("ENTER spend a point   ESC leave",
+              plate.x + plate.width * 0.5f, plate.y + plate.height - PW(22.0f), 17, C_GOLD);
 }
 
 /* --------------------------------------------------------------- dialog */
@@ -671,10 +778,6 @@ void ui_scene_dialog(Game *g)
    extracted into tools/groundtruth/save_layout.json, mapped through PX/PY:
    the clip sits at (287.85, 223.55) on the 600-wide stage and is placed at
    0.85 scale, and the stage maps onto ours at 1.6. */
-#define PSC      0.85f
-#define PX(v)    (160.0f + (287.85f + (v) * PSC) * 1.6f)
-#define PY(v)    ((223.55f + (v) * PSC) * 1.6f)
-#define PW(v)    ((v) * PSC * 1.6f)
 
 static void sheet_bar(float x0, float x1, float y, float frac, Color hi, Color lo)
 {
@@ -813,7 +916,7 @@ void ui_scene_save(Game *g)
         const float LY[4] = { 9.8f, 27.4f, 43.5f, 61.1f };
         const char *RN[4] = { "Strength:", "Speed:", "Max Life:", "Max Mana:" };
         const int   RV[4] = { c.str, c.speed, c.lifeMax, c.manaMax };
-        char b[24];
+        char b[32];
         for (int i = 0; i < 4; i++) {
             ui_text(LN[i], PX(44.0f), PY(LY[i]) - PW(2.0f), 15, C_PARCH2);
             snprintf(b, sizeof b, "%d", LV[i]);

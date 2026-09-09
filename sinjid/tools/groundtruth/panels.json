@@ -1,0 +1,279 @@
+{
+ "_note": "Inventory (frame 1) and Skills (frame 12) of the original's interface clip 1458. Coordinates are the clip's own space; the clip sits at (287.85,223.55) on the 600x470 stage at 0.85 scale.",
+ "clipOrigin": [
+  287.85,
+  223.55
+ ],
+ "clipScale": 0.85,
+ "inventory": {
+  "plate": [
+   -298.1,
+   322.8,
+   -200.2,
+   232.1
+  ],
+  "headings": {
+   "Inventory": [
+    -223.3,
+    -188.5
+   ],
+   "Equipment": [
+    -223.3,
+    4.5
+   ]
+  },
+  "cell": 51.0,
+  "ring": 52.2,
+  "pack": {
+   "slots": "slot4..slot11",
+   "cols": 4,
+   "rows": 2,
+   "x": [
+    -258.0,
+    -183.0,
+    -108.0,
+    -33.0
+   ],
+   "y": [
+    -121.0,
+    -52.5
+   ]
+  },
+  "worn": {
+   "weapon": [
+    -226.2,
+    161.1
+   ],
+   "shield": [
+    -76.2,
+    161.1
+   ],
+   "armour": [
+    -151.2,
+    161.1
+   ],
+   "helm": [
+    -151.2,
+    84.7
+   ],
+   "labels": {
+    "Weapon": [
+     -273.3,
+     193.6
+    ],
+    "Head Gear": [
+     -196.3,
+     38.3
+    ],
+    "Armour": [
+     -195.6,
+     192.2
+    ],
+    "Shield": [
+     -122.0,
+     192.2
+    ]
+   }
+  },
+  "statsLeft": {
+   "labelX": 11.9,
+   "valueX": 133.4,
+   "y": [
+    20.0,
+    37.5,
+    53.8,
+    71.3
+   ],
+   "vars": [
+    "phydmgb",
+    "magdmgb",
+    "phydefb",
+    "magdefb"
+   ]
+  },
+  "statsRight": {
+   "labelX": 182.1,
+   "valueX": 264.4,
+   "y": [
+    20.0,
+    36.7,
+    54.6,
+    71.3
+   ],
+   "vars": [
+    "strb",
+    "speedb",
+    "lifemaxb",
+    "manamaxb"
+   ]
+  },
+  "explainBox": [
+   39.7,
+   300.5,
+   -182.8,
+   -28.8
+  ],
+  "gold": [
+   262.2,
+   205.4
+  ],
+  "close": [
+   287.1,
+   217.2
+  ]
+ },
+ "skills": {
+  "plate": [
+   -206.2,
+   322.8,
+   -202.6,
+   232.1
+  ],
+  "treePanel": [
+   -174.8,
+   50.0,
+   -195.4,
+   173.0
+  ],
+  "node": {
+   "radius": 26.1,
+   "badge": [
+    25.2,
+    24.4
+   ]
+  },
+  "nodes": [
+   {
+    "skill": 0,
+    "x": -126.0,
+    "y": -178.8,
+    "levelreq": 0
+   },
+   {
+    "skill": 1,
+    "x": 0.3,
+    "y": -178.2,
+    "levelreq": 0
+   },
+   {
+    "skill": 2,
+    "x": -154.7,
+    "y": -111.8,
+    "levelreq": 0
+   },
+   {
+    "skill": 3,
+    "x": -104.0,
+    "y": -111.8,
+    "levelreq": 0
+   },
+   {
+    "skill": 4,
+    "x": -20.1,
+    "y": -111.8,
+    "levelreq": 0
+   },
+   {
+    "skill": 5,
+    "x": 31.6,
+    "y": -111.8,
+    "levelreq": 0
+   },
+   {
+    "skill": 6,
+    "x": -156.3,
+    "y": -45.0,
+    "levelreq": 1
+   },
+   {
+    "skill": 7,
+    "x": -103.8,
+    "y": -44.9,
+    "levelreq": 1
+   },
+   {
+    "skill": 8,
+    "x": -19.4,
+    "y": -44.9,
+    "levelreq": 1
+   },
+   {
+    "skill": 9,
+    "x": 31.7,
+    "y": -45.0,
+    "levelreq": 1
+   },
+   {
+    "skill": 10,
+    "x": -155.0,
+    "y": 21.9,
+    "levelreq": 5
+   },
+   {
+    "skill": 11,
+    "x": -20.1,
+    "y": 21.4,
+    "levelreq": 5
+   },
+   {
+    "skill": 12,
+    "x": 33.2,
+    "y": 21.4,
+    "levelreq": 5
+   },
+   {
+    "skill": 13,
+    "x": -154.2,
+    "y": 88.1,
+    "levelreq": 10
+   },
+   {
+    "skill": 14,
+    "x": -102.0,
+    "y": 88.1,
+    "levelreq": 10
+   },
+   {
+    "skill": 15,
+    "x": -21.0,
+    "y": 88.1,
+    "levelreq": 10
+   },
+   {
+    "skill": 16,
+    "x": 32.2,
+    "y": 88.1,
+    "levelreq": 10
+   },
+   {
+    "skill": 17,
+    "x": -128.6,
+    "y": 154.8,
+    "levelreq": 15
+   },
+   {
+    "skill": 18,
+    "x": -20.8,
+    "y": 154.8,
+    "levelreq": 15
+   }
+  ],
+  "rows": {
+   "0": -178.5,
+   "1": -111.8,
+   "2": -45.0,
+   "3": 21.5,
+   "4": 88.1,
+   "5": 154.8
+  },
+  "gateLabels": [
+   "Lvl. 5",
+   "Lvl. 10",
+   "Lvl. 15"
+  ],
+  "close": [
+   287.1,
+   217.2
+  ]
+ }
+}

@@ -1215,3 +1215,25 @@ void art_draw_prop(int kind, Vector2 at, float scale, Color a, Color b)
     default: break;
     }
 }
+
+
+/* Skills carry no artwork here, so each one is a rune in its own effect
+   colour -- enough to tell nineteen of them apart at a glance, in the battle
+   bar and on the skill tree alike.  The mark follows the damage type. */
+void art_skill_glyph(const SkillDef *sk, float cx, float cy, float r, bool on)
+{
+    Color c = on ? sk->fx : (Color){ 122, 114, 104, 255 };
+    DrawCircle((int)cx, (int)cy, r, alpha(c, on ? 0.32f : 0.16f));
+    DrawCircleLines((int)cx, (int)cy, r, alpha(c, on ? 0.95f : 0.55f));
+    if (sk->dmgType == DMG_MAGIC) {
+        for (int k = 0; k < 4; k++) {
+            float ang = (float)k * PI / 2.0f;
+            DrawLineEx(v2(cx + cosf(ang) * r * 0.35f, cy + sinf(ang) * r * 0.35f),
+                       v2(cx + cosf(ang) * r * 0.85f, cy + sinf(ang) * r * 0.85f),
+                       2.0f, alpha(c, on ? 0.95f : 0.4f));
+        }
+    } else {
+        DrawLineEx(v2(cx - r * 0.5f, cy + r * 0.55f),
+                   v2(cx + r * 0.6f, cy - r * 0.6f), 2.6f, alpha(c, on ? 0.95f : 0.4f));
+    }
+}

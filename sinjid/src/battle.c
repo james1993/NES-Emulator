@@ -975,28 +975,6 @@ static void round_button(float cx, float cy, bool sel, bool enabled, float t)
     }
 }
 
-/* Skills have no art in this remake, so each slot draws a rune in the skill's
-   own effect colour -- enough to tell them apart at a glance. */
-static void skill_glyph(const SkillDef *sk, float cx, float cy, bool on)
-{
-    float r = BW(9.5f);
-    Color c = sk->fx;
-    if (!on) c = (Color){ 122, 114, 104, 255 };
-    DrawCircle((int)cx, (int)cy, r, Fade(c, on ? 0.32f : 0.16f));
-    DrawCircleLines((int)cx, (int)cy, r, Fade(c, on ? 0.95f : 0.55f));
-    /* a small mark whose shape follows the skill's damage type */
-    if (sk->dmgType == DMG_MAGIC) {
-        for (int k = 0; k < 4; k++) {
-            float ang = (float)k * PI / 2.0f;
-            DrawLineEx((Vector2){ cx + cosf(ang) * r * 0.35f, cy + sinf(ang) * r * 0.35f },
-                       (Vector2){ cx + cosf(ang) * r * 0.85f, cy + sinf(ang) * r * 0.85f },
-                       2.0f, Fade(c, on ? 0.95f : 0.4f));
-        }
-    } else {
-        DrawLineEx((Vector2){ cx - r * 0.5f, cy + r * 0.55f },
-                   (Vector2){ cx + r * 0.6f, cy - r * 0.6f }, 2.6f, Fade(c, on ? 0.95f : 0.4f));
-    }
-}
 
 void battle_draw(Game *g)
 {
@@ -1129,7 +1107,7 @@ void battle_draw(Game *g)
             bool known = g->p.skillRank[id] > 0;
             bool en = known && skill_usable(g, h, id);
             round_button(cx, cy, sel == CMD_GRID0 + i, en, t);
-            skill_glyph(sk, cx, cy, en);
+            art_skill_glyph(sk, cx, cy, BW(9.5f), en);
             if (known) {
                 char rk[8];
                 snprintf(rk, sizeof rk, "%d", g->p.skillRank[id]);

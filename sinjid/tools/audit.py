@@ -489,6 +489,39 @@ check('rooms', 'pendMove' in wl2 and 'pendMove' in SRC('main.c'),
 check('rooms', re.search(r'ui_toast\(g,\s*"%s",\s*dst->name\)', wl2) is None,
       "the original does not name the room you walk into")
 
+# ---- inventory and skill panels --------------------------------------
+pl = gt('panels.json')
+ui2 = SRC('ui.c')
+inv = pl['inventory']
+for v in inv['pack']['x']:
+    check('panels', ("%.1ff" % v) in ui2, "pack column %.1f missing" % v)
+for v in inv['pack']['y']:
+    check('panels', ("%.1ff" % v) in ui2, "pack row %.1f missing" % v)
+for name, xy in inv['worn'].items():
+    if name == 'labels':
+        continue
+    check('panels', ("%.1ff" % xy[0]) in ui2 and ("%.1ff" % xy[1]) in ui2,
+          "worn %s should sit at %s" % (name, xy))
+check('panels', ("%.1ff" % inv['cell']) in ui2,
+      "inventory cells are %g across" % inv['cell'])
+for tag, v in (("stats left label", inv['statsLeft']['labelX']),
+               ("stats left value", inv['statsLeft']['valueX']),
+               ("stats right label", inv['statsRight']['labelX']),
+               ("stats right value", inv['statsRight']['valueX'])):
+    check('panels', ("%.1ff" % v) in ui2, "%s should sit at x=%.1f" % (tag, v))
+
+# the skill tree: every node at the original's own placement, in order
+m = re.search(r'TREE_NODE\[MAX_SKILLS\]\s*=\s*\{(.*?)\};', ui2, re.S)
+ours_tree = [(float(a), float(b), int(c)) for a, b, c in
+             re.findall(r'\{\s*(-?[\d.]+)f,\s*(-?[\d.]+)f,\s*(\d+)\s*\}',
+                        m.group(1) if m else '')]
+want_tree = [(n['x'], n['y'], n['levelreq']) for n in pl['skills']['nodes']]
+check('panels', ours_tree == want_tree,
+      "skill tree nodes ours=%s theirs=%s" % (ours_tree[:3], want_tree[:3]))
+# and the level gates the tree is ruled off at
+check('panels', all(g in ui2 for g in pl['skills']['gateLabels']),
+      "the tree should be ruled off at %s" % pl['skills']['gateLabels'])
+
 print()
 if not FAIL:
     print("PASS -- deep checks clean too.")

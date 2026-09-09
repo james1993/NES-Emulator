@@ -505,6 +505,7 @@ void  art_draw_zone_bg(const Zone *z, float t, float camX);
 void  art_draw_battle_bg(int bgStyle, float t);
 void  art_draw_scenery(const Prop *pr, const Zone *z, float t);
 void  art_draw_item_icon(int def, Rectangle r);
+void  art_skill_glyph(const SkillDef *sk, float cx, float cy, float r, bool on);
 void  art_draw_tile(int tile, int px, int py, int size, const Zone *z, int wx, int wy);
 void  art_draw_prop(int kind, Vector2 at, float scale, Color a, Color b);
 void  art_weapon_shape(int shape, Vector2 grip, float ang, float scale, Color tint, Color edge);
