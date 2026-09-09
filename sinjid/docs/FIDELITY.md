@@ -109,6 +109,24 @@ The Healer's `inventorytype` is `"Heal"`, so talking to them opens a Heal panel
 and pauses the game; it never deducts gold the moment you walk up. That panel
 is reproduced here.
 
+**The four disciplines do not start alike.** Each class button sets its own
+starting numbers and adds its own bonuses, so the single shared 75/75/15/15
+block this remake used was wrong:
+
+| class | life | mana | str | speed | phy dmg | mag dmg | phy def | mag def |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Balanced | 75 | 75 | 15 | 15 | +3 | +2 | +3 | +2 |
+| Warrior | 85 | 65 | 17 | 13 | +5 | -- | +5 | -- |
+| Spell Caster | 75 | 90 | 15 | 13 | -- | +5 | -- | +5 |
+| Shadow Ninja | 70 | 80 | 13 | 17 | +3 | +3 | +2 | +2 |
+
+Each also starts with one skill already at rank 1 -- its button sets `skill[1]`,
+`skill[0]`, `skill[9]` and `skill[7]` respectively -- and the Spell Caster's
+button swaps the starting Iron Knife for the Energy Knife.
+
+**The exit trigger lights up** under the player standing on it, so a way out is
+visible rather than something you find by pressing space on every cell.
+
 **The screen layout is the original's.** Its stage is 600 wide, with the room
 in the top 335 pixels on a 30px cell grid and the `walkmenu` bar in the 116
 below. That whole arrangement is reproduced scaled by 1.6, so room and bar keep
@@ -170,12 +188,8 @@ several things the bytecode alone could not:
 
 * **An exit-direction indicator** sits in the room's top-right corner: a glowing
   plate with arrows for the directions that room can be left in. It changes from
-  room to room. Nothing here draws it.
-* **The exit trigger lights up** under the player when they stand on it -- a cyan
-  marker on the floor. Here an exit is invisible until you press space on it.
-* **Each class grants a starting skill**: Balanced/Shurikens, Warrior/Stab,
-  Spell Caster/Charge, Shadow Ninja/Shadow Blend. This remake starts you with
-  no skill at all.
+  room to room. It is placed from the scenery table but drawn as a static plate
+  rather than reflecting each room's actual exits.
 
 The exit doorway itself is centred on the room's top wall, which matches the
 recovered trigger position; the corner indicator is a separate object.

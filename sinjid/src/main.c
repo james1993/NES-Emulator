@@ -394,12 +394,19 @@ static void new_player(Game *g, ClassId cls, const char *name)
     data_class_base(p, cls);
     p->look = data_class_look(cls);
     for (int i = 0; i < SLOT_COUNT; i++) p->equip[i] = -1;
-    p->skillRank[2] = 1;                     /* Full Strike */
-    if (cls == CLASS_SPELLCASTER || cls == CLASS_BALANCED) p->skillRank[5] = 1;
+    /* Each class starts with one skill already at rank 1: its button in the
+       original sets skill[0], [1], [7] or [9] respectively. */
+    {
+        static const int START_SKILL[CLASS_COUNT] = { 1, 0, 9, 7 };
+        int si = (cls >= 0 && cls < CLASS_COUNT) ? START_SKILL[cls] : 1;
+        if (si >= 0 && si < MAX_SKILLS) p->skillRank[si] = 1;
+    }
 
     /* Item indices below are positions in the original's own item table. */
     /* The original starts you with an Iron Knife and nothing else worn. */
-    p->equip[SLOT_WEAPON] = IT_IRON_KNIFE;
+    /* Three classes start with the Iron Knife; the Spell Caster's button
+       swaps in the Energy Knife instead. */
+    p->equip[SLOT_WEAPON] = (cls == CLASS_SPELLCASTER) ? IT_ENERGY_KNIFE : IT_IRON_KNIFE;
     player_add_item(p, IT_RICE_BALL); player_add_item(p, IT_RICE_BALL);
     player_add_item(p, IT_RICE_BALL); player_add_item(p, IT_GREEN_TEA);
     p->zone = ZONE_VILLAGE;

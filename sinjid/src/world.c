@@ -807,6 +807,36 @@ void world_draw(Game *g)
     for (int i = 0; i < z->propCount; i++)
         art_draw_scenery(&z->props[i], z, t);
 
+    /* The original lights the exit trigger under your feet, so a way out is
+       visible rather than something you only find by pressing space on it. */
+    {
+        const Exit *e = exit_at(z, p->tx, p->ty);
+        if (e) {
+            float cx = OX + p->tx * TILE + TILE * 0.5f;
+            float cy = OY + p->ty * TILE + TILE * 0.72f;
+            float pulse = 0.55f + 0.45f * sinf(t * 4.2f);
+            Color glow = (Color){ 120, 224, 255, 255 };
+            DrawEllipse((int)cx, (int)cy, TILE * 0.52f, TILE * 0.26f,
+                        Fade(glow, 0.30f + 0.22f * pulse));
+            DrawEllipse((int)cx, (int)cy, TILE * 0.26f, TILE * 0.13f,
+                        Fade(glow, 0.55f + 0.35f * pulse));
+            /* a chevron pointing the way the exit leads */
+            const float ddx[4] = { 0, 0, -1, 1 }, ddy[4] = { -1, 1, 0, 0 };
+            float ax = cx + ddx[e->dir] * TILE * 0.40f;
+            float ay = cy + ddy[e->dir] * TILE * 0.34f - TILE * 0.16f;
+            float s2 = TILE * 0.13f;
+            Vector2 tip  = { ax + ddx[e->dir] * s2, ay + ddy[e->dir] * s2 };
+            Vector2 side = { ddy[e->dir] * s2, ddx[e->dir] * s2 };  /* perpendicular */
+            Vector2 b1 = { ax - ddx[e->dir] * s2 + side.x, ay - ddy[e->dir] * s2 + side.y };
+            Vector2 b2 = { ax - ddx[e->dir] * s2 - side.x, ay - ddy[e->dir] * s2 - side.y };
+            Color cg = Fade(glow, 0.55f + 0.35f * pulse);
+            /* keep the winding counter-clockwise whichever way it points */
+            if (e->dir == EX_UP || e->dir == EX_RIGHT) DrawTriangle(tip, b1, b2, cg);
+            else                                      DrawTriangle(tip, b2, b1, cg);
+        }
+    }
+
+
     for (int i = 0; i < z->npcCount; i++)
         if (z->npcs[i].kind != NPC_NONE) draw_npc(g, &z->npcs[i], t);
 

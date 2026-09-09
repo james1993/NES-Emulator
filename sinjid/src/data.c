@@ -435,18 +435,27 @@ Look data_class_look(ClassId c)
 
 void data_class_base(Player *p, ClassId c)
 {
-    /* Every discipline starts from the same numbers in the original; only the
-       per-level growth in CLASS_GROWTH differs. */
-    (void)c;
-    p->baseLife   = 75;
-    p->baseMana   = 75;
+    /* The disciplines do NOT start from the same numbers.  Each class button
+       in the original sets its own life, mana, speed and strength and adds its
+       own damage and defence bonuses; these are those values. */
+    static const struct {
+        int life, mana, str, speed, phyDmg, magDmg, phyDef, magDef;
+    } START[CLASS_COUNT] = {
+        /* Balanced     */ { 75, 75, 15, 15, 3, 2, 3, 2 },
+        /* Warrior      */ { 85, 65, 17, 13, 5, 0, 5, 0 },
+        /* Spell Caster */ { 75, 90, 15, 13, 0, 5, 0, 5 },
+        /* Shadow Ninja */ { 70, 80, 13, 17, 3, 3, 2, 2 },
+    };
+    int i = (c >= 0 && c < CLASS_COUNT) ? (int)c : 0;
+    p->baseLife   = START[i].life;
+    p->baseMana   = START[i].mana;
     p->baseEng    = 50;
-    p->baseStr    = 15;
-    p->baseSpeed  = 15;
-    p->basePhyDmg = 0;
-    p->baseMagDmg = 0;
-    p->basePhyDef = 0;
-    p->baseMagDef = 0;
+    p->baseStr    = START[i].str;
+    p->baseSpeed  = START[i].speed;
+    p->basePhyDmg = START[i].phyDmg;
+    p->baseMagDmg = START[i].magDmg;
+    p->basePhyDef = START[i].phyDef;
+    p->baseMagDef = START[i].magDef;
     p->baseShdPts = 0;
 }
 
