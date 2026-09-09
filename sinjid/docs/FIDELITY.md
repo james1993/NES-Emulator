@@ -109,6 +109,19 @@ The Healer's `inventorytype` is `"Heal"`, so talking to them opens a Heal panel
 and pauses the game; it never deducts gold the moment you walk up. That panel
 is reproduced here.
 
+**Per-room scenery is placed, not scattered.** Every object in each room was
+read out of the original's display list -- 197 of them across the eleven rooms,
+from 11 in the sparsest to 39 in Arena4 -- and each is reproduced at its own
+position and footprint, with the doorway, torches, pillars, windows, counters,
+shelves, lamps, urns, crates, rocks, bamboo and floor glows identified by
+footprint, palette and which rooms they appear in. `src/scenery_table.h` is
+generated from that extraction; `art.c` draws every shape procedurally, so the
+arrangement is the original's and none of the artwork is.
+
+One caveat on the footprints: a sprite's bounds are the union over all of its
+frames, so a box can overstate what is visible at any one moment. Shapes are
+anchored within their box rather than filling it.
+
 **The cast is scattered across the rooms**, at the cells its clips occupy:
 Elder, Healer and Student at the entrance; Food and Potion Vendors in Arena1;
 both Item Vendors in Arena3; the drinkers in Arena4; two more vendors in
@@ -140,13 +153,6 @@ placements are in `docs/roomgraph.json`.
 
 * **The second hero.** The engine supports two fighters a side and the original
   tracks `hero1`/`hero2`; only one is ever fielded.
-**Per-room scenery is not reproduced.** Each room places between 15 and 45
-objects, of which only 2 to 4 are the cast; the remaining 10 to 40 are
-decorative and structural pieces whose individual positions are not extracted
-here. The blocked cells are honoured and props are scattered procedurally over
-them, so a room's *shape* and traffic are the original's, but its furniture
-arrangement is not.
-
 ## Seen in the running original, not yet reproduced
 
 The original can be driven under Ruffle (see `docs/RUFFLE.md`), which settled

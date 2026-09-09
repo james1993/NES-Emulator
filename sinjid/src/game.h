@@ -32,6 +32,7 @@
 #define MAP_W         20
 #define MAP_H         13
 #define MAX_NPCS      24
+#define MAX_PROPS     64
 
 /* ---------------------------------------------------------------- palette */
 /* A muted 2004-Flash palette: ink outlines, desaturated earth and steel, one
@@ -271,7 +272,8 @@ typedef struct {
 /* ------------------------------------------------------------------ world */
 typedef enum {
     T_FLOOR, T_GRASS, T_PATH, T_WALL, T_WATER, T_TREE, T_ROCK, T_SAND,
-    T_SNOW, T_LAVA, T_MAT, T_PORTAL, T_DOOR, T_VOID
+    T_SNOW, T_LAVA, T_MAT, T_PORTAL, T_DOOR, T_VOID,
+    T_OCCUPIED   /* blocked because scenery stands there; drawn as floor */
 } TileId;
 
 typedef enum {
@@ -296,6 +298,18 @@ typedef struct {
    means "keep the row you walked in on". */
 typedef enum { EX_UP, EX_DOWN, EX_LEFT, EX_RIGHT } ExitDir;
 
+/* Scenery.  The original furnishes each room with 15-45 placed objects; their
+   positions and footprints are reproduced from its display list, and art.c
+   draws each kind procedurally.  See src/scenery_table.h. */
+typedef enum {
+    PROP_GENERIC, PROP_DOORWAY, PROP_TORCH, PROP_PILLAR, PROP_PLANT,
+    PROP_BAMBOO, PROP_CRATE, PROP_COUNTER, PROP_SHELF, PROP_LAMP,
+    PROP_WINDOW, PROP_URN, PROP_ROCKS, PROP_GLOW, PROP_SHADOW,
+    PROP_EXITSIGN, PROP_EXITARROW, PROP_KIND_COUNT
+} PropKind;
+
+typedef struct { int kind; float x, y, w, h; } Prop;
+
 typedef struct {
     int    dir;              /* ExitDir                                    */
     int    tx, ty;           /* trigger cell; edge exits span their column */
@@ -317,6 +331,8 @@ typedef struct {
     int  entryX, entryY, exitX, exitY;   /* where travel drops you */
     Exit exits[4];
     int  exitCount;
+    Prop props[MAX_PROPS];
+    int  propCount;
     Color skyTop, skyBot, ground, groundDark, fog, propA, propB;
     int  bgStyle;
 } Zone;
@@ -448,6 +464,7 @@ void  art_draw_puppet(const Combatant *c, Vector2 at, float facing, float t, flo
 void  art_draw_walker(const Look *lk, Vector2 at, int dir, float walkT, float scale);
 void  art_draw_zone_bg(const Zone *z, float t, float camX);
 void  art_draw_battle_bg(int bgStyle, float t);
+void  art_draw_scenery(const Prop *pr, const Zone *z, float t);
 void  art_draw_tile(int tile, int px, int py, int size, const Zone *z, int wx, int wy);
 void  art_draw_prop(int kind, Vector2 at, float scale, Color a, Color b);
 void  art_weapon_shape(int shape, Vector2 grip, float ang, float scale, Color tint, Color edge);

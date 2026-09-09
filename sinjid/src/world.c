@@ -44,7 +44,7 @@ static int tile_from_char(char c)
 static bool tile_solid(int t)
 {
     return t == T_WALL || t == T_WATER || t == T_TREE || t == T_ROCK ||
-           t == T_VOID || t == T_LAVA;
+           t == T_VOID || t == T_LAVA || t == T_OCCUPIED;
 }
 
 static void fill_zone(Zone *z, const char *const rows[MAP_H])
@@ -405,6 +405,8 @@ static const Exit ROOM_EXITS[] = {
 };
 static const int EXIT_ROOM[] = { 0, 1,1,1, 2, 3,3, 4,4, 5,5,5, 6, 7,7,7, 8, 9,9, 10 };
 
+#include "scenery_table.h"
+
 void data_init_zones(Zone *zones)
 {
     memset(zones, 0, sizeof(Zone) * ZONE_COUNT);
@@ -448,9 +450,14 @@ void data_init_zones(Zone *zones)
         z->propA = art_shade(z->ground, 1.15f);
         z->propB = art_shade(z->ground, 0.85f);
         fill_zone(z, STAGES[i].rows);
+        /* Row 2 is the full-width back wall in every layout.  Every other
+           type-2 cell is blocked because something stands on it, and that
+           something is now drawn from the scenery table, so those cells read
+           as floor while staying impassable. */
         for (int y = 0; y < MAP_H; y++)
             for (int x = 0; x < MAP_W; x++)
-                if (z->tiles[y][x] == T_WALL) z->tiles[y][x] = T_ROCK;
+                if (z->tiles[y][x] == T_WALL)
+                    z->tiles[y][x] = (y == 2) ? T_ROCK : T_OCCUPIED;
 
         z->entryX = 10; z->entryY = 5;
         z->exitX  = 10; z->exitY  = 9;
@@ -460,6 +467,21 @@ void data_init_zones(Zone *zones)
     for (unsigned e = 0; e < sizeof ROOM_EXITS / sizeof ROOM_EXITS[0]; e++) {
         Zone *z = &zones[ZONE_ARENA0 + EXIT_ROOM[e]];
         if (z->exitCount < 4) z->exits[z->exitCount++] = ROOM_EXITS[e];
+    }
+
+    /* Scenery, at the original's own positions.  Its 600x390 pixel space maps
+       onto this one at TILE/30 per pixel. */
+    for (unsigned e = 0; e < sizeof ROOM_PROPS / sizeof ROOM_PROPS[0]; e++) {
+        const PropSeed *ps = &ROOM_PROPS[e];
+        Zone *z = &zones[ZONE_ARENA0 + ps->room];
+        if (z->propCount >= MAX_PROPS) continue;
+        const float k = TILE / 30.0f;
+        Prop *pr = &z->props[z->propCount++];
+        pr->kind = ps->kind;
+        pr->x = OX + ps->x * k;
+        pr->y = OY + ps->y * k;
+        pr->w = ps->w * k;
+        pr->h = ps->h * k;
     }
 
     /* The cast.  `type = 2` in the original's stage scripts marks a cell as
@@ -772,18 +794,9 @@ void world_draw(Game *g)
         for (int x = 0; x < MAP_W; x++)
             art_draw_tile(z->tiles[y][x], OX + x * TILE, OY + y * TILE, TILE, z, x, y);
 
-    /* props scattered deterministically on empty ground */
-    for (int y = 0; y < MAP_H; y++)
-        for (int x = 0; x < MAP_W; x++) {
-            int tl = z->tiles[y][x];
-            if (tl != T_GRASS && tl != T_FLOOR) continue;
-            unsigned h = (unsigned)((x * 7919 + y * 104729) ^ (z->id * 31337));
-            if ((h % 37) != 0) continue;
-            if (npc_at(z, x, y)) continue;
-            art_draw_prop((int)(h / 37) % 6,
-                          (Vector2){ OX + x * TILE + TILE * 0.5f, OY + y * TILE + TILE * 0.9f },
-                          0.55f, z->propA, z->propB);
-        }
+    /* Scenery, at the original's own positions rather than scattered. */
+    for (int i = 0; i < z->propCount; i++)
+        art_draw_scenery(&z->props[i], z, t);
 
     for (int i = 0; i < z->npcCount; i++)
         if (z->npcs[i].kind != NPC_NONE) draw_npc(g, &z->npcs[i], t);

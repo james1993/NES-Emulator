@@ -864,6 +864,126 @@ void art_draw_battle_bg(int bgStyle, float t)
 
 /* ------------------------------------------------------------- map tiles */
 
+/* Scenery.  Positions and footprints come from the original's display list
+   (src/scenery_table.h); every shape below is drawn here, from nothing. */
+void art_draw_scenery(const Prop *pr, const Zone *z, float t)
+{
+    Rectangle r = { pr->x, pr->y, pr->w, pr->h };
+    float cx = r.x + r.width * 0.5f, by = r.y + r.height;
+    Color wood     = (Color){ 138, 105, 74, 255 };
+    Color woodDark = (Color){  86,  63, 44, 255 };
+    Color stone    = art_shade(z->groundDark, 1.05f);
+    Color leaf     = (Color){ 122, 158,  70, 255 };
+
+    switch (pr->kind) {
+    case PROP_DOORWAY:
+        DrawRectangleRec(r, art_shade(stone, 0.75f));
+        DrawRectangleRec((Rectangle){ r.x + r.width * 0.16f, r.y + r.height * 0.14f,
+                                      r.width * 0.68f, r.height * 0.86f }, (Color){ 18, 14, 20, 255 });
+        DrawRectangleRec((Rectangle){ r.x - 3, r.y, r.width + 6, r.height * 0.15f }, wood);
+        DrawRectangleLinesEx(r, 2, alpha(C_INK, 0.45f));
+        break;
+    case PROP_TORCH: {
+        float fx = cx, fy = r.y + r.height * 0.34f;
+        DrawRectangleRec((Rectangle){ cx - 2.5f, fy, 5, r.height * 0.62f }, woodDark);
+        float f = 0.75f + 0.25f * sinf(t * 7.3f + pr->x * 0.05f);
+        DrawCircleV(v2(fx, fy), r.width * 0.34f * f, alpha((Color){ 255, 176, 48, 255 }, 0.30f));
+        DrawCircleV(v2(fx, fy), r.width * 0.19f * f, (Color){ 255, 204, 0, 255 });
+        DrawCircleV(v2(fx, fy - 3), r.width * 0.10f * f, (Color){ 255, 246, 200, 255 });
+    } break;
+    case PROP_PILLAR:
+        DrawRectangleRec(r, alpha(C_INK, 0.55f));
+        DrawRectangleRec((Rectangle){ r.x, r.y, r.width * 0.28f, r.height }, alpha(C_INK, 0.30f));
+        break;
+    case PROP_PLANT: {
+        /* A sprite's bounds are the union over all of its frames, so the box
+           overstates the silhouette; anchor a slim cluster at its foot. */
+        float sw = r.width * 0.30f, sh = r.height * 0.72f;
+        for (int i = 0; i < 4; i++) {
+            float ox = cx + (i - 1.5f) * sw * 0.34f;
+            float ty = by - sh * (0.72f + 0.14f * (i % 3));
+            DrawLineEx(v2(cx, by), v2(ox, ty), 2.4f, (Color){ 150, 132, 74, 255 });
+            for (int k = 0; k < 3; k++) {
+                float t2 = 0.42f + k * 0.22f;
+                float lx = cx + (ox - cx) * t2, ly = by + (ty - by) * t2;
+                DrawEllipse((int)(lx + (i % 2 ? 5 : -5)), (int)ly, 5.5f, 2.6f,
+                            art_shade(leaf, 0.86f + 0.05f * k));
+            }
+        }
+    } break;
+    case PROP_BAMBOO: {
+        float sw = r.width * 0.42f;
+        DrawRectangleRec((Rectangle){ cx - sw * 0.5f, r.y, sw, r.height }, (Color){ 176, 154, 84, 255 });
+        for (float sy = r.y + 8; sy < by; sy += 16)
+            DrawLineEx(v2(cx - sw * 0.5f, sy), v2(cx + sw * 0.5f, sy), 1.6f, (Color){ 96, 78, 34, 255 });
+        DrawEllipse((int)(cx + sw * 1.4f), (int)(r.y + r.height * 0.24f), 6, 2.6f, leaf);
+        DrawEllipse((int)(cx - sw * 1.4f), (int)(r.y + r.height * 0.46f), 6, 2.6f, art_shade(leaf, 0.85f));
+    } break;
+    case PROP_CRATE:
+        DrawRectangleRec(r, wood);
+        DrawRectangleLinesEx(r, 2, woodDark);
+        DrawLineEx(v2(r.x, r.y), v2(r.x + r.width, by), 1.8f, woodDark);
+        DrawLineEx(v2(r.x + r.width, r.y), v2(r.x, by), 1.8f, woodDark);
+        break;
+    case PROP_COUNTER:
+        DrawRectangleRec((Rectangle){ r.x, r.y + r.height * 0.22f, r.width, r.height * 0.78f }, woodDark);
+        DrawRectangleRec((Rectangle){ r.x - 2, r.y, r.width + 4, r.height * 0.26f }, wood);
+        DrawRectangleLinesEx(r, 1.5f, alpha(C_INK, 0.35f));
+        break;
+    case PROP_SHELF:
+        DrawRectangleRec(r, wood);
+        DrawRectangleLinesEx(r, 1.5f, woodDark);
+        break;
+    case PROP_LAMP:
+        DrawRectangleRec((Rectangle){ cx - 2, r.y + r.height * 0.35f, 4, r.height * 0.65f }, woodDark);
+        DrawCircleV(v2(cx, r.y + r.height * 0.28f), r.width * 0.44f,
+                    alpha((Color){ 255, 214, 140, 255 }, 0.28f));
+        DrawRectangleRec((Rectangle){ r.x, r.y, r.width, r.height * 0.34f },
+                         (Color){ 226, 178, 118, 255 });
+        break;
+    case PROP_WINDOW:
+        DrawRectangleRec(r, (Color){ 46, 52, 66, 255 });
+        DrawRectangleLinesEx(r, 4, wood);
+        DrawLineEx(v2(cx, r.y), v2(cx, by), 3, wood);
+        DrawLineEx(v2(r.x, r.y + r.height * 0.5f), v2(r.x + r.width, r.y + r.height * 0.5f), 3, wood);
+        break;
+    case PROP_URN:
+        DrawEllipse((int)cx, (int)(r.y + r.height * 0.62f), r.width * 0.46f, r.height * 0.38f,
+                    (Color){ 108, 126, 150, 255 });
+        DrawRectangleRec((Rectangle){ cx - r.width * 0.20f, r.y, r.width * 0.40f, r.height * 0.34f },
+                         (Color){ 92, 108, 132, 255 });
+        break;
+    case PROP_ROCKS:
+        for (int i = 0; i < 4; i++) {
+            float rx = r.x + r.width * (0.18f + 0.22f * i);
+            float ry = by - r.height * (0.16f + 0.10f * (i % 2));
+            DrawEllipse((int)rx, (int)ry, r.width * 0.15f, r.height * 0.12f, stone);
+        }
+        break;
+    case PROP_GLOW:
+        DrawEllipse((int)cx, (int)(r.y + r.height * 0.5f), r.width * 0.5f, r.height * 0.5f,
+                    alpha((Color){ 255, 226, 150, 255 }, 0.16f));
+        break;
+    case PROP_SHADOW:
+        DrawEllipse((int)cx, (int)(r.y + r.height * 0.5f), r.width * 0.5f, r.height * 0.5f,
+                    alpha(C_INK, 0.22f));
+        break;
+    case PROP_EXITSIGN:
+        DrawCircleV(v2(cx, r.y + r.height * 0.5f), r.width * 0.62f,
+                    alpha((Color){ 255, 214, 120, 255 }, 0.18f));
+        break;
+    case PROP_EXITARROW: {
+        float g = 0.7f + 0.3f * sinf(t * 3.1f);
+        DrawTriangle(v2(cx, r.y - 7), v2(cx - 6, r.y + 4), v2(cx + 6, r.y + 4),
+                     alpha((Color){ 255, 204, 0, 255 }, g));
+    } break;
+    default:
+        DrawRectangleRec(r, alpha(stone, 0.55f));
+        DrawRectangleLinesEx(r, 1.2f, alpha(C_INK, 0.25f));
+        break;
+    }
+}
+
 void art_draw_tile(int tile, int px, int py, int size, const Zone *z, int wx, int wy)
 {
     float h = hashf(wx, wy, 1);
@@ -872,6 +992,7 @@ void art_draw_tile(int tile, int px, int py, int size, const Zone *z, int wx, in
     Color base = z->ground;
 
     switch (tile) {
+    case T_OCCUPIED:   /* blocked by scenery; the scenery itself is drawn later */
     case T_GRASS:
         base = lerp_col(z->ground, z->groundDark, h * 0.5f);
         DrawRectangleRec(r, base);
