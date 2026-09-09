@@ -1,0 +1,32 @@
+{
+ "note": "gated doorways using the same clip as the exits (id 1504), not a statue",
+ "portals": [
+  {
+   "room": 0,
+   "cell": [
+    10,
+    10
+   ],
+   "gate": 0,
+   "index": 0
+  },
+  {
+   "room": 8,
+   "cell": [
+    15,
+    5
+   ],
+   "gate": 10,
+   "index": 1
+  },
+  {
+   "room": 2,
+   "cell": [
+    9,
+    5
+   ],
+   "gate": 20,
+   "index": 2
+  }
+ ]
+}

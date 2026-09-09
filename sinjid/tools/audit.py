@@ -213,8 +213,10 @@ rg = gt('roomgraph.json')
 world = SRC('world.c')
 exits = table_rows(world, 'static const Exit ROOM_EXITS[]')
 want_n = sum(len(v) for v in rg['graph'].values())
-check('rooms', len(exits) == want_n,
-      "exit count ours=%d theirs=%d" % (len(exits), want_n))
+travel = [r for r in exits
+          if not (len(r) > 8 and num(r[8]) is not None and num(r[8]) >= 0)]
+check('rooms', len(travel) == want_n,
+      "exit count ours=%d theirs=%d" % (len(travel), want_n))
 npcs = table_rows(world, 'static const NpcSeed ROOM_NPCS[]')
 want_npc = sum(len(v) for v in rg['npcs'].values())
 check('rooms', len(npcs) >= want_npc,
@@ -232,7 +234,11 @@ exit_room = re.search(r'static const int EXIT_ROOM\[\]\s*=\s*\{([^}]*)\}',
                       strip_comments(world))
 exit_room = [int(x) for x in re.findall(r'\d+', exit_room.group(1))]
 ours = {}
+portal_rows = []
 for ridx, row in zip(exit_room, exits):
+    if len(row) > 8 and num(row[8]) is not None and num(row[8]) >= 0:
+        portal_rows.append((ridx, num(row[1]), num(row[2]), num(row[8])))
+        continue                      # a portal doorway, not a way to a room
     d = DIRS[row[0].strip()]
     dest = row[3].strip()
     ours.setdefault(ROOMNAME[ridx], []).append((d, dest))
@@ -339,6 +345,12 @@ for r in props:
     check('scenery', w > 0 and h > 0, "prop with an empty box at (%d,%d)" % (x, y))
 check('scenery', rooms_seen == set(range(11)),
       "rooms with no scenery: %s" % sorted(set(range(11)) - rooms_seen))
+
+# ---- the three portal doorways ----------------------------------------
+want_p = {(p_['room'], p_['cell'][0], p_['cell'][1], p_['index'])
+          for p_ in gt('portals.json')['portals']}
+check('portals', set(portal_rows) == want_p,
+      "ours=%s theirs=%s" % (sorted(portal_rows), sorted(want_p)))
 
 # ---- shop panel layout ------------------------------------------------
 sl = gt('shop_layout.json')

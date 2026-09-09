@@ -356,7 +356,7 @@ static const NpcSeed ROOM_NPCS[] = {
   { 6, NPC_VILLAGER, 15, 9, "Relaxing Ninja",
     "I have earned this floor and I intend to keep sitting on it.", 0 },
   /* --- Arena7, the hall of statues: the three gateways ----------------- */
-  { 7, NPC_PORTAL,   10, 5, "Statue",
+  { 7, NPC_PROP,     10, 5, "Statue",
     "Three gateways, and a long walk behind each.", 0 },
   { 7, NPC_PROP,      5, 5, "Statue2",
     "Carved mid-step, as though it meant to leave.", 0 },
@@ -394,28 +394,35 @@ static const NpcSeed ROOM_NPCS[] = {
    ty < 0 marks an edge exit that spans its whole column; entryY < 0 keeps
    the row you left on, which is what the original's Math.ceil does. */
 static const Exit ROOM_EXITS[] = {
-  /* room 0 */ { EX_UP,    10, 4, ZONE_ARENA1,  10,  9, -1, 0 },
-  /* room 1 */ { EX_DOWN,  10,10, ZONE_ARENA0,  10,  5, -1, 0 },
-               { EX_LEFT,   0,-1, ZONE_ARENA2,  18, -1, -1, 0 },
-               { EX_RIGHT, 19,-1, ZONE_ARENA3,   1, -1, -1, 0 },
-  /* room 2 */ { EX_RIGHT, 19,-1, ZONE_ARENA1,   1, -1, -1, 0 },
-  /* room 3 */ { EX_LEFT,   0,-1, ZONE_ARENA1,  18, -1, -1, 0 },
-               { EX_UP,    15, 4, ZONE_ARENA4,  13,  9, -1, 0 },
-  /* room 4 */ { EX_DOWN,  13,10, ZONE_ARENA3,  13,  5, -1, 0 },
-               { EX_LEFT,   0,-1, ZONE_ARENA5,  18, -1, -1, 0 },
-  /* room 5 */ { EX_LEFT,   0,-1, ZONE_ARENA6,  18, -1, -1, 0 },
-               { EX_RIGHT, 19,-1, ZONE_ARENA4,   1, -1, -1, 0 },
-               { EX_UP,    10, 4, ZONE_ARENA7,  10,  9, -1, 0 },
-  /* room 6 */ { EX_RIGHT, 19,-1, ZONE_ARENA5,   1, -1, -1, 0 },
-  /* room 7 */ { EX_DOWN,  10,10, ZONE_ARENA5,  10,  5, -1, 0 },
-               { EX_RIGHT, 19,-1, ZONE_ARENA8,   1, -1, -1, 0 },
-               { EX_LEFT,   0,-1, ZONE_ARENA9,  18, -1, -1, 0 },
-  /* room 8 */ { EX_LEFT,   0,-1, ZONE_ARENA7,  18, -1, -1, 0 },
-  /* room 9 */ { EX_RIGHT, 19,-1, ZONE_ARENA7,   1, -1, -1, 0 },
-               { EX_UP,    10, 4, ZONE_ARENA10, 10,  9,  0,20 },
-  /* room 10*/ { EX_DOWN,  10,10, ZONE_ARENA9,  10,  5, -1, 0 },
+  /* room 0 */ { EX_UP,    10, 4, ZONE_ARENA1,  10,  9, -1, 0, -1 },
+  /* room 1 */ { EX_DOWN,  10,10, ZONE_ARENA0,  10,  5, -1, 0, -1 },
+               { EX_LEFT,   0,-1, ZONE_ARENA2,  18, -1, -1, 0, -1 },
+               { EX_RIGHT, 19,-1, ZONE_ARENA3,   1, -1, -1, 0, -1 },
+  /* room 2 */ { EX_RIGHT, 19,-1, ZONE_ARENA1,   1, -1, -1, 0, -1 },
+  /* room 3 */ { EX_LEFT,   0,-1, ZONE_ARENA1,  18, -1, -1, 0, -1 },
+               { EX_UP,    15, 4, ZONE_ARENA4,  13,  9, -1, 0, -1 },
+  /* room 4 */ { EX_DOWN,  13,10, ZONE_ARENA3,  13,  5, -1, 0, -1 },
+               { EX_LEFT,   0,-1, ZONE_ARENA5,  18, -1, -1, 0, -1 },
+  /* room 5 */ { EX_LEFT,   0,-1, ZONE_ARENA6,  18, -1, -1, 0, -1 },
+               { EX_RIGHT, 19,-1, ZONE_ARENA4,   1, -1, -1, 0, -1 },
+               { EX_UP,    10, 4, ZONE_ARENA7,  10,  9, -1, 0, -1 },
+  /* room 6 */ { EX_RIGHT, 19,-1, ZONE_ARENA5,   1, -1, -1, 0, -1 },
+  /* room 7 */ { EX_DOWN,  10,10, ZONE_ARENA5,  10,  5, -1, 0, -1 },
+               { EX_RIGHT, 19,-1, ZONE_ARENA8,   1, -1, -1, 0, -1 },
+               { EX_LEFT,   0,-1, ZONE_ARENA9,  18, -1, -1, 0, -1 },
+  /* room 8 */ { EX_LEFT,   0,-1, ZONE_ARENA7,  18, -1, -1, 0, -1 },
+  /* room 9 */ { EX_RIGHT, 19,-1, ZONE_ARENA7,   1, -1, -1, 0, -1 },
+               { EX_UP,    10, 4, ZONE_ARENA10, 10,  9,  0,20, -1 },
+  /* room 10*/ { EX_DOWN,  10,10, ZONE_ARENA9,  10,  5, -1, 0, -1 },
+  /* The three portals are gated doorways of the same kind, not a statue:
+     the entrance room's south door, one in Arena8 and one in Arena2, each
+     behind its own portallevel threshold. */
+  /* room 0 */ { EX_DOWN,  10,10, ZONE_ARENA0,  10,  9, -1, 0,  0 },
+  /* room 8 */ { EX_UP,    15, 5, ZONE_ARENA8,  15,  6, -1, 0,  1 },
+  /* room 2 */ { EX_UP,     9, 5, ZONE_ARENA2,   9,  6, -1, 0,  2 },
 };
-static const int EXIT_ROOM[] = { 0, 1,1,1, 2, 3,3, 4,4, 5,5,5, 6, 7,7,7, 8, 9,9, 10 };
+static const int EXIT_ROOM[] = { 0, 1,1,1, 2, 3,3, 4,4, 5,5,5, 6, 7,7,7, 8, 9,9, 10,
+                                 0, 8, 2 };
 
 #include "scenery_table.h"
 
@@ -724,6 +731,12 @@ static void take_exit(Game *g, const Exit *e)
         ui_toast(g, "Sealed. Finish the gateway below and come back.");
         return;
     }
+    if (e->portal >= 0) {
+        /* A portal doorway opens the gateway rather than moving you a room. */
+        g->portalIdx = e->portal;
+        go_scene(g, SCENE_PORTAL);
+        return;
+    }
     int nx = e->entryX;
     int ny = (e->entryY < 0) ? p->ty : e->entryY;
     if (ny < 0) ny = 0;
@@ -777,7 +790,7 @@ void world_update(Game *g, float dt)
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
         /* The original tests the player against the character's clip, so
            reach is a radius rather than the next cell along. */
-        Npc *best = NULL; float bestD = 46.0f;
+        Npc *best = NULL; float bestD = 70.0f;   /* reaches over a counter */
         for (int i = 0; i < z->npcCount; i++) {
             Npc *n = &z->npcs[i];
             if (n->kind == NPC_NONE) continue;
@@ -897,10 +910,9 @@ void world_draw(Game *g)
     for (int i = 0; i < z->npcCount; i++)
         if (z->npcs[i].kind != NPC_NONE) draw_npc(g, &z->npcs[i], t);
 
-    /* the player, tweened between tiles */
-    float fx = g->moving ? (g->fromX + (p->tx - g->fromX) * g->moveT) : (float)p->tx;
-    float fy = g->moving ? (g->fromY + (p->ty - g->fromY) * g->moveT) : (float)p->ty;
-    Vector2 at = { OX + fx * TILE + TILE * 0.5f, OY + fy * TILE + TILE * 0.95f };
+    /* The player draws at the position it actually holds, which is a float in
+       the original's pixel space; there is no tween between cells any more. */
+    Vector2 at = { OX + p->px * HUD_S, OY + p->py * HUD_S + TILE * 0.42f };
     Look lk = p->look;
     for (int s = 0; s < SLOT_COUNT; s++) {
         int id = p->equip[s];

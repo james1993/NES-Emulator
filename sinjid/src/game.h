@@ -323,6 +323,7 @@ typedef struct {
     int    entryX, entryY;   /* entryY < 0 => keep the current row         */
     int    gatePortal;       /* -1, else the portal that must be cleared   */
     int    gateNeed;
+    int    portal;           /* -1, else the portal this doorway opens     */
 } Exit;
 
 typedef struct {
@@ -473,6 +474,7 @@ void  art_draw_walker(const Look *lk, Vector2 at, int dir, float walkT, float sc
 void  art_draw_zone_bg(const Zone *z, float t, float camX);
 void  art_draw_battle_bg(int bgStyle, float t);
 void  art_draw_scenery(const Prop *pr, const Zone *z, float t);
+void  art_draw_item_icon(int def, Rectangle r);
 void  art_draw_tile(int tile, int px, int py, int size, const Zone *z, int wx, int wy);
 void  art_draw_prop(int kind, Vector2 at, float scale, Color a, Color b);
 void  art_weapon_shape(int shape, Vector2 grip, float ang, float scale, Color tint, Color edge);

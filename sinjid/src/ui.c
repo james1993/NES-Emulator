@@ -345,11 +345,9 @@ static void shop_cell(Rectangle r, const ItemDef *it, bool sel, bool dim)
     DrawRectangleLinesEx(r, sel ? 3 : 1,
                          sel ? C_GOLD : (Color){ 92, 78, 52, 255 });
     if (!it) return;
-    Color tint = it->tint;
-    if (dim) tint = art_shade(tint, 0.5f);
-    DrawRectangleRec((Rectangle){ r.x + 8, r.y + 8, r.width - 16, r.height - 16 }, tint);
-    DrawRectangleLinesEx((Rectangle){ r.x + 8, r.y + 8, r.width - 16, r.height - 16 },
-                         1, Fade(C_INK, 0.5f));
+    art_draw_item_icon((int)(it - ITEMS), (Rectangle){ r.x + 4, r.y + 4,
+                                                       r.width - 8, r.height - 8 });
+    if (dim) DrawRectangleRec(r, Fade(C_INK, 0.45f));
 }
 
 void ui_scene_shop(Game *g)

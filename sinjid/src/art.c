@@ -40,6 +40,17 @@ static Color alpha(Color c, float a)
     return c;
 }
 
+/* A soft contact shadow under the feet.  A single hard ellipse reads as a
+   black blob against the floor, so this lays a wide faint pool under a
+   smaller, darker core. */
+static void ground_shadow(Vector2 at, float w, float h)
+{
+    DrawEllipse((int)at.x, (int)at.y + 3, w * 1.25f, h * 1.25f, alpha(C_INK, 0.10f));
+    DrawEllipse((int)at.x, (int)at.y + 2, w,         h,         alpha(C_INK, 0.16f));
+    DrawEllipse((int)at.x, (int)at.y + 1, w * 0.62f, h * 0.62f, alpha(C_INK, 0.20f));
+}
+
+
 /* Winding-agnostic triangle: the shape helpers below build polygons in either
    direction depending on the pose, so just emit both windings. */
 static void tri(Vector2 a, Vector2 b, Vector2 c, Color col)
@@ -479,7 +490,7 @@ void art_draw_puppet(const Combatant *c, Vector2 at, float facing, float t, floa
     Pose p = pose_for(c->anim, t);
 
     /* Ground shadow. */
-    DrawEllipse((int)at.x, (int)at.y + 2, 30 * s, 8 * s, alpha(C_INK, 0.35f));
+    ground_shadow(at, 15 * s, 4.5f * s);
 
     float shake = c->shake > 0 ? sinf(t * 70.0f) * c->shake * 6.0f : 0.0f;
     Vector2 root = v2(at.x + (p.rootX * facing + shake) * s, at.y + (p.rootY + p.crouch) * s);
@@ -665,7 +676,7 @@ void art_draw_walker(const Look *lk, Vector2 at, int dir, float walkT, float sca
     float sw = sinf(ph * 2 * PI);
     float bob = walkT > 0 ? -fabsf(cosf(ph * 2 * PI)) * 2.5f * s : sinf((float)GetTime() * 2) * 1.0f * s;
 
-    DrawEllipse((int)at.x, (int)at.y + 2, 26 * s, 7 * s, alpha(C_INK, 0.35f));
+    ground_shadow(at, 13 * s, 4.0f * s);
     Vector2 hip = v2(at.x, at.y + bob);
     Vector2 chest = v2(hip.x, hip.y - 40 * s);
     Vector2 head = v2(hip.x, hip.y - 58 * s);
@@ -866,6 +877,59 @@ void art_draw_battle_bg(int bgStyle, float t)
 
 /* Scenery.  Positions and footprints come from the original's display list
    (src/scenery_table.h); every shape below is drawn here, from nothing. */
+/* An item's icon.  The original draws a little picture of the thing; these
+   are shapes of the same families -- a blade, a guard, a helm, a robe, a
+   flask -- so a slot reads as an object rather than a coloured square. */
+void art_draw_item_icon(int def, Rectangle r)
+{
+    if (def < 0 || def >= ITEM_COUNT) return;
+    const ItemDef *it = &ITEMS[def];
+    Color c = it->tint, d = art_shade(c, 0.6f), l = art_shade(c, 1.25f);
+    float cx = r.x + r.width * 0.5f, cy = r.y + r.height * 0.5f;
+    float w = r.width, h = r.height;
+
+    switch (it->type) {
+    case ITEM_WEAPON: {                       /* blade on a hilt, tip up */
+        float bl = h * 0.52f;
+        DrawLineEx(v2(cx, cy + h * 0.22f), v2(cx, cy - bl), w * 0.13f, l);
+        DrawLineEx(v2(cx, cy + h * 0.22f), v2(cx, cy - bl), w * 0.06f, c);
+        DrawLineEx(v2(cx - w * 0.16f, cy + h * 0.20f),
+                   v2(cx + w * 0.16f, cy + h * 0.20f), w * 0.09f, d);
+        DrawLineEx(v2(cx, cy + h * 0.22f), v2(cx, cy + h * 0.36f), w * 0.10f, d);
+    } break;
+    case ITEM_SHIELD:                          /* a kite guard */
+        DrawTriangle(v2(cx, cy + h * 0.34f), v2(cx - w * 0.26f, cy - h * 0.16f),
+                     v2(cx + w * 0.26f, cy - h * 0.16f), c);
+        DrawRectangleRec((Rectangle){ cx - w * 0.26f, cy - h * 0.30f, w * 0.52f, h * 0.16f }, l);
+        DrawLineEx(v2(cx, cy - h * 0.26f), v2(cx, cy + h * 0.30f), 1.5f, d);
+        break;
+    case ITEM_HELM:                            /* a domed helm */
+        DrawCircleV(v2(cx, cy + h * 0.02f), w * 0.27f, c);
+        DrawRectangleRec((Rectangle){ cx - w * 0.29f, cy + h * 0.02f, w * 0.58f, h * 0.12f }, d);
+        DrawLineEx(v2(cx, cy - h * 0.26f), v2(cx, cy + h * 0.02f), 2.0f, l);
+        break;
+    case ITEM_ARMOUR:                          /* a robe / cuirass */
+        DrawRectangleRec((Rectangle){ cx - w * 0.24f, cy - h * 0.24f, w * 0.48f, h * 0.50f }, c);
+        DrawTriangle(v2(cx - w * 0.24f, cy - h * 0.24f), v2(cx - w * 0.36f, cy - h * 0.04f),
+                     v2(cx - w * 0.24f, cy + h * 0.02f), d);
+        DrawTriangle(v2(cx + w * 0.24f, cy - h * 0.24f), v2(cx + w * 0.24f, cy + h * 0.02f),
+                     v2(cx + w * 0.36f, cy - h * 0.04f), d);
+        DrawLineEx(v2(cx, cy - h * 0.20f), v2(cx, cy + h * 0.24f), 1.5f, l);
+        break;
+    case ITEM_RELIC:                           /* a ring */
+        DrawCircleLinesV(v2(cx, cy), w * 0.22f, c);
+        DrawCircleLinesV(v2(cx, cy), w * 0.22f - 1, c);
+        DrawCircleV(v2(cx, cy - w * 0.22f), w * 0.07f, l);
+        break;
+    default:                                   /* a stoppered flask */
+        DrawRectangleRec((Rectangle){ cx - w * 0.07f, cy - h * 0.30f, w * 0.14f, h * 0.16f }, d);
+        DrawCircleV(v2(cx, cy + h * 0.08f), w * 0.22f, c);
+        DrawRectangleRec((Rectangle){ cx - w * 0.16f, cy - h * 0.16f, w * 0.32f, h * 0.16f }, c);
+        DrawCircleV(v2(cx - w * 0.07f, cy + h * 0.02f), w * 0.06f, l);
+        break;
+    }
+}
+
 void art_draw_scenery(const Prop *pr, const Zone *z, float t)
 {
     Rectangle r = { pr->x, pr->y, pr->w, pr->h };
