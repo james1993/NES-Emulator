@@ -38,7 +38,7 @@ const ItemDef ITEMS[] = {
         "Channels more ki than steel." },
 /* 2*/ { "Silver Knife", ITEM_WEAPON, 30, 1, 10, 0,0, 10,0, 0,0, 0,0,0,0, 0, WEAP_KNIFE, P_STEEL,
         "Cheap steel, honestly made." },
-/* 3*/ { "Long Sword", ITEM_WEAPON, 190, 2, 15, 0,0, 12,0, 0,0, 0,0,0,2, 0, WEAP_BROAD, P_STEEL,
+/* 3*/ { "Long Sword", ITEM_WEAPON, 50, 2, 15, 0,0, 12,0, 0,0, 0,0,0,2, 0, WEAP_BROAD, P_STEEL,
         "A working blade." },
 /* 4*/ { "Spiked Axe", ITEM_WEAPON, 60, 2, 16, 0,0, 11,0, 0,0, 0,0,0,5, 0, WEAP_AXE, P_STEEL2,
         "A working blade." },
@@ -60,7 +60,7 @@ const ItemDef ITEMS[] = {
         "Heavy to lift, worse to be hit by." },
 /*13*/ { "Raider Sword", ITEM_WEAPON, 140, 2, 13, 0,0, 8,0, 0,0, 0,0,0,3, 0, WEAP_BROAD, P_STEEL,
         "Cheap steel, honestly made." },
-/*14*/ { "Guard Blade", ITEM_WEAPON, 1640, 5, 40, 0,-40, 90,15, 0,0, 0,0,0,10, 0, WEAP_BROAD, P_STEEL,
+/*14*/ { "Guard Blade", ITEM_WEAPON, 1500, 5, 40, 0,-40, 90,15, 0,0, 0,0,0,10, 0, WEAP_BROAD, P_STEEL,
         "Heavy to lift, worse to be hit by." },
 /*15*/ { "Golden Blade", ITEM_WEAPON, 1100, 5, 28, 0,0, 46,0, 24,0, 0,0,0,12, 0, WEAP_BROAD, P_GOLD,
         "A working blade." },
@@ -122,11 +122,11 @@ const ItemDef ITEMS[] = {
         "Dented, and still worth wearing." },
 /*44*/ { "Focus Band", ITEM_HELM, 40, 1, 10, 0,30, 0,5, 0,12, 0,0,0,0, 0, HELM_HOOD, P_KI2,
         "Narrows the world to one point." },
-/*45*/ { "Fire Band", ITEM_HELM, 310, 2, 15, 0,0, 0,6, 7,6, 0,0,0,0, 0, HELM_CIRCLET, P_BLOOD2,
+/*45*/ { "Fire Band", ITEM_HELM, 60, 2, 15, 0,0, 0,6, 7,6, 0,0,0,0, 0, HELM_CIRCLET, P_BLOOD2,
         "Keeps sweat out of your eyes." },
 /*46*/ { "Power Band", ITEM_HELM, 100, 3, 17, 0,0, 13,12, 0,3, 0,0,0,0, 0, HELM_CIRCLET, P_STEEL,
         "Keeps sweat out of your eyes." },
-/*47*/ { "Golden Band", ITEM_HELM, 620, 3, 18, 0,0, 0,20, 0,15, 0,0,0,0, 0, HELM_CIRCLET, P_GOLD,
+/*47*/ { "Golden Band", ITEM_HELM, 400, 3, 18, 0,0, 0,20, 0,15, 0,0,0,0, 0, HELM_CIRCLET, P_GOLD,
         "Dented, and still worth wearing." },
 /*48*/ { "Demon Skin", ITEM_HELM, 220, 4, 22, 0,0, 8,15, 12,10, 0,0,0,0, 0, HELM_HOOD, P_BLOOD,
         "Dented, and still worth wearing." },
@@ -156,11 +156,11 @@ const ItemDef ITEMS[] = {
    quest goods, not consumables.  Medicine exists to be sold: leaves are cheap,
    the herbalist turns them into medicine, and a merchant pays more for it than
    the leaves cost, which is a small repeatable income. */
-/*60*/ { "Medicine", ITEM_CONSUMABLE, 200, 1, 0, 0,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_STEEL,
+/*60*/ { "Medicine", ITEM_CONSUMABLE, 0, 1, 0, 0,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_STEEL,
         "Worth more to a merchant than the leaves it was made from." },
 /*61*/ { "Mendo's Ring", ITEM_RELIC, 0, 1, 0, 0,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_STEEL,
         "Worth nothing to a merchant. Something else wants it." },
-/*62*/ { "White Leaves", ITEM_CONSUMABLE, 40, 1, 0, 0,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_STEEL,
+/*62*/ { "White Leaves", ITEM_CONSUMABLE, 0, 1, 0, 0,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_STEEL,
         "Useless as they are. Someone can make medicine of them." },
 /*63*/ { "Rice Ball", ITEM_CONSUMABLE, 20, 1, 0, 120,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_PARCH,
         "Restores 120 life." },
@@ -464,11 +464,11 @@ void data_class_base(Player *p, ClassId c)
 }
 
 /* Shop stock (indices into ITEMS). */
-static const int SHOP_GOODS[]  = { 63,64,65,66,67,60,62, -1 };
+static const int SHOP_GOODS[]  = { 63,64,65,66,67,62, -1 };
 /* Mendo's Ring is a quest item, not stock: the Meditating Ninja gives exactly
    one, and the offering stone pays a skill point for each one handed over, so
    letting a merchant sell them would make skill points farmable. */
-static const int SHOP_RELIC[]  = { 60,62,63,66, -1 };
+static const int SHOP_RELIC[]  = { 62,63,66, -1 };
 
 /* The original's six equipment screens, Items_0 through Items_5, recovered
    from the stock each one assigns.  Its interface clip has a separate frame
@@ -479,6 +479,20 @@ static const int SHOP_ITEMS_2[] = { 44, 45, 46, 50, 53, 54, 58, -1 };
 static const int SHOP_ITEMS_3[] = {  9, 48, 56, 51, 57, 37, 39, -1 };
 static const int SHOP_ITEMS_4[] = { 17, 18, 59, 49, 36, -1 };
 static const int SHOP_ITEMS_5[] = { 15, 23, 14, 55, 47, 38, 41, -1 };
+
+/* What a merchant pays for something.  The original does not price a sale as
+   a fraction of the asking price: it matches the item's *type* against a list
+   and pays a flat rate.  Only two such lists exist -- Head Gear, Shield, Suit
+   and Weapon pay 0, and Drink pays 3 -- so equipment cannot be sold on at all,
+   and the herb trade is the small repeatable income. */
+int data_sell_price(int def)
+{
+    if (def < 0 || def >= ITEM_COUNT) return 0;
+    switch (ITEMS[def].type) {
+    case ITEM_CONSUMABLE: return 3;
+    default:              return 0;
+    }
+}
 
 int data_shop_table(int vendor, const int **out)
 {

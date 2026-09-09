@@ -351,15 +351,22 @@ void ui_scene_shop(Game *g)
                            ui_toast(g, "Bought %s.", it->name); }
                 } else if (p->invCount > 0) {
                     int def = p->inv[g->shopIdx].def;
-                    int price = ITEMS[def].price / 2;
-                    p->gold += price;
-                    p->inv[g->shopIdx].count--;
-                    if (p->inv[g->shopIdx].count <= 0) {
-                        for (int i = g->shopIdx; i + 1 < p->invCount; i++) p->inv[i] = p->inv[i + 1];
-                        p->invCount--;
-                        if (g->shopIdx >= p->invCount && g->shopIdx > 0) g->shopIdx--;
+                    int price = data_sell_price(def);
+                    if (price <= 0) {
+                        /* Merchants do not buy equipment back in the original. */
+                        ui_toast(g, "\"I have no use for that.\"");
+                    } else {
+                        p->gold += price;
+                        p->inv[g->shopIdx].count--;
+                        if (p->inv[g->shopIdx].count <= 0) {
+                            for (int i = g->shopIdx; i + 1 < p->invCount; i++)
+                                p->inv[i] = p->inv[i + 1];
+                            p->invCount--;
+                            if (g->shopIdx >= p->invCount && g->shopIdx > 0) g->shopIdx--;
+                        }
+                        sound_play(SFX_COINS);
+                        ui_toast(g, "Sold %s for %d gold.", ITEMS[def].name, price);
                     }
-                    ui_toast(g, "Sold %s for %d gold.", ITEMS[def].name, price);
                 }
             }
         }
@@ -376,7 +383,7 @@ void ui_scene_shop(Game *g)
     int top = g->shopIdx - 10; if (top < 0) top = 0;
     for (int i = top; i < count && i < top + 12; i++) {
         int def = g->shopMode ? p->inv[i].def : stock[i];
-        int price = g->shopMode ? ITEMS[def].price / 2 : ITEMS[def].price;
+        int price = g->shopMode ? data_sell_price(def) : ITEMS[def].price;
         char lab[96];
         snprintf(lab, sizeof lab, "%-20s %5dg", ITEMS[def].name, price);
         bool afford = g->shopMode || p->gold >= price;

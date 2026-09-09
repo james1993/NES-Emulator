@@ -464,6 +464,7 @@ void  data_init_zones(Zone *zones);
 Look  data_class_look(ClassId c);
 void  data_class_base(Player *p, ClassId c);
 int   data_shop_table(int vendor, const int **out);
+int   data_sell_price(int def);
 
 /* ------------------------------------------------------------------- art */
 void  art_draw_puppet(const Combatant *c, Vector2 at, float facing, float t, float scale);
