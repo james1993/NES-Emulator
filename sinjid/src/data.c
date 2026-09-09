@@ -460,22 +460,32 @@ void data_class_base(Player *p, ClassId c)
 }
 
 /* Shop stock (indices into ITEMS). */
-static const int SHOP_SMITH[]  = { 0,1,2,25,26,42,43,44,           /* tier 1 */
-                                   3,4,5,13,20,21,22,24,27,31,36,45,50,51,52,58, -1 };
-static const int SHOP_SMITH2[] = { 6,11,16,18,23,28,29,30,32,33,34,37,41,46,47,49,53,54,55,57,
-                                   7,8,9,10,17,35,38,39,40,48,59,
-                                   12,14,15,19,56, -1 };
 static const int SHOP_GOODS[]  = { 63,64,65,66,67,60,62, -1 };
 static const int SHOP_RELIC[]  = { 61,60,62,63,66, -1 };
+
+/* The original's six equipment screens, Items_0 through Items_5, recovered
+   from the stock each one assigns.  Its interface clip has a separate frame
+   per merchant, so these are six distinct shops rather than two tiers. */
+static const int SHOP_ITEMS_0[] = {  2,  4,  5, 25, 26, 27, 28, 42, 43, 52, -1 };
+static const int SHOP_ITEMS_1[] = { 24,  6,  7,  8, 20, 29, 30, 35, 21, -1 };
+static const int SHOP_ITEMS_2[] = { 44, 45, 46, 50, 53, 54, 58, -1 };
+static const int SHOP_ITEMS_3[] = {  9, 48, 56, 51, 57, 37, 39, -1 };
+static const int SHOP_ITEMS_4[] = { 17, 18, 59, 49, 36, -1 };
+static const int SHOP_ITEMS_5[] = { 15, 23, 14, 55, 47, 38, 41, -1 };
 
 int data_shop_table(int vendor, const int **out)
 {
     const int *t;
     switch (vendor) {
-    case 0:  t = SHOP_SMITH;  break;
-    case 1:  t = SHOP_GOODS;  break;
-    case 2:  t = SHOP_RELIC;  break;
-    default: t = SHOP_SMITH2; break;
+    case SHOP_ITEMS0: t = SHOP_ITEMS_0; break;
+    case SHOP_ITEMS1: t = SHOP_ITEMS_1; break;
+    case SHOP_ITEMS2: t = SHOP_ITEMS_2; break;
+    case SHOP_ITEMS3: t = SHOP_ITEMS_3; break;
+    case SHOP_ITEMS4: t = SHOP_ITEMS_4; break;
+    case SHOP_ITEMS5: t = SHOP_ITEMS_5; break;
+    case SHOP_MEALS:  t = SHOP_GOODS;   break;
+    case SHOP_POTS:   t = SHOP_RELIC;   break;
+    default:          t = SHOP_ITEMS_0; break;
     }
     *out = t;
     int n = 0; while (t[n] >= 0) n++;

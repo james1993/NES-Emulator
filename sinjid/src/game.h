@@ -34,6 +34,12 @@
 #define MAX_NPCS      24
 #define MAX_PROPS     64
 
+/* The merchants.  The original's interface clip has one frame per shop --
+   Items_0..Items_5 for the six equipment sellers, plus Meals, Pots and Trade
+   -- so each merchant opens its own stock rather than sharing a tier. */
+enum { SHOP_ITEMS0, SHOP_ITEMS1, SHOP_ITEMS2, SHOP_ITEMS3, SHOP_ITEMS4,
+       SHOP_ITEMS5, SHOP_MEALS, SHOP_POTS, SHOP_TRADE };
+
 /* ---------------------------------------------------------------- palette */
 /* A muted 2004-Flash palette: ink outlines, desaturated earth and steel, one
    hot accent for blood/fire and one cold accent for ki/magic.  Each colour has
@@ -278,7 +284,7 @@ typedef enum {
 
 typedef enum {
     NPC_NONE, NPC_ELDER, NPC_SMITH, NPC_VENDOR, NPC_HEALER, NPC_TRAINER,
-    NPC_ARENA, NPC_SAVE, NPC_VILLAGER, NPC_GATE, NPC_PROP, NPC_PORTAL, NPC_PICKUP, NPC_TRAINER2
+    NPC_ARENA, NPC_SAVE, NPC_VILLAGER, NPC_GATE, NPC_PROP, NPC_PORTAL, NPC_PICKUP, NPC_TRAINER2, NPC_QUEST
 } NpcKind;
 
 typedef struct {
@@ -493,6 +499,7 @@ void  ui_toast(Game *g, const char *fmt, ...);
 /* ---------------------------------------------------------------- player */
 void  player_recalc(Player *p, Combatant *out);
 int   player_add_item(Player *p, int def);
+bool  player_take_item(Player *p, int def);
 int   player_pack_free(const Player *p);
 void  player_equip(Player *p, int invIndex);
 bool  player_can_equip(const Player *p, int def);
@@ -500,6 +507,9 @@ bool  skill_prereqs_met(const Player *p, int id);
 const char *skill_lock_reason(const Player *p, int id);
 
 /* Indices into the original's item table, for starting gear. */
+#define IT_MEDICINE      60
+#define IT_MENDOS_RING2  61
+#define IT_WHITE_LEAVES  62
 #define IT_IRON_KNIFE     0
 #define IT_ENERGY_KNIFE   1
 #define IT_SILVER_KNIFE   2

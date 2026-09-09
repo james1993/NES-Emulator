@@ -247,6 +247,20 @@ int player_add_item(Player *p, int def)
     return p->invCount++;
 }
 
+/* Remove one of `def` from the pack, as the original's SearchItem does when
+   it is asked to consume what it found.  Returns true if one was there. */
+bool player_take_item(Player *p, int def)
+{
+    for (int i = 0; i < p->invCount; i++) {
+        if (p->inv[i].def != def) continue;
+        if (p->inv[i].count > 1) { p->inv[i].count--; return true; }
+        for (int k = i; k < p->invCount - 1; k++) p->inv[k] = p->inv[k + 1];
+        p->invCount--;
+        return true;
+    }
+    return false;
+}
+
 /* How many carried items the pack window still has room for. */
 int player_pack_free(const Player *p)
 {

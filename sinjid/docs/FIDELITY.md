@@ -109,6 +109,32 @@ The Healer's `inventorytype` is `"Heal"`, so talking to them opens a Heal panel
 and pauses the game; it never deducts gold the moment you walk up. That panel
 is reproduced here.
 
+**Every NPC opens its own screen.** The interface clip has one frame per
+panel -- `Items_0`..`Items_5`, `Trade`, `Meals`, `Pots`, `Blacksmith`, `Books`,
+`Skills`, `SkillPut`, `Save`, `Heal`, `Training`, `Inventory` -- and each
+character's `inventorytype` names the one it opens:
+
+| room | character | panel |
+| --- | --- | --- |
+| Arena0 | Elder | Save |
+| Arena0 | Healer | Heal |
+| Arena1 | Food Vendor / Potion Vendor | Meals / Pots |
+| Arena3 | Item Vendor | Items_0 |
+| Arena3 | Item Vendor 2 | Trade |
+| Arena5 | Vendor 2 / Vendor | Items_1 / Items_2 |
+| Arena8 | Vendor 3 | Items_3 |
+| Arena10 | Vendor 4 / Shadow | Items_4 / Items_5 |
+
+So there are **six** distinct equipment merchants, not two tiers, and their
+stock is recovered per screen. Each is wired to its own table here. The Elder
+is the save point -- not the Scribe, who only talks.
+
+**The two fetch quests are in.** The Meditating Ninja in Arena9 hands over
+Mendo's Ring once, guarded by the original's `moon_q` flag; the offering stone
+in Arena7's hall of statues takes the ring for a skill point; and the Lady in
+Arena6 trades White Leaves for Medicine. Each consumes what it asks for, the
+way `SearchItem` does.
+
 **The four disciplines do not start alike.** Each class button sets its own
 starting numbers and adds its own bonuses, so the single shared 75/75/15/15
 block this remake used was wrong:

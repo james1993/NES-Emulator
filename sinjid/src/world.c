@@ -306,7 +306,7 @@ typedef struct {
 
 static const NpcSeed ROOM_NPCS[] = {
   /* --- Arena0, the entrance, and the closest thing to a hub ------------ */
-  { 0, NPC_ELDER,    16, 7, "Elder",
+  { 0, NPC_SAVE,     16, 7, "Elder",
     "You were away on the mountain when it came.  What is left of\nus is standing in this room.", 0 },
   { 0, NPC_HEALER,    3, 5, "Healer",
     "Sit.  Breathe out.  I can close most of what the road opens.", 0 },
@@ -314,9 +314,9 @@ static const NpcSeed ROOM_NPCS[] = {
     "They say the deeper rooms are worse.  I have not gone far\nenough to argue.", 0 },
   /* --- Arena1 --------------------------------------------------------- */
   { 1, NPC_VENDOR,   13, 4, "Food Vendor",
-    "Eat before you walk.  It is cheaper than bleeding.", 1 },
+    "Eat before you walk.  It is cheaper than bleeding.", SHOP_MEALS },
   { 1, NPC_VENDOR,    6, 4, "Potion Vendor",
-    "Life and mana, bottled.  You will want both.", 1 },
+    "Life and mana, bottled.  You will want both.", SHOP_POTS },
   { 1, NPC_VILLAGER, 16, 9, "Ninja",
     "West is quiet.  East is not.  Choose by what you can carry.", 0 },
   /* --- Arena2 --------------------------------------------------------- */
@@ -325,12 +325,12 @@ static const NpcSeed ROOM_NPCS[] = {
   { 2, NPC_VILLAGER, 14, 5, "Guard",
     "Nothing through here but dust.  Go back the way you came.", 0 },
   /* --- Arena3 --------------------------------------------------------- */
-  { 3, NPC_SMITH,     6, 4, "Item Vendor",
-    "Steel, leather, and a wrist guard if you have the sense.\nStrength first -- you cannot swing what you cannot lift.", 0 },
+  { 3, NPC_VENDOR,    6, 4, "Item Vendor",
+    "Steel, leather, and a wrist guard if you have the sense.\nStrength first -- you cannot swing what you cannot lift.", SHOP_ITEMS0 },
   { 3, NPC_VILLAGER,  7, 9, "Apprentice",
     "Two vendors in one room.  They argue about prices all day.", 0 },
-  { 3, NPC_SMITH,    14,10, "Item Vendor 2",
-    "Better stock than his, and I will not pretend otherwise.", 3 },
+  { 3, NPC_VENDOR,   14,10, "Item Vendor 2",
+    "Better stock than his, and I will not pretend otherwise.", SHOP_TRADE },
   /* --- Arena4 --------------------------------------------------------- */
   { 4, NPC_VILLAGER,  3,10, "Drinker",
     "One more and I will go home.  I have said that four times.", 0 },
@@ -342,16 +342,16 @@ static const NpcSeed ROOM_NPCS[] = {
     "Drink here if you must.  Do not drink past this room.", 0 },
   /* --- Arena5 --------------------------------------------------------- */
   { 5, NPC_VENDOR,   14, 4, "Vendor 2",
-    "Relics.  Odd things.  They do more than they look like they do.", 2 },
+    "Relics.  Odd things.  They do more than they look like they do.", SHOP_ITEMS1 },
   { 5, NPC_VILLAGER, 11, 7, "Apprentice",
     "Up from here is the hall of statues.  Mind your footing.", 0 },
   { 5, NPC_VENDOR,    7, 9, "Vendor",
-    "Supplies, same as the last room, worse light.", 1 },
+    "Supplies, same as the last room, worse light.", SHOP_ITEMS2 },
   /* --- Arena6 --------------------------------------------------------- */
-  { 6, NPC_SAVE,      5, 4, "Scribe",
+  { 6, NPC_VILLAGER,  5, 4, "Scribe",
     "Rest, and I will write down where you stood.", 0 },
-  { 6, NPC_VILLAGER,  7, 8, "Lady",
-    "My husband went east with the guard.  Three came back.\nHe was not one of the three.", 0 },
+  { 6, NPC_QUEST,     7, 8, "Lady",
+    "My husband went east with the guard.  Three came back.\nHe was not one of the three.", 2 },
   { 6, NPC_VILLAGER, 15, 9, "Relaxing Ninja",
     "I have earned this floor and I intend to keep sitting on it.", 0 },
   /* --- Arena7, the hall of statues: the three gateways ----------------- */
@@ -359,13 +359,15 @@ static const NpcSeed ROOM_NPCS[] = {
     "Three gateways, and a long walk behind each.", 0 },
   { 7, NPC_PROP,      5, 5, "Statue",
     "Carved mid-step, as though it meant to leave.", 0 },
+  { 7, NPC_QUEST,    13, 3, "Offering Stone",
+    "A worn dish set into the stone, waiting for something.", 1 },
   { 7, NPC_PROP,     14, 5, "Statue",
     "The same face as the other, worn smoother.", 0 },
   /* --- Arena8 --------------------------------------------------------- */
   { 8, NPC_TRAINER2,  3, 2, "Posted Note",
     "Training room.  Strike the ward for experience, and break its\nguard for more.", 0 },
   { 8, NPC_VENDOR,   10, 4, "Vendor 3",
-    "Everything here is overpriced.  You will buy it anyway.", 2 },
+    "Everything here is overpriced.  You will buy it anyway.", SHOP_ITEMS3 },
   { 8, NPC_VILLAGER, 11, 9, "Dark Ninja",
     "You smell like the shallow rooms.  That will change.", 0 },
   { 8, NPC_VILLAGER, 17, 5, "Guard",
@@ -373,15 +375,15 @@ static const NpcSeed ROOM_NPCS[] = {
   /* --- Arena9 --------------------------------------------------------- */
   { 9, NPC_VILLAGER,  4, 6, "Dark Ninja",
     "The gate above opens for whoever finishes the human gateway.\nNot before.", 0 },
-  { 9, NPC_TRAINER,   8, 7, "Meditating Ninja",
+  { 9, NPC_QUEST,    8, 7, "Meditating Ninja",
     "Sit.  Spend what you have earned before you spend your life.", 0 },
   /* --- Arena10 -------------------------------------------------------- */
   {10, NPC_VILLAGER, 13, 5, "Guard",
     "You came up the stairs.  Few do.", 0 },
   {10, NPC_VENDOR,    3, 7, "Vendor 4",
-    "Last of the stock, and the last room that sells any.", 3 },
-  {10, NPC_ARENA,    17, 7, "Shadow",
-    "Stand and be counted, one after another.", 0 },
+    "Last of the stock, and the last room that sells any.", SHOP_ITEMS4 },
+  {10, NPC_VENDOR,   17, 7, "Shadow",
+    "Stand and be counted, one after another.", SHOP_ITEMS5 },
   {10, NPC_VILLAGER,  5, 4, "Wounded Warrior",
     "I got this far.  That is the whole of what I have to teach.", 0 },
 };
@@ -570,14 +572,13 @@ static void interact(Game *g, Npc *n)
         ui_toast(g, "%s", dst->name);
     } break;
     case NPC_SMITH:
-        g->shopVendor = (p->level >= 8) ? 3 : 0;
-        g->shopIdx = 0; g->shopMode = 0;
-        g->dialogNpc = (int)(n - g->zones[p->zone].npcs);
-        go_scene(g, SCENE_SHOP);
-        break;
     case NPC_VENDOR:
-        g->shopVendor = 1;
-        g->shopIdx = 0; g->shopMode = 0;
+        /* Each merchant opens its own screen: the original gives every one of
+           them its own frame in the interface clip, so the shop is arg, not a
+           tier picked from the player's level. */
+        g->shopVendor = n->arg;
+        g->shopIdx = 0;
+        g->shopMode = (n->arg == SHOP_TRADE) ? 1 : 0;   /* Trade opens on sell */
         g->dialogNpc = (int)(n - g->zones[p->zone].npcs);
         go_scene(g, SCENE_SHOP);
         break;
@@ -593,6 +594,40 @@ static void interact(Game *g, Npc *n)
         g->trainGain = 0; g->trainT = 0;
         go_scene(g, SCENE_TRAINING);
         break;
+    case NPC_QUEST: {
+        /* The original's small fetch quests, run through SearchItem/GetItem:
+           the Meditating Ninja hands over Mendo's Ring once (guarded by its
+           moon_q flag), the offering stone in the hall of statues takes the
+           ring for a skill point, and the Lady trades White Leaves for
+           Medicine.  Each consumes the item it asks for. */
+        switch (n->arg) {
+        case 0:
+            if (p->picked[0]) { ui_toast(g, "\"Go on. It is not mine to keep.\""); break; }
+            if (player_add_item(p, IT_MENDOS_RING2) < 0) {
+                ui_toast(g, "Your pack is full.");
+                break;
+            }
+            p->picked[0] = true;
+            sound_play(SFX_ITEM);
+            ui_toast(g, "The ninja presses a ring into your hand.");
+            break;
+        case 1:
+            if (player_take_item(p, IT_MENDOS_RING2)) {
+                p->skillPts++;
+                sound_play(SFX_LEVEL);
+                ui_toast(g, "The ring settles into the dish. +1 skill point.");
+            } else ui_toast(g, "The dish is empty, and stays empty.");
+            break;
+        default:
+            if (player_take_item(p, IT_WHITE_LEAVES)) {
+                if (player_add_item(p, IT_MEDICINE) >= 0) {
+                    sound_play(SFX_ITEM);
+                    ui_toast(g, "She grinds the leaves down and hands back Medicine.");
+                } else ui_toast(g, "Your pack is full.");
+            } else ui_toast(g, "\"Bring me white leaves and I will make something of them.\"");
+            break;
+        }
+    } break;
     case NPC_PICKUP: {
         /* The original hides items behind searchable scenery; each is once only. */
         int slot = n->arg & 15;
