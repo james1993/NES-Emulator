@@ -565,6 +565,7 @@ void  battle_burst(Battle *b, Vector2 at, Color c, int n, float spd, int kind);
 void  world_update(Game *g, float dt);
 void  world_draw(Game *g);
 void  world_enter_zone(Game *g, ZoneId z, int tx, int ty);
+void  world_lock_exit_underfoot(Game *g);
 
 /* ----------------------------------------------------------------- sound
    The original's playSound vocabulary, synthesised rather than sampled. */

@@ -528,6 +528,23 @@ void data_init_zones(Zone *zones)
 
 static const Exit *exit_near(const Zone *z, float px, float py);
 
+/* Disarm whatever doorway the player is standing in, until they step out of
+   it or walk on through.  This runs on arriving in a room, and again whenever
+   a panel or a battle hands control back -- otherwise closing the gateway
+   panel leaves you standing in the gateway with it still armed, and the next
+   press drops you straight back in. */
+void world_lock_exit_underfoot(Game *g)
+{
+    const Zone *dz = &g->zones[g->p.zone];
+    const Exit *on = exit_near(dz, g->p.px, g->p.py);
+    g->exitLock = -1;
+    if (on) {
+        g->exitLock = (int)(on - dz->exits);
+        g->exitLockX = g->p.px;
+        g->exitLockY = g->p.py;
+    }
+}
+
 void world_enter_zone(Game *g, ZoneId z, int tx, int ty)
 {
     g->p.zone = z;
@@ -537,17 +554,7 @@ void world_enter_zone(Game *g, ZoneId z, int tx, int ty)
     g->fromX = tx; g->fromY = ty;
     g->moving = false; g->moveT = 0;
     g->stepsSinceFight = 0;
-    /* Disarm the exit we land inside, if any, until the player steps out. */
-    g->exitLock = -1;
-    {
-        const Zone *dz = &g->zones[z];
-        const Exit *on = exit_near(dz, g->p.px, g->p.py);
-        if (on) {
-            g->exitLock = (int)(on - dz->exits);
-            g->exitLockX = g->p.px;
-            g->exitLockY = g->p.py;
-        }
-    }
+    world_lock_exit_underfoot(g);
 }
 
 static void roll_encounter(Game *g, Zone *z)
@@ -798,6 +805,7 @@ void world_update(Game *g, float dt)
         return;
     }
     if (IsKeyPressed(KEY_T)) { g->menuIdx = 0; g->menuTab = 0; go_panel(g, SCENE_TRAIN); return; }
+
 
     /* Movement is free, not tile-stepped.  The original runs an onEnterFrame
        that walks the character by game.speed pixels: 6 a frame while energy

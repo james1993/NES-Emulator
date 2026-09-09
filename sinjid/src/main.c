@@ -79,7 +79,7 @@ static int key_from_name(const char *s)
     if (!strcmp(s, "left")) return KEY_LEFT;
     if (!strcmp(s, "right")) return KEY_RIGHT;
     if (!strcmp(s, "ret") || !strcmp(s, "enter")) return KEY_ENTER;
-    if (!strcmp(s, "esc")) return KEY_ESCAPE;
+    if (!strcmp(s, "esc") || !strcmp(s, "escape")) return KEY_ESCAPE;
     if (!strcmp(s, "space")) return KEY_SPACE;
     if (!strcmp(s, "tab")) return KEY_TAB;
     if (s[0] >= 'a' && s[0] <= 'z' && s[1] == 0) return KEY_A + (s[0] - 'a');
@@ -484,6 +484,10 @@ void go_panel(Game *g, Scene s)
     g->fadeDir = 0;
     g->fade = 0.0f;
     g->inputLock = 1;
+    /* Handing control back to the room counts as arriving: if the player is
+       standing in a doorway -- which is exactly where they are after closing
+       the gateway panel -- it stays shut until they step out of it. */
+    if (s == SCENE_VILLAGE || s == SCENE_WORLD) world_lock_exit_underfoot(g);
 }
 
 static void update_fade(Game *g, float dt)
@@ -495,6 +499,8 @@ static void update_fade(Game *g, float dt)
             g->prevScene = g->scene;
             g->scene = g->fadeTarget;
             g->fadeDir = -1;
+            if (g->scene == SCENE_VILLAGE || g->scene == SCENE_WORLD)
+                world_lock_exit_underfoot(g);
         }
     } else if (g->fadeDir < 0) {
         g->fade -= dt * 3.0f;
@@ -653,7 +659,14 @@ int main(int argc, char **argv)
                     if (IsKeyPressed(KEY_ESCAPE)) G.createField = 0;
                     if (IsKeyPressed(KEY_ENTER) && G.nameLen > 0) {
                         new_player(&G, (ClassId)G.createIdx, G.nameBuf);
-                        world_enter_zone(&G, ZONE_VILLAGE, 10, 7);
+                        {   /* SJ_ZONE=n,x,y drops a scripted run straight into
+                               a room, for reproducing reports without walking
+                               the whole map. */
+                            const char *jz = getenv("SJ_ZONE");
+                            int zn = 0, zx = 10, zy = 7;
+                            if (jz) sscanf(jz, "%d,%d,%d", &zn, &zx, &zy);
+                            world_enter_zone(&G, (ZoneId)(ZONE_ARENA0 + zn), zx, zy);
+                        }
                         go_scene(&G, SCENE_VILLAGE);
                     }
                 }
