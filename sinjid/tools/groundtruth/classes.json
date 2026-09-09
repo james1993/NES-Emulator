@@ -1,0 +1,46 @@
+{
+ "Balanced": {
+  "life": 75,
+  "mana": 75,
+  "str": 15,
+  "speed": 15,
+  "phyDmg": 3,
+  "magDmg": 2,
+  "phyDef": 3,
+  "magDef": 2,
+  "skill": 1
+ },
+ "Warrior": {
+  "life": 85,
+  "mana": 65,
+  "str": 17,
+  "speed": 13,
+  "phyDmg": 5,
+  "magDmg": 0,
+  "phyDef": 5,
+  "magDef": 0,
+  "skill": 0
+ },
+ "Spell Caster": {
+  "life": 75,
+  "mana": 90,
+  "str": 15,
+  "speed": 13,
+  "phyDmg": 0,
+  "magDmg": 5,
+  "phyDef": 0,
+  "magDef": 5,
+  "skill": 9
+ },
+ "Shadow Ninja": {
+  "life": 70,
+  "mana": 80,
+  "str": 13,
+  "speed": 17,
+  "phyDmg": 3,
+  "magDmg": 3,
+  "phyDef": 2,
+  "magDef": 2,
+  "skill": 7
+ }
+}

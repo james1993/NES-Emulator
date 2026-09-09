@@ -1,0 +1,33 @@
+{
+ "start": {
+  "life": 75,
+  "mana": 75,
+  "eng": 50,
+  "str": 15,
+  "speed": 15,
+  "gold": 75,
+  "expNext": 50,
+  "rests": 10,
+  "lifePots": 5,
+  "manaPots": 5,
+  "weapon": "Iron Knife",
+  "portalLevel": 1
+ },
+ "levelUp": {
+  "statPts": 1,
+  "skillPts": 1,
+  "life": 5,
+  "mana": 5,
+  "eng": 3,
+  "every5": {
+   "str": 2,
+   "speed": 2,
+   "skillPts": 1
+  }
+ },
+ "battle": {
+  "defCap": 95,
+  "randTerm": "random(phydmg / 3)",
+  "hit": "random(atkspd/2)+atkspd/2 > random(target.speed/2)"
+ }
+}

@@ -100,6 +100,7 @@ static Look npc_look_for(const char *name)
       { "Apprentice",      { 82, 96, 78,255},{170,160,120,255},{ 40, 34, 30,255}, HELM_NONE,   WEAP_NONE,  0.86f },
       { "Student",         { 90,100, 86,255},{180,170,130,255},{ 38, 32, 28,255}, HELM_NONE,   WEAP_KNIFE, 0.86f },
       { "Statue",          {130,126,118,255},{170,160,140,255},{ 90, 88, 84,255}, HELM_NONE,   WEAP_NONE,  1.0f  },
+      { "Statue2",         {118,114,108,255},{156,148,130,255},{ 82, 80, 76,255}, HELM_NONE,   WEAP_NONE,  1.05f },
       { "Guard",           { 70, 74, 86,255},{176,140, 70,255},{ 34, 30, 28,255}, HELM_FULL,   WEAP_NONE,  1.0f  },
     };
     Look lk;
@@ -357,11 +358,11 @@ static const NpcSeed ROOM_NPCS[] = {
   /* --- Arena7, the hall of statues: the three gateways ----------------- */
   { 7, NPC_PORTAL,   10, 5, "Statue",
     "Three gateways, and a long walk behind each.", 0 },
-  { 7, NPC_PROP,      5, 5, "Statue",
+  { 7, NPC_PROP,      5, 5, "Statue2",
     "Carved mid-step, as though it meant to leave.", 0 },
   { 7, NPC_QUEST,    13, 3, "Offering Stone",
     "A worn dish set into the stone, waiting for something.", 1 },
-  { 7, NPC_PROP,     14, 5, "Statue",
+  { 7, NPC_PROP,     14, 5, "Statue2",
     "The same face as the other, worn smoother.", 0 },
   /* --- Arena8 --------------------------------------------------------- */
   { 8, NPC_TRAINER2,  3, 2, "Posted Note",
@@ -800,15 +801,6 @@ static void draw_npc(Game *g, Npc *n, float t)
     float px = OX + n->tx * TILE + TILE * 0.5f;
     float py = OY + n->ty * TILE + TILE * 0.9f;
 
-    if (n->kind == NPC_SAVE) {                       /* a stone shrine      */
-        DrawEllipse((int)px, (int)py, 20, 6, (Color){ 0, 0, 0, 90 });
-        DrawRectangleRec((Rectangle){ px - 15, py - 44, 30, 44 }, (Color){ 128, 124, 116, 255 });
-        DrawRectangleRec((Rectangle){ px - 19, py - 52, 38, 10 }, (Color){ 146, 142, 134, 255 });
-        DrawRectangleLinesEx((Rectangle){ px - 15, py - 44, 30, 44 }, 2, (Color){ 74, 72, 68, 255 });
-        DrawCircleV((Vector2){ px, py - 24 }, 7 + sinf(t * 2 + n->bob) * 1.5f,
-                    (Color){ 198, 160, 74, 60 });
-        return;
-    }
     if (n->kind == NPC_GATE) {
         float a = 0.35f + 0.25f * sinf(t * 2.5f + n->bob);
         DrawRectangleRec((Rectangle){ px - TILE * 0.5f, py - TILE, TILE, TILE },

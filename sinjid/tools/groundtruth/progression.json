@@ -1,0 +1,13 @@
+{
+ "expForLevel": "50 * level",
+ "statPts": 1,
+ "skillPts": 1,
+ "life": 5,
+ "mana": 5,
+ "eng": 3,
+ "every5": {
+  "str": 2,
+  "speed": 2,
+  "bonusSkillPt": 1
+ }
+}

@@ -69,6 +69,21 @@ make RAYLIB=./raylib
 Talk to the shrine in the village to rest and save; the save file is written to
 `sinjid_save.dat` in the working directory.
 
+## Auditing it
+
+The tables here are checked against the original mechanically, not by eye:
+
+```sh
+python3 tools/audit.py
+```
+
+`tools/groundtruth/` holds what was recovered from the Flash file -- item and
+enemy stats, buy prices, skill costs and the tree, class starting numbers, the
+six shop stock lists, the sell rates, the room graph and the NPC placements --
+as names, numbers and coordinates only. The audit parses `src/data.c`,
+`src/world.c` and `src/game.h` and compares field by field, exiting non-zero on
+any disagreement. Run it after touching any table.
+
 ## Fidelity: what is taken from the original, and what is not
 
 A full field-by-field audit, including what is *not* reproduced, lives in
