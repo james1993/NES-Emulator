@@ -100,6 +100,15 @@ both settles the meaning and independently confirms the pixel-to-cell
 conversion. An NPC blocks its own cell here, so the floor under one is cleared
 rather than drawn as rock with a figure on top.
 
+**NPCs open an interface; they do not act on contact.** Every character clip
+sets `persontype`, `objectnum` and `inventorytype`, and on space -- guarded by
+`pause == false`, `talking != true`, `clearstage == false` -- it stops the walk
+animation and runs `_root.inventory.gotoAndStop(inventorytype)` with
+`_root.inventory._visible = true`, `_root.pause = true`, `_root.hold = true`.
+The Healer's `inventorytype` is `"Heal"`, so talking to them opens a Heal panel
+and pauses the game; it never deducts gold the moment you walk up. That panel
+is reproduced here.
+
 **The cast is scattered across the rooms**, at the cells its clips occupy:
 Elder, Healer and Student at the entrance; Food and Potion Vendors in Arena1;
 both Item Vendors in Arena3; the drinkers in Arena4; two more vendors in

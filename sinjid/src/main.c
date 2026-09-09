@@ -409,8 +409,16 @@ static void new_player(Game *g, ClassId cls, const char *name)
     p->rests = 10;                 /* the original starts you with ten rests */
     p->lifePots = 5;
     p->manaPots = 5;
-    p->curEnergy = 50;
-    for (int i = 0; i < 3; i++) p->portalLevel[i] = 0;
+    /* The original starts you at full: 75 life, 75 mana, 50 energy, and each
+       portallevel at 1 rather than 0. */
+    {
+        Combatant c;
+        player_recalc(p, &c);
+        p->curLife = c.lifeMax;
+        p->curMana = c.manaMax;
+        p->curEnergy = c.engMax;
+    }
+    for (int i = 0; i < 3; i++) p->portalLevel[i] = 1;
 }
 
 /* --------------------------------------------------------------- scenes */
@@ -586,6 +594,7 @@ int main(int argc, char **argv)
         case SCENE_PORTAL:
         case SCENE_TRAINING:
         case SCENE_DIALOG:
+        case SCENE_HEAL:
             /* handled inside their draw/update helpers in ui.c            */
             break;
 
@@ -618,6 +627,7 @@ int main(int argc, char **argv)
         case SCENE_SHOP:     world_draw(&G); ui_scene_shop(&G); break;
         case SCENE_TRAIN:    world_draw(&G); ui_scene_train(&G); break;
         case SCENE_DIALOG:   world_draw(&G); ui_scene_dialog(&G); break;
+        case SCENE_HEAL:     world_draw(&G); ui_scene_heal(&G); break;
         case SCENE_PORTAL:   ui_scene_portal(&G); break;
         case SCENE_TRAINING: world_draw(&G); ui_scene_training(&G); break;
         case SCENE_GAMEOVER: {

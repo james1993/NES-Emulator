@@ -585,6 +585,73 @@ void ui_scene_dialog(Game *g)
     ui_text("ENTER to close", box.x + box.width - 160, box.y + box.height - 30, 17, C_GOLD);
 }
 
+/* The Healer opens an interface rather than taking your gold on contact:
+   the original's clip sets inventorytype = "Heal" and does
+   _root.inventory.gotoAndStop(inventorytype) with _root.pause = true, so
+   talking to them brings up a panel you accept or walk away from. */
+void ui_scene_heal(Game *g)
+{
+    Player *p = &g->p;
+    Combatant c;
+    player_recalc(p, &c);
+    int cost = 10 + p->level * 4;
+    bool whole = (p->curLife >= c.lifeMax && p->curMana >= c.manaMax);
+    bool afford = p->gold >= cost;
+
+    if (g->fadeDir <= 0) {
+        if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A) ||
+            IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D) ||
+            IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN))
+            g->healSel ^= 1;
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            go_scene(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
+            return;
+        }
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+            if (g->healSel == 0 && !whole && afford) {
+                p->gold -= cost;
+                p->curLife = c.lifeMax;
+                p->curMana = c.manaMax;
+                sound_play(SFX_HEAL);
+                ui_toast(g, "Healed. (-%d gold)", cost);
+            } else if (g->healSel == 0 && whole) {
+                ui_toast(g, "You are already whole.");
+            } else if (g->healSel == 0) {
+                ui_toast(g, "You need %d gold.", cost);
+            }
+            go_scene(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
+            return;
+        }
+    }
+
+    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 150 });
+    Rectangle box = { 300, 170, SCREEN_W - 600, 300 };
+    ui_panel(box, "Healer");
+
+    char buf[96];
+    ui_text("Rest here and be made whole.", box.x + 30, box.y + 56, 20, C_PARCH);
+
+    snprintf(buf, sizeof buf, "Life   %d / %d", p->curLife, c.lifeMax);
+    ui_text(buf, box.x + 30, box.y + 100, 19, C_PARCH);
+    snprintf(buf, sizeof buf, "Mana   %d / %d", p->curMana, c.manaMax);
+    ui_text(buf, box.x + 30, box.y + 126, 19, C_PARCH);
+
+    snprintf(buf, sizeof buf, "Cost   %d gold", cost);
+    ui_text(buf, box.x + 30, box.y + 164, 19, afford ? C_GOLD : C_STEEL2);
+    snprintf(buf, sizeof buf, "Purse  %d gold", p->gold);
+    ui_text(buf, box.x + 30, box.y + 190, 19, C_STEEL2);
+
+    const char *opt0 = whole ? "Already whole" : (afford ? "Accept" : "Cannot pay");
+    Color c0 = (whole || !afford) ? C_STEEL2 : C_GOLD;
+    ui_text(opt0, box.x + 40, box.y + 236, 22,
+            g->healSel == 0 ? c0 : C_PARCH);
+    ui_text("Leave", box.x + 240, box.y + 236, 22,
+            g->healSel == 1 ? C_GOLD : C_PARCH);
+    ui_text(g->healSel == 0 ? ">" : " ", box.x + 22, box.y + 236, 22, C_GOLD);
+    ui_text(g->healSel == 1 ? ">" : " ", box.x + 222, box.y + 236, 22, C_GOLD);
+    ui_text("ENTER choose   ESC leave", box.x + 30, box.y + box.height - 28, 16, C_STEEL2);
+}
+
 /* ---------------------------------------------------------------- title */
 
 void ui_scene_title(Game *g)

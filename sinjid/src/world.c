@@ -576,19 +576,12 @@ static void interact(Game *g, Npc *n)
             ui_toast(g, "Someone's hidden purse. +120 gold.");
         }
     } break;
-    case NPC_HEALER: {
-        Combatant c;
-        player_recalc(p, &c);
-        int cost = 10 + p->level * 4;
-        if (p->curLife >= c.lifeMax && p->curMana >= c.manaMax) {
-            ui_toast(g, "You are already whole.");
-        } else if (p->gold >= cost) {
-            p->gold -= cost;
-            p->curLife = c.lifeMax;
-            p->curMana = c.manaMax;
-            ui_toast(g, "Ayu closes your wounds. (-%d gold)", cost);
-        } else ui_toast(g, "You need %d gold.", cost);
-    } break;
+    case NPC_HEALER:
+        /* The original opens the Heal panel and pauses; it does not charge
+           you the moment you walk up. */
+        g->healSel = 0;
+        go_scene(g, SCENE_HEAL);
+        break;
     case NPC_SAVE: {
         Combatant c;
         player_recalc(p, &c);
