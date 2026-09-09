@@ -147,6 +147,26 @@ here. The blocked cells are honoured and props are scattered procedurally over
 them, so a room's *shape* and traffic are the original's, but its furniture
 arrangement is not.
 
+## Seen in the running original, not yet reproduced
+
+The original can be driven under Ruffle (see `docs/RUFFLE.md`), which settled
+several things the bytecode alone could not:
+
+* **An exit-direction indicator** sits in the room's top-right corner: a glowing
+  plate with arrows for the directions that room can be left in. It changes from
+  room to room. Nothing here draws it.
+* **The exit trigger lights up** under the player when they stand on it -- a cyan
+  marker on the floor. Here an exit is invisible until you press space on it.
+* **Each class grants a starting skill**: Balanced/Shurikens, Warrior/Stab,
+  Spell Caster/Charge, Shadow Ninja/Shadow Blend. This remake starts you with
+  no skill at all.
+* **The HUD** is a single bottom bar: portrait, class, gold, level, life/mana/
+  energy/exp bars, life- and mana-potion counts with their tallies, and
+  Inventory and Skills buttons.
+
+The exit doorway itself is centred on the room's top wall, which matches the
+recovered trigger position; the corner indicator is a separate object.
+
 ## Out of scope
 
 **Art** is drawn procedurally in `art.c` and **audio is synthesised** in
