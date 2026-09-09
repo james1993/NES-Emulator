@@ -152,12 +152,16 @@ const ItemDef ITEMS[] = {
         "Woven against the shadow, not the sword." },
 /*59*/ { "Shadow Armour", ITEM_ARMOUR, 1500, 4, 22, 0,0, 0,35, 0,50, 0,0,0,0, 13, 0, P_VIOLET,
         "Woven against the shadow, not the sword." },
-/*60*/ { "Medicine", ITEM_CONSUMABLE, 150, 3, 0, 600,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_STEEL,
-        "Swallow it fast." },
-/*61*/ { "Mendo's Ring", ITEM_RELIC, 900, 3, 0, 50,50, 0,5, 0,5, 20,5,5,5, 5, 0, P_STEEL,
-        "Carried, never worn." },
-/*62*/ { "White Leaves", ITEM_CONSUMABLE, 320, 3, 0, 300,150, 0,0, 0,0, 0,0,0,0, 0, 0, P_STEEL,
-        "Swallow it fast." },
+/* These three carry no stats at all in the original -- they are trade and
+   quest goods, not consumables.  Medicine exists to be sold: leaves are cheap,
+   the herbalist turns them into medicine, and a merchant pays more for it than
+   the leaves cost, which is a small repeatable income. */
+/*60*/ { "Medicine", ITEM_CONSUMABLE, 200, 1, 0, 0,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_STEEL,
+        "Worth more to a merchant than the leaves it was made from." },
+/*61*/ { "Mendo's Ring", ITEM_RELIC, 0, 1, 0, 0,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_STEEL,
+        "Worth nothing to a merchant. Something else wants it." },
+/*62*/ { "White Leaves", ITEM_CONSUMABLE, 40, 1, 0, 0,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_STEEL,
+        "Useless as they are. Someone can make medicine of them." },
 /*63*/ { "Rice Ball", ITEM_CONSUMABLE, 20, 1, 0, 120,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_PARCH,
         "Restores 120 life." },
 /*64*/ { "Broth Bowl", ITEM_CONSUMABLE, 60, 2, 0, 400,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_GOLD2,
@@ -461,7 +465,10 @@ void data_class_base(Player *p, ClassId c)
 
 /* Shop stock (indices into ITEMS). */
 static const int SHOP_GOODS[]  = { 63,64,65,66,67,60,62, -1 };
-static const int SHOP_RELIC[]  = { 61,60,62,63,66, -1 };
+/* Mendo's Ring is a quest item, not stock: the Meditating Ninja gives exactly
+   one, and the offering stone pays a skill point for each one handed over, so
+   letting a merchant sell them would make skill points farmable. */
+static const int SHOP_RELIC[]  = { 60,62,63,66, -1 };
 
 /* The original's six equipment screens, Items_0 through Items_5, recovered
    from the stock each one assigns.  Its interface clip has a separate frame

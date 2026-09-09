@@ -129,6 +129,23 @@ So there are **six** distinct equipment merchants, not two tiers, and their
 stock is recovered per screen. Each is wired to its own table here. The Elder
 is the save point -- not the Scribe, who only talks.
 
+**The herb trade is a repeatable income, not a one-off favour.** Medicine and
+White Leaves both carry *zero* stats in the original -- they are trade goods,
+not consumables, and Medicine exists to be sold. The herbalist's script walks
+the whole pack and converts every White Leaves it finds in one visit, so the
+loop is: buy leaves cheaply, have them worked into medicine, sell the medicine
+for more than the leaves cost. All three parts are reproduced.
+
+Prices are the one part not recovered. The original's buy buttons for these
+rows never joined to a screen in the extraction, so the herb sits somewhere in
+the 30-50 band its screen's neighbours occupy. 40 for leaves against 200 for
+medicine (selling at half) is chosen to make the documented loop pay, and is
+ours rather than the original's.
+
+Mendo's Ring is kept out of the shop tables deliberately: the ninja gives
+exactly one and the offering stone pays a skill point per ring, so stocking it
+would make skill points farmable.
+
 **The two fetch quests are in.** The Meditating Ninja in Arena9 hands over
 Mendo's Ring once, guarded by the original's `moon_q` flag; the offering stone
 in Arena7's hall of statues takes the ring for a skill point; and the Lady in

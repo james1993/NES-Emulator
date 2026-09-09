@@ -618,14 +618,23 @@ static void interact(Game *g, Npc *n)
                 ui_toast(g, "The ring settles into the dish. +1 skill point.");
             } else ui_toast(g, "The dish is empty, and stays empty.");
             break;
-        default:
-            if (player_take_item(p, IT_WHITE_LEAVES)) {
-                if (player_add_item(p, IT_MEDICINE) >= 0) {
-                    sound_play(SFX_ITEM);
-                    ui_toast(g, "She grinds the leaves down and hands back Medicine.");
-                } else ui_toast(g, "Your pack is full.");
+        default: {
+            /* The original walks the pack and converts every White Leaves it
+               finds, not one, so a whole gathering trip is turned in at once. */
+            int made = 0;
+            while (player_take_item(p, IT_WHITE_LEAVES)) {
+                if (player_add_item(p, IT_MEDICINE) < 0) {
+                    player_add_item(p, IT_WHITE_LEAVES);   /* no room; put it back */
+                    ui_toast(g, "Your pack is full.");
+                    break;
+                }
+                made++;
+            }
+            if (made > 0) {
+                sound_play(SFX_ITEM);
+                ui_toast(g, "She works the leaves down into %d medicine.", made);
             } else ui_toast(g, "\"Bring me white leaves and I will make something of them.\"");
-            break;
+        } break;
         }
     } break;
     case NPC_PICKUP: {
