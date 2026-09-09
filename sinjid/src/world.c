@@ -523,6 +523,8 @@ void data_init_zones(Zone *zones)
 
 /* ---------------------------------------------------------------- travel */
 
+static const Exit *exit_near(const Zone *z, float px, float py);
+
 void world_enter_zone(Game *g, ZoneId z, int tx, int ty)
 {
     g->p.zone = z;
@@ -532,6 +534,17 @@ void world_enter_zone(Game *g, ZoneId z, int tx, int ty)
     g->fromX = tx; g->fromY = ty;
     g->moving = false; g->moveT = 0;
     g->stepsSinceFight = 0;
+    /* Disarm the exit we land inside, if any, until the player steps out. */
+    g->exitLock = -1;
+    {
+        const Zone *dz = &g->zones[z];
+        const Exit *on = exit_near(dz, g->p.px, g->p.py);
+        if (on) {
+            g->exitLock = (int)(on - dz->exits);
+            g->exitLockX = g->p.px;
+            g->exitLockY = g->p.py;
+        }
+    }
 }
 
 static void roll_encounter(Game *g, Zone *z)
@@ -818,7 +831,24 @@ void world_update(Game *g, float dt)
         }
         if (best) { interact(g, best); return; }
         const Exit *e = exit_near(z, p->px, p->py);
-        if (e) { take_exit(g, e); return; }
+        if (e && (int)(e - z->exits) != g->exitLock) { take_exit(g, e); return; }
+    }
+
+    /* The lock lifts once the player leaves that exit's box, or walks into
+       the doorway rather than merely shuffling about in front of it -- so a
+       step sideways on arrival does nothing, but walking on out still works. */
+    if (g->exitLock >= 0) {
+        const Exit *on = exit_near(z, p->px, p->py);
+        if (!on || (int)(on - z->exits) != g->exitLock) g->exitLock = -1;
+        else {
+            const float slack = 6.0f;
+            switch (on->dir) {
+            case EX_UP:    if (p->py < g->exitLockY - slack) g->exitLock = -1; break;
+            case EX_DOWN:  if (p->py > g->exitLockY + slack) g->exitLock = -1; break;
+            case EX_LEFT:  if (p->px < g->exitLockX - slack) g->exitLock = -1; break;
+            case EX_RIGHT: if (p->px > g->exitLockX + slack) g->exitLock = -1; break;
+            }
+        }
     }
 
     if (vx || vy) {
@@ -866,16 +896,23 @@ static void draw_npc(Game *g, Npc *n, float t)
     float px = OX + n->tx * TILE + TILE * 0.5f;
     float py = OY + n->ty * TILE + TILE * 0.9f;
 
+    /* The original lights the person you can talk to, so the highlight has to
+       cover the whole model rather than ring it.  The puppet draws its own
+       outlines and contact shadow, so it cannot simply be re-stamped in a flat
+       colour; instead lay a warm aura shaped to the body -- roughly 46px tall
+       and 30 wide at this scale -- behind the character, plus a glow at the feet. */
     if (n->kind != NPC_PROP && npc_in_reach(g, n)) {
         float pulse = 0.72f + 0.28f * sinf(t * 4.0f);
-        Color warm = (Color){ 255, 214, 110, 255 };
-        DrawEllipse((int)px, (int)py, TILE * 0.52f, TILE * 0.24f,
-                    Fade(warm, 0.55f * pulse));
-        DrawEllipse((int)px, (int)py, TILE * 0.34f, TILE * 0.16f,
-                    Fade(warm, 0.75f * pulse));
+        Color warm = (Color){ 255, 226, 140, 255 };
+        const float cy = py - TILE * 0.42f;             /* middle of the body */
+        const float rx[3] = { 0.44f, 0.36f, 0.27f };    /* in tiles           */
+        const float ry[3] = { 0.68f, 0.58f, 0.46f };
+        const float al[3] = { 0.20f, 0.26f, 0.34f };
         for (int k = 0; k < 3; k++)
-            DrawCircleLines((int)px, (int)(py - TILE * 0.62f),
-                            TILE * (0.46f + k * 0.02f), Fade(warm, 0.42f * pulse));
+            DrawEllipse((int)px, (int)cy, TILE * rx[k], TILE * ry[k],
+                        Fade(warm, al[k] * pulse));
+        DrawEllipse((int)px, (int)py, TILE * 0.42f, TILE * 0.17f,
+                    Fade(warm, 0.30f * pulse));
     }
 
     if (n->kind == NPC_GATE) {
@@ -922,6 +959,7 @@ void world_draw(Game *g)
        player: the original plays the trigger clip's own highlight. */
     {
         const Exit *e = exit_near(z, p->px, p->py);
+        if (e && (int)(e - z->exits) == g->exitLock) e = NULL;   /* not armed yet */
         if (e) {
             float ex = OX + (e->tx * 30.0f + 15.0f) * HUD_S;
             float ey = OY + (e->ty < 0 ? p->py : e->ty * 30.0f + 15.0f) * HUD_S;

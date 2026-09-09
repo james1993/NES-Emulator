@@ -431,6 +431,13 @@ typedef struct {
        in that very frame.  Without a one-frame lock-out the opening ENTER
        is still down and the panel dismisses itself instantly. */
     int     inputLock;
+    /* An exit you are already standing inside when you arrive in a room --
+       every EX_UP lands you at row 9 and every room's own EX_DOWN sits at
+       row 10, so their trigger boxes always overlap.  Left armed, the first
+       button press in the new room throws you straight back out.  Hold the
+       index of that exit until you step clear of it. */
+    int     exitLock;
+    float   exitLockX, exitLockY;   /* where we arrived, for the test below */
     Font    font, fontBig;
     bool    fontLoaded;
     /* menus */
