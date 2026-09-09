@@ -109,6 +109,18 @@ The Healer's `inventorytype` is `"Heal"`, so talking to them opens a Heal panel
 and pauses the game; it never deducts gold the moment you walk up. That panel
 is reproduced here.
 
+**The merchant screen is laid out as the original's is.** Its interface clip
+places the pack as `slot4`..`slot11` in two rows of four, the worn gear as
+`slot0`..`slot3` in a small figure below it (head above body, weapon left,
+shield right), the merchant's stock as ten cells in two rows of five to the
+right, and the description box beneath. Those positions are reproduced from the
+clip, mapped through the same 1.6 scale as the rest of the screen.
+
+That layout settles the pack size too: it is **eight** slots, `itemstats[4..11]`
+-- the same range the herbalist's script and `SearchNone` walk -- not the 28 of
+the whole `itemstats` array, which also holds the worn gear at 0..3 and the
+merchant's stock at 20..29.
+
 **Every NPC opens its own screen.** The interface clip has one frame per
 panel -- `Items_0`..`Items_5`, `Trade`, `Meals`, `Pots`, `Blacksmith`, `Books`,
 `Skills`, `SkillPut`, `Save`, `Heal`, `Training`, `Inventory` -- and each

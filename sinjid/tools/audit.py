@@ -340,6 +340,19 @@ for r in props:
 check('scenery', rooms_seen == set(range(11)),
       "rooms with no scenery: %s" % sorted(set(range(11)) - rooms_seen))
 
+# ---- shop panel layout ------------------------------------------------
+sl = gt('shop_layout.json')
+ui = SRC('ui.c')
+check('shop', 'ui_scene_shop' in ui, "no shop scene")
+check('shop', re.search(r'for \(int i = 0; i < 8; i\+\+\)', ui) is not None,
+      "the pack grid should hold eight cells (slot4..slot11)")
+check('shop', re.search(r'for \(int i = 0; i < 10; i\+\+\)', ui) is not None,
+      "the stock grid should hold ten cells (itemstats[20..29])")
+check('shop', 'WORN[4]' in ui, "the worn figure should hold four slots")
+mi = re.search(r'#define MAX_INVENTORY\s+(\d+)', hdr)
+check('shop', mi is not None and int(mi.group(1)) == 8,
+      "pack size ours=%s theirs=8" % (mi.group(1) if mi else None))
+
 print()
 if not FAIL:
     print("PASS -- deep checks clean too.")

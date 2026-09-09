@@ -771,7 +771,11 @@ void world_update(Game *g, float dt)
 
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
         const int ddx[4] = { 0, 0, -1, 1 }, ddy[4] = { -1, 1, 0, 0 };
+        /* The original tests the player against the character's clip, which
+           is bigger than one cell, so a vendor standing behind a counter is
+           still reachable.  Look one cell ahead, then the one past it. */
         Npc *n = npc_at(z, p->tx + ddx[p->dir], p->ty + ddy[p->dir]);
+        if (!n) n = npc_at(z, p->tx + ddx[p->dir] * 2, p->ty + ddy[p->dir] * 2);
         if (!n) n = npc_at(z, p->tx, p->ty);
         if (n) { interact(g, n); return; }
         const Exit *e = exit_at(z, p->tx, p->ty);

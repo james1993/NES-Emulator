@@ -326,11 +326,42 @@ void ui_scene_menu(Game *g)
 
 /* ---------------------------------------------------------------- shop */
 
+/* The merchant screen, laid out as the original's interface clip has it.
+   Its positions, in the clip's own space, are: the pack as slot4..slot11 in
+   two rows of four; the worn gear as slot0..slot3 in a small figure below it;
+   the merchant's stock as ten cells in two rows of five to the right; and the
+   description box under those.  The clip sits at (287.85, 223.55) on a 600
+   wide stage, and everything below is that, mapped through SX/SY. */
+#define SHOP_S   1.6f
+#define SHOP_OX  160
+#define SX(v)    (SHOP_OX + (float)((287.85f + (v)) * SHOP_S))
+#define SY(v)    ((float)((223.55f + (v)) * SHOP_S))
+#define CELL_W   (41.2f * SHOP_S)
+#define CELL_H   (41.9f * SHOP_S)
+
+static void shop_cell(Rectangle r, const ItemDef *it, bool sel, bool dim)
+{
+    DrawRectangleRec(r, (Color){ 38, 32, 26, 235 });
+    DrawRectangleLinesEx(r, sel ? 3 : 1,
+                         sel ? C_GOLD : (Color){ 92, 78, 52, 255 });
+    if (!it) return;
+    Color tint = it->tint;
+    if (dim) tint = art_shade(tint, 0.5f);
+    DrawRectangleRec((Rectangle){ r.x + 8, r.y + 8, r.width - 16, r.height - 16 }, tint);
+    DrawRectangleLinesEx((Rectangle){ r.x + 8, r.y + 8, r.width - 16, r.height - 16 },
+                         1, Fade(C_INK, 0.5f));
+}
+
 void ui_scene_shop(Game *g)
 {
     Player *p = &g->p;
     const int *stock;
     int n = data_shop_table(g->shopVendor, &stock);
+    if (n > 10) n = 10;                       /* the stock grid holds ten */
+
+    /* g->shopMode: 0 = the merchant's stock, 1 = your pack */
+    int count = g->shopMode ? p->invCount : n;
+    if (count < 0) count = 0;
 
     if (g->fadeDir <= 0) {
         if (IsKeyPressed(KEY_ESCAPE)) {
@@ -338,22 +369,28 @@ void ui_scene_shop(Game *g)
             return;
         }
         if (IsKeyPressed(KEY_TAB)) { g->shopMode = !g->shopMode; g->shopIdx = 0; }
-        int count = g->shopMode ? p->invCount : n;
+        int cols = g->shopMode ? 4 : 5;
         if (count > 0) {
-            if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) g->shopIdx = (g->shopIdx + 1) % count;
-            if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) g->shopIdx = (g->shopIdx + count - 1) % count;
+            if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D))
+                g->shopIdx = (g->shopIdx + 1) % count;
+            if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A))
+                g->shopIdx = (g->shopIdx + count - 1) % count;
+            if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S))
+                g->shopIdx = (g->shopIdx + cols) % count;
+            if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W))
+                g->shopIdx = (g->shopIdx + count - cols % count) % count;
             if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
                 if (!g->shopMode) {
                     const ItemDef *it = &ITEMS[stock[g->shopIdx]];
                     if (p->gold < it->price) ui_toast(g, "Not enough gold.");
-                    else if (player_add_item(p, stock[g->shopIdx]) < 0) ui_toast(g, "Your pack is full.");
+                    else if (player_add_item(p, stock[g->shopIdx]) < 0)
+                        ui_toast(g, "Your pack is full.");
                     else { p->gold -= it->price; sound_play(SFX_ITEM);
                            ui_toast(g, "Bought %s.", it->name); }
                 } else if (p->invCount > 0) {
                     int def = p->inv[g->shopIdx].def;
                     int price = data_sell_price(def);
                     if (price <= 0) {
-                        /* Merchants do not buy equipment back in the original. */
                         ui_toast(g, "\"I have no use for that.\"");
                     } else {
                         p->gold += price;
@@ -372,59 +409,85 @@ void ui_scene_shop(Game *g)
         }
     }
 
-    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 210 });
-    Rectangle left = { 40, 60, 560, 620 }, right = { 620, 60, 620, 400 };
-    ui_panel(left, g->shopMode ? "SELLING  (TAB to buy)" : "FOR SALE  (TAB to sell)");
-    char gold[64];
-    snprintf(gold, sizeof gold, "%d gold", p->gold);
-    ui_text(gold, left.x + left.width - 140, left.y + 7, 18, C_GOLD);
+    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 8, 7, 11, 225 });
+    Rectangle frame = { SX(-310.4f), SY(-234.8f), 642.1f * SHOP_S, 474.1f * SHOP_S };
+    DrawRectangleRec(frame, (Color){ 26, 22, 18, 250 });
+    DrawRectangleLinesEx(frame, 3, (Color){ 122, 100, 62, 255 });
+    DrawRectangleLinesEx((Rectangle){ frame.x + 6, frame.y + 6,
+                                      frame.width - 12, frame.height - 12 },
+                         1, (Color){ 78, 64, 40, 255 });
 
-    int count = g->shopMode ? p->invCount : n;
-    int top = g->shopIdx - 10; if (top < 0) top = 0;
-    for (int i = top; i < count && i < top + 12; i++) {
-        int def = g->shopMode ? p->inv[i].def : stock[i];
-        int price = g->shopMode ? data_sell_price(def) : ITEMS[def].price;
-        char lab[96];
-        snprintf(lab, sizeof lab, "%-20s %5dg", ITEMS[def].name, price);
-        bool afford = g->shopMode || p->gold >= price;
-        ui_button((Rectangle){ left.x + 16, left.y + 42 + (i - top) * 46, left.width - 32, 40 },
-                  lab, g->shopIdx == i, afford);
-    }
-    if (count == 0) ui_text("Nothing here.", left.x + 20, left.y + 50, 20, C_PARCH2);
-    else {
-        int def = g->shopMode ? p->inv[g->shopIdx].def : stock[g->shopIdx];
-        ui_tooltip_item(&ITEMS[def], right);
-        /* what it would change if worn */
-        const ItemDef *it = &ITEMS[def];
-        if (it->type != ITEM_CONSUMABLE) {
-            SlotId s = it->type == ITEM_WEAPON ? SLOT_WEAPON :
-                       it->type == ITEM_SHIELD ? SLOT_SHIELD :
-                       it->type == ITEM_ARMOUR ? SLOT_ARMOUR :
-                       it->type == ITEM_HELM   ? SLOT_HELM : SLOT_RELIC;
-            Rectangle cmp = { right.x, right.y + 420, right.width, 200 };
-            ui_panel(cmp, "COMPARED WITH WORN");
-            if (p->equip[s] >= 0) {
-                const ItemDef *cur = &ITEMS[p->equip[s]];
-                ui_text(cur->name, cmp.x + 14, cmp.y + 40, 19, C_PARCH);
-                struct { const char *t; int a, b; } d[] = {
-                    { "life", it->lifeMax, cur->lifeMax }, { "p.dmg", it->phyDmg, cur->phyDmg },
-                    { "p.def", it->phyDef, cur->phyDef },  { "m.dmg", it->magDmg, cur->magDmg },
-                    { "shield", it->shdPts, cur->shdPts }, { "speed", it->speed, cur->speed },
-                };
-                float x = cmp.x + 14;
-                for (unsigned i = 0; i < sizeof d / sizeof d[0]; i++) {
-                    int diff = d[i].a - d[i].b;
-                    if (!diff) continue;
-                    char b2[48];
-                    snprintf(b2, sizeof b2, "%s %+d", d[i].t, diff);
-                    ui_text(b2, x, cmp.y + 70, 18, diff > 0 ? C_JADE : C_BLOOD2);
-                    x += ui_text_w(b2, 18) + 18;
-                    if (x > cmp.x + cmp.width - 90) { x = cmp.x + 14; }
-                }
-            } else ui_text("That slot is empty.", cmp.x + 14, cmp.y + 40, 19, C_PARCH2);
+    /* the pack: slot4..slot11, two rows of four */
+    ui_text("PACK", SX(-273.2f), SY(-186.0f), 17, C_PARCH2);
+    for (int i = 0; i < 8; i++) {
+        float cx = SX(-273.2f + 59.05f * (i % 4));
+        float cy = SY(i < 4 ? -160.8f : -105.3f);
+        const ItemDef *it = (i < p->invCount) ? &ITEMS[p->inv[i].def] : NULL;
+        shop_cell((Rectangle){ cx, cy, CELL_W, CELL_H }, it,
+                  g->shopMode && g->shopIdx == i, false);
+        if (it && p->inv[i].count > 1) {
+            char c[16]; snprintf(c, sizeof c, "%d", p->inv[i].count);
+            ui_text(c, cx + CELL_W - 16, cy + CELL_H - 20, 15, C_PARCH);
         }
     }
-    ui_text("ENTER trade    TAB switch    ESC leave", 40, SCREEN_H - 34, 18, C_PARCH2);
+
+    /* the worn gear, in the original's small figure: helm above body,
+       weapon to its left, shield to its right */
+    ui_text("WORN", SX(-273.2f), SY(-6.0f), 17, C_PARCH2);
+    const struct { float x, y; int slot; const char *lab; } WORN[4] = {
+        { -189.1f,   0.5f, SLOT_HELM,   "head" },
+        { -189.1f,  52.8f, SLOT_ARMOUR, "body" },
+        { -248.2f,  52.8f, SLOT_WEAPON, "hand" },
+        { -130.0f,  52.8f, SLOT_SHIELD, "off"  },
+    };
+    for (int i = 0; i < 4; i++) {
+        Rectangle r = { SX(WORN[i].x), SY(WORN[i].y), CELL_W, CELL_H };
+        int def = p->equip[WORN[i].slot];
+        shop_cell(r, def >= 0 ? &ITEMS[def] : NULL, false, true);
+        ui_text(WORN[i].lab, r.x + 2, r.y + r.height + 2, 13, C_STEEL2);
+    }
+
+    /* the merchant's stock: ten cells, two rows of five */
+    ui_text("FOR SALE", SX(22.1f), SY(-164.0f), 17, C_PARCH2);
+    for (int i = 0; i < 10; i++) {
+        float cx = SX(22.1f + 56.28f * (i % 5));
+        float cy = SY(i < 5 ? -138.7f : -55.1f);
+        const ItemDef *it = (i < n) ? &ITEMS[stock[i]] : NULL;
+        bool poor = it && p->gold < it->price;
+        shop_cell((Rectangle){ cx, cy, CELL_W, CELL_H }, it,
+                  !g->shopMode && g->shopIdx == i, poor);
+        if (it) {
+            char c[16]; snprintf(c, sizeof c, "%d", it->price);
+            ui_text(c, cx, cy + CELL_H + 2, 13, poor ? C_STEEL2 : C_GOLD2);
+        }
+    }
+
+    /* the description box */
+    Rectangle box = { SX(-310.4f + 12), SY(122.8f), 612.0f * SHOP_S, 78.0f * SHOP_S };
+    DrawRectangleRec(box, (Color){ 18, 15, 12, 235 });
+    DrawRectangleLinesEx(box, 1, (Color){ 78, 64, 40, 255 });
+    const ItemDef *sel = NULL;
+    if (g->shopMode) { if (g->shopIdx < p->invCount) sel = &ITEMS[p->inv[g->shopIdx].def]; }
+    else             { if (g->shopIdx < n)           sel = &ITEMS[stock[g->shopIdx]]; }
+    if (sel) {
+        ui_text(sel->name, box.x + 14, box.y + 10, 21, C_GOLD);
+        char line[160];
+        if (g->shopMode) {
+            int sp = data_sell_price(sel - ITEMS);
+            snprintf(line, sizeof line, sp > 0 ? "sells for %d gold" : "the merchant will not buy this", sp);
+        } else snprintf(line, sizeof line, "%d gold", sel->price);
+        ui_text(line, box.x + 14, box.y + 36, 17, C_PARCH2);
+        ui_text(sel->note, box.x + 14, box.y + 58, 15, C_STEEL2);
+    }
+
+    char purse[64];
+    snprintf(purse, sizeof purse, "GOLD  %d", p->gold);
+    ui_text(purse, SX(180.0f), SY(122.8f) - 26, 19, C_GOLD);
+    /* The original's frame is taller than its own stage, so at this scale it
+       bleeds off the bottom; keep the key hint on screen regardless. */
+    ui_text(g->shopMode ? "TAB to buy    ENTER sell    ESC leave"
+                        : "TAB to sell   ENTER buy     ESC leave",
+            frame.x + 16, (float)(SCREEN_H - 26), 16, C_STEEL2);
 }
 
 /* ------------------------------------------------------------- training */

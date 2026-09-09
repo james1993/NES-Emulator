@@ -19,7 +19,7 @@
 
 #define MAX_HEROES     2
 #define MAX_FOES       2
-#define MAX_INVENTORY 28    /* the original's itemstats grid */
+#define MAX_INVENTORY 8     /* the pack is itemstats[4..11] -- eight slots */
 #define INV_FIRST_FREE 4    /* purchases land in slots 4..11        */
 #define MAX_SKILLS    19
 #define MAX_LOG        6
