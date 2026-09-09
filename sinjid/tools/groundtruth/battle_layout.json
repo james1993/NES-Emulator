@@ -1,0 +1,307 @@
+{
+ "_note": "Battle interface geometry, extracted from the original's main timeline (stage 600x470). Positions are the SWF's own PlaceObject2 translations; bar slots are the 56x7 backing shape (cid 1763); button circles are cid 954 (r=26.1).",
+ "stage": [
+  600,
+  470
+ ],
+ "fighters": {
+  "hero1": [
+   195.9,
+   247.5
+  ],
+  "hero2": [
+   225.8,
+   236.2
+  ],
+  "enemy1": [
+   422.3,
+   247.1
+  ],
+  "enemy2": [
+   392.3,
+   237.2
+  ],
+  "enemyFacing": -1
+ },
+ "status": {
+  "rowY": {
+   "front": {
+    "name": 65.2,
+    "num": 83.2,
+    "bar": 90.9
+   },
+   "back": {
+    "name": 19.6,
+    "num": 38.5,
+    "bar": 44.8
+   }
+  },
+  "hero": {
+   "portraitX": 59.0,
+   "portraitY": {
+    "front": 84.8,
+    "back": 31.5
+   },
+   "nameX": 87.0,
+   "lifeNumX": 87.4,
+   "lifeBarCx": 162.0,
+   "shdBarCx": 218.7,
+   "shdNumX": 240.9
+  },
+  "enemy": {
+   "portraitX": 547.0,
+   "portraitY": {
+    "front": 83.8,
+    "back": 30.4
+   },
+   "nameX": 332.0,
+   "lifeNumX": 335.4,
+   "lifeBarCx": 409.9,
+   "shdBarCx": 466.9,
+   "shdNumX": 488.9
+  },
+  "barSlot": [
+   56.0,
+   7.0
+  ],
+  "panelBack": {
+   "heroBack": [
+    19.3,
+    278.8,
+    -1.2,
+    59.7
+   ],
+   "enemyBack": [
+    332.8,
+    585.5,
+    -2.6,
+    58.5
+   ],
+   "enemyFront": [
+    349.0,
+    614.2,
+    53.9,
+    109.4
+   ]
+  },
+  "colors": {
+   "life": [
+    0,
+    255,
+    0
+   ],
+   "shd": [
+    102,
+    153,
+    255
+   ],
+   "name": [
+    0,
+    0,
+    0
+   ],
+   "size": 12
+  }
+ },
+ "commandBar": {
+  "panel": [
+   9.0,
+   591.0,
+   331.1,
+   443.1
+  ],
+  "inner": [
+   25.9,
+   563.4,
+   344.1,
+   436.5
+  ],
+  "buttonRadius": 26.1,
+  "iconBox": 35.0,
+  "left": [
+   {
+    "label": "Attack",
+    "cx": 46.3,
+    "cy": 360.7,
+    "textX": 22.7,
+    "textY": 380.8
+   },
+   {
+    "label": "Life P.",
+    "cx": 93.1,
+    "cy": 360.7,
+    "textX": 69.5,
+    "textY": 380.8,
+    "countX": 71.0,
+    "countY": 361.4,
+    "iconX": 91.3,
+    "iconY": 362.1
+   },
+   {
+    "label": "Mana P.",
+    "cx": 141.2,
+    "cy": 360.7,
+    "textX": 117.6,
+    "textY": 380.8,
+    "countX": 119.1,
+    "countY": 361.4,
+    "iconX": 140.6,
+    "iconY": 362.4
+   }
+  ],
+  "mana": {
+   "labelX": 25.9,
+   "labelY": 411.2,
+   "curX": 86.2,
+   "curY": 414.1,
+   "maxX": 134.5,
+   "maxY": 414.2,
+   "barX": 27.6,
+   "barY": 431.6,
+   "barW": 134.3,
+   "barH": 5.8
+  },
+  "manaCost": {
+   "labelX": 245.6,
+   "valueX": 314.4,
+   "y": 336.8,
+   "label": "Mana Cost: "
+  },
+  "grid": {
+   "cols": 8,
+   "rows": 2,
+   "x0": 231.5,
+   "dx": 45.0,
+   "y": [
+    375.6,
+    415.6
+   ],
+   "slots": [
+    {
+     "col": 0,
+     "row": 0,
+     "skill": 0,
+     "mana": 15
+    },
+    {
+     "col": 1,
+     "row": 0,
+     "skill": 1,
+     "mana": 20
+    },
+    {
+     "col": 2,
+     "row": 0,
+     "skill": 2,
+     "mana": 20
+    },
+    {
+     "col": 3,
+     "row": 0,
+     "skill": 3,
+     "mana": 20
+    },
+    {
+     "col": 4,
+     "row": 0,
+     "skill": 4,
+     "mana": 25
+    },
+    {
+     "col": 5,
+     "row": 0,
+     "skill": 5,
+     "mana": 25
+    },
+    {
+     "col": 6,
+     "row": 0,
+     "skill": 6,
+     "mana": 20
+    },
+    {
+     "col": 7,
+     "row": 0,
+     "skill": 9,
+     "mana": 0
+    },
+    {
+     "col": 0,
+     "row": 1,
+     "skill": 11,
+     "mana": 1
+    },
+    {
+     "col": 1,
+     "row": 1,
+     "skill": 12,
+     "mana": 15
+    },
+    {
+     "col": 2,
+     "row": 1,
+     "skill": 13,
+     "mana": 25
+    },
+    {
+     "col": 3,
+     "row": 1,
+     "skill": 14,
+     "mana": 25
+    },
+    {
+     "col": 4,
+     "row": 1,
+     "skill": 15,
+     "mana": 40
+    },
+    {
+     "col": 5,
+     "row": 1,
+     "skill": 16,
+     "mana": 60
+    },
+    {
+     "col": 6,
+     "row": 1,
+     "skill": 17,
+     "mana": 70
+    },
+    {
+     "col": 7,
+     "row": 1,
+     "skill": 18,
+     "mana": 100
+    }
+   ]
+  }
+ },
+ "counters": {
+  "hero1": [
+   168.9,
+   163.3
+  ],
+  "hero2": [
+   200.1,
+   153.2
+  ],
+  "enemy1": [
+   447.6,
+   164.2
+  ],
+  "enemy2": [
+   419.4,
+   156.8
+  ]
+ },
+ "pointer": {
+  "enemy1": [
+   449.4,
+   183.2
+  ],
+  "enemy2": [
+   420.4,
+   174.2
+  ]
+ }
+}

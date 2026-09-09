@@ -365,6 +365,49 @@ mi = re.search(r'#define MAX_INVENTORY\s+(\d+)', hdr)
 check('shop', mi is not None and int(mi.group(1)) == 8,
       "pack size ours=%s theirs=8" % (mi.group(1) if mi else None))
 
+# ---- battle interface layout ------------------------------------------
+bl = gt('battle_layout.json')
+bat = SRC('battle.c')
+
+# the skill grid: slot -> skill index, exactly the original's button set
+want_grid = [sl_["skill"] for sl_ in bl['commandBar']['grid']['slots']]
+m = re.search(r'GRID_SKILL\[GRID_N\]\s*=\s*\{(.*?)\};', bat, re.S)
+ours_grid = [int(x) for x in re.findall(r'-?\d+', m.group(1))] if m else []
+check('battle', ours_grid == want_grid,
+      "skill grid ours=%s theirs=%s" % (ours_grid, want_grid))
+
+g = bl['commandBar']['grid']
+check('battle', ('#define GRID_COLS   %d' % g['cols']) in bat,
+      "grid should be %d columns" % g['cols'])
+check('battle', ('#define GRID_ROWS   %d' % g['rows']) in bat,
+      "grid should be %d rows" % g['rows'])
+
+# the three round buttons on the left, and no Guard/Flee among them
+for lab in ("Attack", "Life P.", "Mana P."):
+    check('battle', '"%s"' % lab in bat, "missing the %s button" % lab)
+check('battle', 'case 4:' not in bat and 'canFlee) { battle_log' not in bat,
+      "the original's command bar has no Flee button")
+
+# key coordinates, in the original's stage space
+for tag, val in (("grid x0", g['x0']), ("grid dx", g['dx']),
+                 ("grid row0", g['y'][0]), ("grid row1", g['y'][1])):
+    check('battle', ("%.1ff" % val) in bat, "%s should be %.1f" % (tag, val))
+for name, xy in bl['fighters'].items():
+    if name == 'enemyFacing':
+        continue
+    check('battle', ("%.1ff" % xy[0]) in bat and ("%.1ff" % xy[1]) in bat,
+          "%s should stand at %s" % (name, xy))
+st = bl['status']
+for tag, val in (("hero life bar", st['hero']['lifeBarCx']),
+                 ("hero shield bar", st['hero']['shdBarCx']),
+                 ("enemy life bar", st['enemy']['lifeBarCx']),
+                 ("enemy shield bar", st['enemy']['shdBarCx']),
+                 ("hero portrait", st['hero']['portraitX']),
+                 ("enemy portrait", st['enemy']['portraitX'])):
+    check('battle', ("%.1ff" % val) in bat, "%s should sit at x=%.1f" % (tag, val))
+check('battle', ("%.1ff" % st['barSlot'][0]) in bat and ("%.1ff" % st['barSlot'][1]) in bat,
+      "bar slots should be %gx%g" % tuple(st['barSlot']))
+
 print()
 if not FAIL:
     print("PASS -- deep checks clean too.")

@@ -16,9 +16,54 @@
 #define IMPACT_AT   0.46f     /* fraction of the attack animation           */
 #define ANIM_LEN    0.85f
 
-static const float HERO_X[MAX_HEROES] = { 330, 210 };
-static const float FOE_X[MAX_FOES]    = { 900, 1040 };
-static const float LINE_Y             = 540;
+/* ------------------------------------------------------------------ layout
+   The battle screen is the original's, taken off its main timeline: a status
+   band across the top (heroes left, enemies right, two rows deep) and a
+   command bar along the bottom holding three round buttons -- Attack, Life P.,
+   Mana P. -- beside an 8x2 grid of round skill buttons.  Coordinates below are
+   the SWF's own, on its 600x470 stage; BX/BY put them on ours with the same
+   1.6x the overworld HUD uses.  See tools/groundtruth/battle_layout.json.   */
+#define BS       1.6f
+#define BOX      160.0f
+#define BX(v)    (BOX + (v) * BS)
+#define BY(v)    ((v) * BS)
+#define BW(v)    ((v) * BS)
+
+/* Fighters stand where the original's clips stand; the second of each pair is
+   set back and to the inside.  Enemies are drawn mirrored. */
+static const float HERO_X[MAX_HEROES] = { BX(195.9f), BX(225.8f) };
+static const float HERO_Y[MAX_HEROES] = { BY(247.5f), BY(236.2f) };
+static const float FOE_X[MAX_FOES]    = { BX(422.3f), BX(392.3f) };
+static const float FOE_Y[MAX_FOES]    = { BY(247.1f), BY(237.2f) };
+#define LINE_Y   BY(247.5f)
+
+/* The command bar is flat -- no submenus.  Slots 0..2 are the round buttons on
+   the left; 3.. are the skill grid, whose slot->skill mapping is the
+   original's own (7, 8 and 10 are passives and have no button). */
+#define GRID_COLS   8
+#define GRID_ROWS   2
+#define GRID_N      (GRID_COLS * GRID_ROWS)
+#define CMD_ATTACK  0
+#define CMD_LIFEPOT 1
+#define CMD_MANAPOT 2
+#define CMD_GRID0   3
+#define CMD_N       (CMD_GRID0 + GRID_N)
+static const int GRID_SKILL[GRID_N] = {
+     0,  1,  2,  3,  4,  5,  6,  9,
+    11, 12, 13, 14, 15, 16, 17, 18,
+};
+
+/* the original's own bar and plate colours */
+#define C_LIFE_HI  ((Color){  21, 202,  21, 255 })
+#define C_LIFE_LO  ((Color){  15, 124,  14, 255 })
+#define C_MANA_HI  ((Color){  37, 149, 186, 255 })
+#define C_MANA_LO  ((Color){  26,  77, 113, 255 })
+#define C_SHD_TXT  ((Color){ 102, 153, 255, 255 })
+#define C_LIFE_TXT ((Color){  36, 224,  36, 255 })
+#define C_PLATE    ((Color){  78,  63,  50, 236 })
+#define C_PLATE_HI ((Color){ 175, 153, 133, 255 })
+#define C_PLATE_LN ((Color){ 115,  89,  66, 255 })
+#define C_GROOVE   ((Color){  32,  30,  28, 255 })
 
 /* --------------------------------------------------------------- helpers */
 
@@ -84,8 +129,8 @@ static bool slot_live(Battle *b, int idx)
 static Vector2 slot_pos(Battle *b, int idx)
 {
     (void)b;
-    if (idx < MAX_HEROES) return (Vector2){ HERO_X[idx], LINE_Y };
-    return (Vector2){ FOE_X[idx - MAX_HEROES], LINE_Y };
+    if (idx < MAX_HEROES) return (Vector2){ HERO_X[idx], HERO_Y[idx] };
+    return (Vector2){ FOE_X[idx - MAX_HEROES], FOE_Y[idx - MAX_HEROES] };
 }
 
 static int first_live_foe(Battle *b)
@@ -598,6 +643,70 @@ static bool skill_usable(Game *g, Combatant *a, int id)
 }
 
 /* Player's command menu. Tabs: 0 = actions, 1 = skills, 2 = items. */
+/* The original's bar has no submenus: Attack and the two potions sit beside a
+   fixed 8x2 grid of skill buttons, every slot always shown and greyed out
+   until its skill is learned.  There is no Guard and no Flee button. */
+static void cmd_move(Battle *b, int dx, int dy)
+{
+    int i = b->menuIdx;
+    if (dy) {
+        if (i < CMD_GRID0) { b->menuIdx = CMD_GRID0 + (dy > 0 ? 0 : GRID_COLS); return; }
+        int s = i - CMD_GRID0, c = s % GRID_COLS, r = s / GRID_COLS;
+        r = (r + GRID_ROWS + (dy > 0 ? 1 : -1)) % GRID_ROWS;
+        b->menuIdx = CMD_GRID0 + r * GRID_COLS + c;
+        return;
+    }
+    if (!dx) return;
+    if (i < CMD_GRID0) {
+        int n = i + dx;
+        if (n < 0)            b->menuIdx = CMD_GRID0 + GRID_N - 1;   /* wrap right */
+        else if (n > 2)       b->menuIdx = CMD_GRID0;
+        else                  b->menuIdx = n;
+        return;
+    }
+    int s = i - CMD_GRID0, c = s % GRID_COLS, r = s / GRID_COLS;
+    c += dx;
+    if (c < 0)               b->menuIdx = CMD_MANAPOT;
+    else if (c >= GRID_COLS) b->menuIdx = CMD_ATTACK;
+    else                     b->menuIdx = CMD_GRID0 + r * GRID_COLS + c;
+}
+
+/* Feedback the original shows over the fighter rather than in a log. */
+static void cmd_note(Battle *b, Color col, const char *msg)
+{
+    battle_floater(b, (Vector2){ HERO_X[0], LINE_Y - 150 }, col, 20, "%s", msg);
+}
+
+static bool quaff_life(Game *g)
+{
+    Battle *b = &g->b;
+    Combatant *a = &b->heroes[0];
+    if (g->p.lifePots <= 0)      { cmd_note(b, C_PARCH2, "no life potions"); return false; }
+    if (a->life >= a->lifeMax)   { cmd_note(b, C_PARCH2, "already whole");   return false; }
+    g->p.lifePots--;
+    int h2 = a->lifeMax / 3;
+    if (a->life + h2 > a->lifeMax) h2 = a->lifeMax - a->life;
+    a->life += h2;
+    battle_log(b, "%s drinks a life potion (+%d).", a->name, h2);
+    battle_floater(b, (Vector2){ HERO_X[0], LINE_Y - 160 }, C_JADE, 26, "+%d", h2);
+    return true;
+}
+
+static bool quaff_mana(Game *g)
+{
+    Battle *b = &g->b;
+    Combatant *a = &b->heroes[0];
+    if (g->p.manaPots <= 0)     { cmd_note(b, C_PARCH2, "no mana potions"); return false; }
+    if (a->mana >= a->manaMax)  { cmd_note(b, C_PARCH2, "already full");    return false; }
+    g->p.manaPots--;
+    int m2 = a->manaMax / 3;
+    if (a->mana + m2 > a->manaMax) m2 = a->manaMax - a->mana;
+    a->mana += m2;
+    battle_log(b, "%s drinks a mana potion (+%d).", a->name, m2);
+    battle_floater(b, (Vector2){ HERO_X[0], LINE_Y - 160 }, C_KI, 26, "+%d", m2);
+    return true;
+}
+
 static void update_player_menu(Game *g)
 {
     Battle *b = &g->b;
@@ -613,117 +722,42 @@ static void update_player_menu(Game *g)
         if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A) || IsKeyPressed(KEY_UP)) cur = (cur + n - 1) % n;
         b->target = live[cur];
         if (IsKeyPressed(KEY_ESCAPE)) { b->phase = BP_PLAYER_CHOOSE; return; }
-        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE))
             begin_action(g, 0, b->pendingSkill, b->target);
-        }
         return;
     }
 
-    if (b->menuTab == 0) {
-        const int N = 5;
-        if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) b->menuIdx = (b->menuIdx + 1) % N;
-        if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) b->menuIdx = (b->menuIdx + N - 1) % N;
-        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-            switch (b->menuIdx) {
-            case 0:                                   /* Attack             */
-                b->pendingSkill = ID_ATTACK;
-                b->phase = BP_PLAYER_TARGET;
-                break;
-            case 1: b->menuTab = 1; b->skillIdx = 0; break;
-            case 2: b->menuTab = 2; b->menuIdx = 0; break;
-            case 3:                                   /* Guard              */
-                begin_action(g, 0, ID_GUARD, 0);
-                break;
-            case 4:                                   /* Flee               */
-                if (!b->canFlee) { battle_log(b, "There is no way out of this one."); break; }
-                if (rnd(0, 100) < 45 + a->speed) {
-                    battle_log(b, "You break away.");
-                    b->phase = BP_FLED; b->timer = 0;
-                } else {
-                    battle_log(b, "You could not break away!");
-                    b->orderIdx++;
-                    b->phase = BP_TURN_END; b->timer = 0.4f;
-                }
-                break;
-            }
-        }
-    } else if (b->menuTab == 1) {
-        int ids[MAX_SKILLS], n = 0;
-        for (int i = 0; i < MAX_SKILLS; i++)
-            if (g->p.skillRank[i] > 0 && !(SKILLS[i].flags & SKF_PASSIVE)) ids[n++] = i;
-        if (n == 0) { b->menuTab = 0; return; }
-        if (b->skillIdx >= n) b->skillIdx = n - 1;
-        if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) b->skillIdx = (b->skillIdx + 1) % n;
-        if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) b->skillIdx = (b->skillIdx + n - 1) % n;
-        if (IsKeyPressed(KEY_ESCAPE)) { b->menuTab = 0; return; }
-        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-            int id = ids[b->skillIdx];
-            if (!skill_usable(g, a, id)) { battle_log(b, "Not enough left in the tank."); return; }
-            b->pendingSkill = id;
-            if (SKILLS[id].target == SK_TARGET_ONE_FOE) b->phase = BP_PLAYER_TARGET;
-            else begin_action(g, 0, id, b->target);
-        }
-    } else {
-        /* Slots 0 and 1 are the original's lifepots / manapots counters. */
-        int ids[MAX_INVENTORY], n = 0;
-        for (int i = 0; i < g->p.invCount; i++)
-            if (ITEMS[g->p.inv[i].def].type == ITEM_CONSUMABLE) ids[n++] = i;
-        int total = 2 + n;
-        if (IsKeyPressed(KEY_ESCAPE)) { b->menuTab = 0; return; }
-        if (b->menuIdx >= total) b->menuIdx = total - 1;
-        if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) b->menuIdx = (b->menuIdx + 1) % total;
-        if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) b->menuIdx = (b->menuIdx + total - 1) % total;
-        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-            bool used = false;
-            if (b->menuIdx == 0) {
-                if (g->p.lifePots > 0 && a->life < a->lifeMax) {
-                    g->p.lifePots--;
-                    int h2 = a->lifeMax / 3;
-                    if (a->life + h2 > a->lifeMax) h2 = a->lifeMax - a->life;
-                    a->life += h2; used = true;
-                    battle_log(b, "%s drinks a life potion (+%d).", a->name, h2);
-                    battle_floater(b, (Vector2){ HERO_X[0], LINE_Y - 160 }, C_JADE, 26, "+%d", h2);
-                } else battle_log(b, g->p.lifePots > 0 ? "Already whole." : "No life potions.");
-            } else if (b->menuIdx == 1) {
-                if (g->p.manaPots > 0 && a->mana < a->manaMax) {
-                    g->p.manaPots--;
-                    int m2 = a->manaMax / 3;
-                    if (a->mana + m2 > a->manaMax) m2 = a->manaMax - a->mana;
-                    a->mana += m2; used = true;
-                    battle_log(b, "%s drinks a mana potion (+%d).", a->name, m2);
-                    battle_floater(b, (Vector2){ HERO_X[0], LINE_Y - 160 }, C_KI, 26, "+%d", m2);
-                } else battle_log(b, g->p.manaPots > 0 ? "Already full." : "No mana potions.");
-            } else if (use_consumable(g, ids[b->menuIdx - 2], a)) used = true;
-            if (used) {
-                a->anim = ANIM_HEAL; a->animT = 0;
-                battle_burst(b, (Vector2){ HERO_X[0], LINE_Y - 70 }, C_JADE, 14, 80, 1);
-                b->menuTab = 0;
-                b->orderIdx++;
-                b->phase = BP_TURN_END;
-                b->timer = 0.6f;
-            }
-        }
+    if (b->menuIdx < 0 || b->menuIdx >= CMD_N) b->menuIdx = CMD_ATTACK;
+
+    if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) cmd_move(b,  1, 0);
+    if (IsKeyPressed(KEY_LEFT)  || IsKeyPressed(KEY_A)) cmd_move(b, -1, 0);
+    if (IsKeyPressed(KEY_DOWN)  || IsKeyPressed(KEY_S)) cmd_move(b, 0,  1);
+    if (IsKeyPressed(KEY_UP)    || IsKeyPressed(KEY_W)) cmd_move(b, 0, -1);
+
+    if (!(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE))) return;
+
+    if (b->menuIdx == CMD_ATTACK) {
+        b->pendingSkill = ID_ATTACK;
+        b->phase = BP_PLAYER_TARGET;
         return;
     }
-    if (0) {
-        int ids[MAX_INVENTORY], n = 0;
-        for (int i = 0; i < g->p.invCount; i++)
-            if (ITEMS[g->p.inv[i].def].type == ITEM_CONSUMABLE) ids[n++] = i;
-        if (IsKeyPressed(KEY_ESCAPE) || n == 0) { b->menuTab = 0; if (n == 0) battle_log(b, "No supplies left."); return; }
-        if (b->menuIdx >= n) b->menuIdx = n - 1;
-        if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) b->menuIdx = (b->menuIdx + 1) % n;
-        if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) b->menuIdx = (b->menuIdx + n - 1) % n;
-        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-            if (use_consumable(g, ids[b->menuIdx], a)) {
-                a->anim = ANIM_HEAL; a->animT = 0;
-                battle_burst(b, (Vector2){ HERO_X[0], LINE_Y - 70 }, C_JADE, 14, 80, 1);
-                b->menuTab = 0;
-                b->orderIdx++;
-                b->phase = BP_TURN_END;
-                b->timer = 0.6f;
-            }
-        }
+    if (b->menuIdx == CMD_LIFEPOT || b->menuIdx == CMD_MANAPOT) {
+        bool used = (b->menuIdx == CMD_LIFEPOT) ? quaff_life(g) : quaff_mana(g);
+        if (!used) return;
+        a->anim = ANIM_HEAL; a->animT = 0;
+        battle_burst(b, (Vector2){ HERO_X[0], LINE_Y - 70 }, C_JADE, 14, 80, 1);
+        b->orderIdx++;
+        b->phase = BP_TURN_END;
+        b->timer = 0.6f;
+        return;
     }
+
+    int id = GRID_SKILL[b->menuIdx - CMD_GRID0];
+    if (g->p.skillRank[id] <= 0) { cmd_note(b, C_PARCH2, "not learned"); return; }
+    if (!skill_usable(g, a, id)) { cmd_note(b, C_KI, "not enough mana");  return; }
+    b->pendingSkill = id;
+    if (SKILLS[id].target == SK_TARGET_ONE_FOE) b->phase = BP_PLAYER_TARGET;
+    else begin_action(g, 0, id, b->target);
 }
 
 void battle_update(Game *g, float dt)
@@ -854,64 +888,129 @@ void battle_update(Game *g, float dt)
 
 /* ----------------------------------------------------------------- draw */
 
-/* One HUD stat: caps label on the left, value on the right, bar underneath. */
-static void stat_row(float x, float y, float w, const char *tag, int cur, int max,
-                     Color fill, float barH)
+/* A recessed groove with a gradient fill -- the original's bars are a 56x7
+   slot (its cid 1763) holding a two-stop gradient. */
+static void bar_slot(float cx, float cy, float frac, Color hi, Color lo)
 {
-    char v[32];
-    snprintf(v, sizeof v, "%d/%d", cur, max);
-    ui_text(tag, x, y, 14, C_PARCH2);
-    ui_text(v, x + w - ui_text_w(v, 14), y, 14, C_PARCH);
-    ui_bar((Rectangle){ x, y + 16, w, barH }, max > 0 ? (float)cur / max : 0, fill,
-           (Color){ 24, 22, 28, 220 }, NULL);
+    float w = BW(56.0f), h = BW(7.0f);
+    Rectangle r = { cx - w * 0.5f, cy - h * 0.5f, w, h };
+    DrawRectangleRec(r, C_GROOVE);
+    if (frac > 0) {
+        if (frac > 1) frac = 1;
+        DrawRectangleGradientV((int)(r.x + 1), (int)(r.y + 1),
+                               (int)((r.width - 2) * frac), (int)(r.height - 2), hi, lo);
+    }
+    DrawRectangleLinesEx(r, 1, (Color){ 199, 199, 199, 110 });
 }
 
-static void draw_nameplate(Battle *b, Combatant *c, Vector2 at, bool targeted)
+/* The head-and-shoulders plate the original keeps at the outside of each row. */
+static void portrait(const Combatant *c, float cx, float cy)
 {
-    if (!c->alive) return;
-    bool hasGuard = c->shdMax > 5;   /* most enemies carry a token 1 point */
-    float w = 200, x = at.x - w / 2, y = at.y - 205;
-    DrawRectangleRounded((Rectangle){ x, y, w, hasGuard ? 54.0f : 44.0f }, 0.25f, 8,
-                         (Color){ 18, 16, 22, 200 });
-    if (targeted)
-        DrawRectangleRoundedLines((Rectangle){ x, y, w, hasGuard ? 54.0f : 44.0f }, 0.25f, 8,
-                                  C_GOLD);
-    char nm[48];
-    snprintf(nm, sizeof nm, "%s  Lv%d", c->name, c->level);
-    ui_text(nm, x + 8, y + 4, 16, C_PARCH);
-    ui_bar((Rectangle){ x + 8, y + 23, w - 16, 8 }, (float)c->life / c->lifeMax,
-           C_BLOOD, (Color){ 40, 20, 20, 255 }, NULL);
-    if (hasGuard)
-        ui_bar((Rectangle){ x + 8, y + 34, w - 16, 6 }, (float)c->shd / c->shdMax,
-               C_KI, (Color){ 22, 34, 44, 255 }, NULL);
-    if (targeted) {
-        float bob = sinf((float)GetTime() * 6) * 4;
-        Vector2 tip = { at.x, at.y - 168 + bob };
-        DrawTriangle((Vector2){ tip.x - 12, tip.y - 16 }, (Vector2){ tip.x + 12, tip.y - 16 },
-                     tip, C_GOLD);
+    float w = BW(62.0f), h = BW(58.0f);
+    Rectangle r = { cx - w * 0.5f, cy - h * 0.5f, w, h };
+    DrawRectangleRec(r, (Color){ 30, 26, 23, 255 });
+    BeginScissorMode((int)r.x + 1, (int)r.y + 1, (int)r.width - 2, (int)r.height - 2);
+    Combatant t = *c;
+    t.anim = ANIM_STAND; t.animT = 0;
+    art_draw_puppet(&t, (Vector2){ cx, r.y + h * 1.22f }, 1.0f, 0.0f, 1.30f);
+    EndScissorMode();
+    DrawRectangleLinesEx(r, 1.5f, C_PLATE_LN);
+}
+
+/* One combatant's strip: portrait, name, life number and bar, shield bar and
+   number -- heroes reading left to right, enemies mirrored. */
+static void status_row(const Combatant *c, bool hero, int row, bool targeted, float t)
+{
+    if (!c->alive && c->life <= 0 && c->lifeMax <= 0) return;
+    const float nameY = row ? 19.6f : 65.2f;
+    const float numY  = row ? 38.5f : 83.2f;
+    const float barY  = row ? 44.8f : 90.9f;
+    const float portY = hero ? (row ? 31.5f : 84.8f) : (row ? 30.4f : 83.8f);
+
+    /* the plate behind the strip */
+    float px0 = hero ? 19.3f : 332.8f, px1 = hero ? 278.8f : 585.5f;
+    Rectangle plate = { BX(px0), BY(nameY - 18.0f), BW(px1 - px0), BW(56.0f) };
+    DrawRectangleRec(plate, C_PLATE);
+    DrawRectangleLinesEx(plate, 1.5f, targeted ? C_GOLD : C_PLATE_LN);
+
+    portrait(c, BX(hero ? 59.0f : 547.0f), BY(portY));
+
+    char buf[48];
+    float nameX = hero ? 87.0f : 332.0f;
+    ui_text(c->name, BX(nameX), BY(nameY), 19, C_PLATE_HI);
+    snprintf(buf, sizeof buf, "%d", c->life < 0 ? 0 : c->life);
+    ui_text(buf, BX(hero ? 87.4f : 335.4f), BY(numY), 19, C_LIFE_TXT);
+    bar_slot(BX(hero ? 162.0f : 409.9f), BY(barY),
+             c->lifeMax > 0 ? (float)c->life / c->lifeMax : 0, C_LIFE_HI, C_LIFE_LO);
+    bar_slot(BX(hero ? 218.7f : 466.9f), BY(barY),
+             c->shdMax > 0 ? (float)c->shd / c->shdMax : 0, C_MANA_HI, C_MANA_LO);
+    snprintf(buf, sizeof buf, "%d", c->shd < 0 ? 0 : c->shd);
+    ui_text(buf, BX(hero ? 240.9f : 488.9f), BY(numY), 19, C_SHD_TXT);
+
+    if (!c->alive) {
+        DrawRectangleRec(plate, (Color){ 10, 8, 12, 150 });
+        ui_text("down", BX(nameX), BY(numY), 19, C_PARCH2);
+    }
+    (void)t;
+}
+
+/* A command button: the original draws them as plain discs. */
+static void round_button(float cx, float cy, bool sel, bool enabled, float t)
+{
+    float r = BW(20.0f);
+    DrawCircle((int)cx, (int)cy, r,
+               enabled ? (Color){ 56, 48, 40, 255 } : (Color){ 34, 31, 29, 235 });
+    DrawCircleLines((int)cx, (int)cy, r, enabled ? C_PLATE_LN : (Color){ 60, 54, 48, 255 });
+    if (sel) {
+        float pulse = 0.65f + 0.35f * sinf(t * 5.0f);
+        DrawCircleLines((int)cx, (int)cy, r,       Fade(C_GOLD, pulse));
+        DrawCircleLines((int)cx, (int)cy, r - 1.5f, Fade(C_GOLD, pulse));
+        DrawCircleLines((int)cx, (int)cy, r + 1.5f, Fade(C_GOLD, pulse * 0.5f));
+    }
+}
+
+/* Skills have no art in this remake, so each slot draws a rune in the skill's
+   own effect colour -- enough to tell them apart at a glance. */
+static void skill_glyph(const SkillDef *sk, float cx, float cy, bool on)
+{
+    float r = BW(9.5f);
+    Color c = sk->fx;
+    if (!on) c = (Color){ 122, 114, 104, 255 };
+    DrawCircle((int)cx, (int)cy, r, Fade(c, on ? 0.32f : 0.16f));
+    DrawCircleLines((int)cx, (int)cy, r, Fade(c, on ? 0.95f : 0.55f));
+    /* a small mark whose shape follows the skill's damage type */
+    if (sk->dmgType == DMG_MAGIC) {
+        for (int k = 0; k < 4; k++) {
+            float ang = (float)k * PI / 2.0f;
+            DrawLineEx((Vector2){ cx + cosf(ang) * r * 0.35f, cy + sinf(ang) * r * 0.35f },
+                       (Vector2){ cx + cosf(ang) * r * 0.85f, cy + sinf(ang) * r * 0.85f },
+                       2.0f, Fade(c, on ? 0.95f : 0.4f));
+        }
+    } else {
+        DrawLineEx((Vector2){ cx - r * 0.5f, cy + r * 0.55f },
+                   (Vector2){ cx + r * 0.6f, cy - r * 0.6f }, 2.6f, Fade(c, on ? 0.95f : 0.4f));
     }
 }
 
 void battle_draw(Game *g)
 {
     Battle *b = &g->b;
+    Combatant *h = &b->heroes[0];
+    float t = g->time;
     Camera2D cam = { 0 };
     cam.zoom = 1.0f;
     cam.offset = (Vector2){ frnd(-1, 1) * b->shake * 9, frnd(-1, 1) * b->shake * 7 };
 
     BeginMode2D(cam);
-    art_draw_battle_bg(b->bgStyle, g->time);
+    art_draw_battle_bg(b->bgStyle, t);
 
-    /* fighters, back to front */
-    for (int i = b->nFoes - 1; i >= 0; i--) {
-        Combatant *c = &b->foes[i];
-        Vector2 p = { FOE_X[i], LINE_Y - (i == 1 ? 46 : 0) };
-        art_draw_puppet(c, p, -1.0f, c->animT, i == 1 ? 0.92f : 1.0f);
-    }
-    for (int i = 0; i < b->nHeroes; i++) {
-        Combatant *c = &b->heroes[i];
-        art_draw_puppet(c, (Vector2){ HERO_X[i], LINE_Y }, 1.0f, c->animT, 1.0f);
-    }
+    /* fighters, back row first */
+    for (int i = b->nFoes - 1; i >= 0; i--)
+        art_draw_puppet(&b->foes[i], (Vector2){ FOE_X[i], FOE_Y[i] }, -1.0f,
+                        b->foes[i].animT, i == 1 ? 0.94f : 1.0f);
+    for (int i = b->nHeroes - 1; i >= 0; i--)
+        art_draw_puppet(&b->heroes[i], (Vector2){ HERO_X[i], HERO_Y[i] }, 1.0f,
+                        b->heroes[i].animT, i == 1 ? 0.94f : 1.0f);
 
     for (int i = 0; i < MAX_PARTICLES; i++) {
         Particle *p = &b->parts[i];
@@ -923,11 +1022,26 @@ void battle_draw(Game *g)
     }
     EndMode2D();
 
-    /* nameplates and floaters sit above the shake so text stays readable */
-    for (int i = 0; i < b->nFoes; i++)
-        draw_nameplate(b, &b->foes[i], (Vector2){ FOE_X[i], LINE_Y - (i == 1 ? 46 : 0) },
-                       b->phase == BP_PLAYER_TARGET && b->target == MAX_HEROES + i);
+    /* The target marker sits over the enemy, where the original's pointer clip
+       does, rather than on a nameplate. */
+    if (b->phase == BP_PLAYER_TARGET) {
+        int fi = b->target - MAX_HEROES;
+        if (fi >= 0 && fi < b->nFoes && b->foes[fi].alive) {
+            /* The original's pointer sits at a fixed stage point, but that
+               offset is relative to its own clip registration, which is not
+               centred the way our puppets are -- so keep the intent (just over
+               the target's head) and anchor it to the fighter. */
+            float px = FOE_X[fi];
+            float py = FOE_Y[fi] - BW(49.0f) + sinf(t * 6.0f) * 4.0f;
+            /* raylib culls a clockwise triangle, and screen y runs down */
+            DrawTriangle((Vector2){ px, py }, (Vector2){ px + 13, py - 18 },
+                         (Vector2){ px - 13, py - 18 }, C_GOLD);
+            DrawTriangle((Vector2){ px, py + 2 }, (Vector2){ px + 15, py - 20 },
+                         (Vector2){ px - 15, py - 20 }, Fade(C_GOLD, 0.35f));
+        }
+    }
 
+    /* floating counters -- the original's per-fighter message line */
     for (int i = 0; i < MAX_FLOATERS; i++) {
         Floater *f = &b->floats[i];
         if (f->life <= 0) continue;
@@ -939,129 +1053,123 @@ void battle_draw(Game *g)
         ui_text_c(f->text, f->pos.x, f->pos.y, sz, c);
     }
 
-    /* ------------------------------------------------------------- HUD */
-    Combatant *h = &b->heroes[0];
-    Rectangle hp = { 20, SCREEN_H - 172, 430, 152 };
-    ui_panel(hp, NULL);
-    char nm[64];
-    snprintf(nm, sizeof nm, "%s   Lv%d %s", h->name, h->level, CLASS_NAMES[g->p.cls]);
-    ui_text(nm, hp.x + 16, hp.y + 8, 20, C_GOLD);
-    float cw = hp.width - 32;
-    stat_row(hp.x + 16, hp.y + 38, cw, "LIFE", h->life, h->lifeMax, C_BLOOD, 16);
-    stat_row(hp.x + 16, hp.y + 76, cw, "MANA", h->mana, h->manaMax, C_KI, 12);
-    stat_row(hp.x + 16, hp.y + 110, cw * 0.47f, "ENERGY", h->eng, h->engMax, C_GOLD, 10);
-    if (h->shdMax > 5)
-        stat_row(hp.x + 16 + cw * 0.53f, hp.y + 110, cw * 0.47f, "GUARD",
-                 h->shd, h->shdMax, C_STEEL, 10);
+    /* ------------------------------------------------------ status band */
+    for (int i = b->nHeroes - 1; i >= 0; i--)
+        status_row(&b->heroes[i], true, i, false, t);
+    for (int i = b->nFoes - 1; i >= 0; i--)
+        status_row(&b->foes[i], false, i, b->phase == BP_PLAYER_TARGET
+                                         && b->target == MAX_HEROES + i, t);
 
-    /* battle log, in its own panel between the HUD and the commands */
-    Rectangle lp = { 466, SCREEN_H - 172, 470, 152 };
-    ui_panel(lp, NULL);
-    for (int i = 0; i < b->logCount; i++) {
-        float a = 0.42f + 0.58f * (i + 1) / (float)b->logCount;
-        ui_text(b->log[i], lp.x + 14, lp.y + 12 + i * 23, 17,
-                (Color){ 206, 192, 164, (unsigned char)(255 * a) });
-    }
-
-    /* command panel */
-    if (b->phase == BP_PLAYER_CHOOSE || b->phase == BP_PLAYER_TARGET) {
-        Rectangle cp = { SCREEN_W - 330, SCREEN_H - 300, 310, 280 };
-        ui_panel(cp, b->menuTab == 0 ? "COMMAND" : (b->menuTab == 1 ? "SKILLS" : "SUPPLIES"));
-        if (b->menuTab == 0) {
-            const char *opts[5] = { "Attack", "Skills", "Items", "Guard", "Flee" };
-            for (int i = 0; i < 5; i++) {
-                bool en = !(i == 4 && !b->canFlee);
-                ui_button((Rectangle){ cp.x + 14, cp.y + 44 + i * 44, cp.width - 28, 38 },
-                          opts[i], b->menuIdx == i && b->phase == BP_PLAYER_CHOOSE, en);
-            }
-        } else if (b->menuTab == 1) {
-            int ids[MAX_SKILLS], n = 0;
-            for (int i = 0; i < MAX_SKILLS; i++)
-            if (g->p.skillRank[i] > 0 && !(SKILLS[i].flags & SKF_PASSIVE)) ids[n++] = i;
-            int top = b->skillIdx - 4; if (top < 0) top = 0;
-            for (int i = top; i < n && i < top + 5; i++) {
-                const SkillDef *sk = &SKILLS[ids[i]];
-                char lab[64];
-                if (sk->manaCost) snprintf(lab, sizeof lab, "%s  %dmp", sk->name, sk->manaCost);
-                else if (sk->engCost) snprintf(lab, sizeof lab, "%s  %den", sk->name, sk->engCost);
-                else snprintf(lab, sizeof lab, "%s", sk->name);
-                ui_button((Rectangle){ cp.x + 14, cp.y + 44 + (i - top) * 44, cp.width - 28, 38 },
-                          lab, b->skillIdx == i, skill_usable(g, h, ids[i]));
-            }
-            if (n > 0) {
-                const SkillDef *sel = &SKILLS[ids[b->skillIdx < n ? b->skillIdx : 0]];
-                Rectangle tip = { 466, SCREEN_H - 300, 470, 120 };
-                DrawRectangleRounded(tip, 0.12f, 8, (Color){ 18, 16, 22, 232 });
-                DrawRectangleRoundedLines(tip, 0.12f, 8, (Color){ 122, 98, 46, 200 });
-                ui_text(sel->name, tip.x + 14, tip.y + 10, 19, C_GOLD);
-                /* wrap the description by hand at ~40 chars */
-                const char *d = sel->desc;
-                char line[64]; int li = 0, ly = 0;
-                for (const char *p = d;; p++) {
-                    if (*p == 0 || (li > 34 && *p == ' ')) {
-                        line[li] = 0;
-                        ui_text(line, tip.x + 14, tip.y + 38 + ly * 22, 17, C_PARCH2);
-                        ly++; li = 0;
-                        if (*p == 0) break;
-                        continue;
-                    }
-                    if (li < 62) line[li++] = *p;
-                }
-            }
-        } else {
-            int ids[MAX_INVENTORY], n = 0;
-            for (int i = 0; i < g->p.invCount; i++)
-                if (ITEMS[g->p.inv[i].def].type == ITEM_CONSUMABLE) ids[n++] = i;
-            char lab[64];
-            int total = 2 + n;
-            int top = b->menuIdx - 4; if (top < 0) top = 0;
-            for (int i = top; i < total && i < top + 5; i++) {
-                if (i == 0) snprintf(lab, sizeof lab, "Life Potion  x%d", g->p.lifePots);
-                else if (i == 1) snprintf(lab, sizeof lab, "Mana Potion  x%d", g->p.manaPots);
-                else snprintf(lab, sizeof lab, "%s  x%d", ITEMS[g->p.inv[ids[i - 2]].def].name,
-                              g->p.inv[ids[i - 2]].count);
-                bool en = (i == 0) ? g->p.lifePots > 0 : (i == 1) ? g->p.manaPots > 0 : true;
-                ui_button((Rectangle){ cp.x + 14, cp.y + 44 + (i - top) * 44, cp.width - 28, 38 },
-                          lab, b->menuIdx == i, en);
-            }
-        }
-        if (b->phase == BP_PLAYER_TARGET)
-            ui_text_c("choose a target -- ESC to go back", SCREEN_W / 2, 120, 20, C_GOLD);
-    }
-
-    /* turn order strip */
+    /* ------------------------------------------------------ command bar */
     {
-        float x = SCREEN_W / 2 - 120;
-        ui_text("TURN", x - 60, 24, 16, C_PARCH2);
-        for (int i = b->orderIdx; i < b->orderCount && i < b->orderIdx + 5; i++) {
-            Combatant *c = slot(b, b->order[i]);
-            if (!c->alive) continue;
-            bool now = (i == b->orderIdx);
-            DrawRectangleRounded((Rectangle){ x, 20, 46, 26 }, 0.3f, 6,
-                                 now ? (Color){ 198, 160, 74, 220 } : (Color){ 18, 16, 22, 190 });
-            char t[8];
-            snprintf(t, sizeof t, "%.3s", c->name);
-            ui_text_c(t, x + 23, 25, 15, now ? C_INK : C_PARCH2);
-            x += 52;
+        Rectangle outer = { BX(9.0f), BY(331.1f), BW(582.0f), BW(112.0f) };
+        Rectangle inner = { BX(25.9f), BY(344.1f), BW(537.5f), BW(92.4f) };
+        DrawRectangleRec(outer, (Color){ 115, 89, 66, 245 });
+        DrawRectangleLinesEx(outer, 2, (Color){ 175, 153, 133, 220 });
+        DrawRectangleRec(inner, (Color){ 44, 40, 36, 250 });
+        DrawRectangleLinesEx(inner, 1.5f, (Color){ 78, 63, 50, 255 });
+
+        bool live = (b->phase == BP_PLAYER_CHOOSE);
+        int sel = live ? b->menuIdx : -1;
+
+        /* the three round buttons on the left */
+        const char *LAB[3] = { "Attack", "Life P.", "Mana P." };
+        const float LCX[3] = { 46.3f, 93.1f, 141.2f };
+        for (int i = 0; i < 3; i++) {
+            float cx = BX(LCX[i]), cy = BY(360.7f);
+            bool en = (i == 0) || (i == 1 ? g->p.lifePots > 0 : g->p.manaPots > 0);
+            round_button(cx, cy, sel == i, en, t);
+            if (i == 0) {
+                float r = BW(13.0f);
+                DrawLineEx((Vector2){ cx - r * 0.6f, cy + r * 0.7f },
+                           (Vector2){ cx + r * 0.7f, cy - r * 0.7f }, 3.2f,
+                           en ? C_STEEL : (Color){ 80, 76, 70, 255 });
+                DrawLineEx((Vector2){ cx - r * 0.8f, cy + r * 0.35f },
+                           (Vector2){ cx - r * 0.25f, cy + r * 0.9f }, 3.0f,
+                           en ? (Color){ 150, 116, 70, 255 } : (Color){ 80, 76, 70, 255 });
+            } else {
+                Color pc = (i == 1) ? (Color){ 190, 48, 48, 255 } : (Color){ 46, 132, 190, 255 };
+                if (!en) pc = (Color){ 74, 70, 66, 255 };
+                float r = BW(9.0f);
+                DrawCircle((int)cx, (int)(cy + 2), r, pc);
+                DrawRectangle((int)(cx - r * 0.42f), (int)(cy - r * 1.5f),
+                              (int)(r * 0.84f), (int)(r * 0.9f), art_shade(pc, 0.7f));
+                char n[8];
+                snprintf(n, sizeof n, "x%d", i == 1 ? g->p.lifePots : g->p.manaPots);
+                ui_text_c(n, cx, cy + BW(11.0f), 17, en ? C_PARCH : C_PARCH2);
+            }
+            ui_text_c(LAB[i], cx, BY(380.8f) + 2, 16, sel == i ? C_GOLD : C_PLATE_HI);
         }
+
+        /* mana readout under them */
+        char mb[64];
+        ui_text("Mana", BX(25.9f), BY(411.2f), 17, C_PLATE_HI);
+        snprintf(mb, sizeof mb, "%d", h->mana);
+        ui_text(mb, BX(86.2f), BY(414.1f), 18, (Color){ 4, 204, 254, 255 });
+        snprintf(mb, sizeof mb, "/ %d", h->manaMax);
+        ui_text(mb, BX(134.5f), BY(414.2f), 18, C_PARCH2);
+        {
+            Rectangle mr = { BX(27.6f), BY(431.6f), BW(134.3f), BW(5.8f) };
+            DrawRectangleRec(mr, C_GROOVE);
+            float f = h->manaMax > 0 ? (float)h->mana / h->manaMax : 0;
+            DrawRectangleGradientV((int)(mr.x + 1), (int)(mr.y + 1),
+                                   (int)((mr.width - 2) * f), (int)(mr.height - 2),
+                                   C_MANA_HI, C_MANA_LO);
+            DrawRectangleLinesEx(mr, 1, (Color){ 199, 199, 199, 110 });
+        }
+
+        /* the 8x2 skill grid */
+        for (int i = 0; i < GRID_N; i++) {
+            int id = GRID_SKILL[i];
+            const SkillDef *sk = &SKILLS[id];
+            float cx = BX(231.5f + (i % GRID_COLS) * 45.0f);
+            float cy = BY((i / GRID_COLS) ? 415.6f : 375.6f);
+            bool known = g->p.skillRank[id] > 0;
+            bool en = known && skill_usable(g, h, id);
+            round_button(cx, cy, sel == CMD_GRID0 + i, en, t);
+            skill_glyph(sk, cx, cy, en);
+            if (known) {
+                char rk[8];
+                snprintf(rk, sizeof rk, "%d", g->p.skillRank[id]);
+                ui_text(rk, cx + BW(11.0f), cy + BW(5.0f), 15,
+                        en ? C_GOLD : (Color){ 110, 104, 96, 255 });
+            }
+        }
+
+        /* the rollover readout the original prints above the grid */
+        if (live && b->menuIdx >= CMD_GRID0) {
+            const SkillDef *sk = &SKILLS[GRID_SKILL[b->menuIdx - CMD_GRID0]];
+            char cost[32];
+            ui_text("Mana Cost: ", BX(245.6f), BY(336.8f), 17, C_PLATE_HI);
+            snprintf(cost, sizeof cost, "%d", sk->manaCost);
+            ui_text(cost, BX(314.4f), BY(336.8f), 17, C_GOLD);
+            ui_text(sk->name, BX(360.0f), BY(336.8f), 17, C_PARCH);
+        } else if (live) {
+            const char *n = b->menuIdx == CMD_ATTACK ? "Attack"
+                          : b->menuIdx == CMD_LIFEPOT ? "Life Potion" : "Mana Potion";
+            ui_text(n, BX(245.6f), BY(336.8f), 17, C_PARCH);
+        }
+
+        if (b->phase == BP_PLAYER_TARGET)
+            ui_text_c("choose a target -- ESC to go back", SCREEN_W / 2, BY(336.8f), 18, C_GOLD);
     }
 
     /* outcome overlays */
     if (b->phase == BP_WIN) {
-        DrawRectangle(0, 190, SCREEN_W, 250, (Color){ 18, 16, 22, 215 });
-        ui_text_c("VICTORY", SCREEN_W / 2, 210, 52, C_GOLD);
+        DrawRectangle(0, (int)BY(150.0f), SCREEN_W, (int)BW(150.0f), (Color){ 18, 16, 22, 225 });
+        ui_text_c("VICTORY", SCREEN_W / 2, BY(158.0f), 48, C_GOLD);
         char l1[96];
         snprintf(l1, sizeof l1, "%d experience     %d gold", b->expGain, b->goldGain);
-        ui_text_c(l1, SCREEN_W / 2, 280, 24, C_PARCH);
+        ui_text_c(l1, SCREEN_W / 2, BY(190.0f), 22, C_PARCH);
         if (b->dropItem >= 0) {
             char l2[96];
             snprintf(l2, sizeof l2, "Picked up: %s", ITEMS[b->dropItem].name);
-            ui_text_c(l2, SCREEN_W / 2, 312, 22, C_JADE);
+            ui_text_c(l2, SCREEN_W / 2, BY(212.0f), 20, C_JADE);
         }
         char l3[96];
         snprintf(l3, sizeof l3, "%d / %d to the next level", g->p.exp, g->p.expNext);
-        ui_text_c(l3, SCREEN_W / 2, 346, 20, C_PARCH2);
-        ui_text_c("ENTER to continue", SCREEN_W / 2, 396, 20, C_GOLD);
+        ui_text_c(l3, SCREEN_W / 2, BY(234.0f), 19, C_PARCH2);
+        ui_text_c("ENTER to continue", SCREEN_W / 2, BY(262.0f), 19, C_GOLD);
     } else if (b->phase == BP_LOSE) {
         DrawRectangle(0, 0, SCREEN_W, SCREEN_H,
                       (Color){ 0, 0, 0, (unsigned char)(160 * (b->timer > 1 ? 1 : b->timer)) });
