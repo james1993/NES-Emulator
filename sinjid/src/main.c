@@ -447,8 +447,10 @@ static void new_player(Game *g, ClassId cls, const char *name)
     player_add_item(p, IT_RICE_BALL); player_add_item(p, IT_RICE_BALL);
     player_add_item(p, IT_RICE_BALL); player_add_item(p, IT_GREEN_TEA);
     p->zone = ZONE_VILLAGE;
-    p->tx = 10; p->ty = 9; p->dir = 1;
-    p->saveZone = ZONE_VILLAGE; p->saveX = 10; p->saveY = 9;
+    /* Clear of the gateway at the room's foot: starting on its trigger meant
+       a press of space by the entrance put you straight into the portal. */
+    p->tx = 10; p->ty = 7; p->dir = 1;
+    p->saveZone = ZONE_VILLAGE; p->saveX = 10; p->saveY = 7;
     p->arenaWave = 0;
     p->rests = 10;                 /* the original starts you with ten rests */
     p->lifePots = 5;
@@ -634,7 +636,7 @@ int main(int argc, char **argv)
                     if (IsKeyPressed(KEY_ESCAPE)) G.createField = 0;
                     if (IsKeyPressed(KEY_ENTER) && G.nameLen > 0) {
                         new_player(&G, (ClassId)G.createIdx, G.nameBuf);
-                        world_enter_zone(&G, ZONE_VILLAGE, 10, 9);
+                        world_enter_zone(&G, ZONE_VILLAGE, 10, 7);
                         go_scene(&G, SCENE_VILLAGE);
                     }
                 }

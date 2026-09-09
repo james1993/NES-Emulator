@@ -720,11 +720,20 @@ static const Exit *exit_near(const Zone *z, float px, float py)
     for (int i = 0; i < z->exitCount; i++) {
         const Exit *e = &z->exits[i];
         float ex = e->tx * 30.0f + 15.0f;
+        /* The trigger clip is 23x38; test it against the player's body as an
+           overlap, the way hitTest does.  Sized generously it swallows most
+           of a room, and pressing space to talk takes an exit instead --
+           which is how a gateway got entered by accident. */
+        const float bodyX = 9.0f, bodyY = 9.0f;
         if (e->ty < 0) {                       /* an edge strip */
-            if (fabsf(px - ex) <= 34.0f) return e;
+            if (fabsf(px - ex) <= 15.0f + bodyX) return e;
         } else {
-            float ey = e->ty * 30.0f + 15.0f;
-            if (fabsf(px - ex) <= 40.0f && fabsf(py - ey) <= 44.0f) return e;
+            /* The clip sits high in its cell: the extraction puts the up
+               triggers at y~123 for a cell centred on 135, and the down ones
+               at ~307 for 315, so the box is centred ten pixels above. */
+            float ey = e->ty * 30.0f + 15.0f - 10.0f;
+            if (fabsf(px - ex) <= 11.5f + bodyX &&
+                fabsf(py - ey) <= 19.0f + bodyY) return e;
         }
     }
     return NULL;
@@ -821,7 +830,11 @@ void world_update(Game *g, float dt)
         if (p->px < 6)   p->px = 6;
         if (p->py < 6)   p->py = 6;
         if (p->px > MAP_W * 30 - 6) p->px = MAP_W * 30 - 6;
-        if (p->py > MAP_H * 30 - 6) p->py = MAP_H * 30 - 6;
+        /* The room is masked to the top 335 pixels of the original's stage --
+           the bar covers the rest -- so the floor ends there rather than at
+           the bottom of the 13-row grid.  Without this you walk under the
+           bar, and straight past the gateway standing at the room's foot. */
+        if (p->py > 335.0f - 9.0f) p->py = 335.0f - 9.0f;
         g->walkT += dt;
         g->stepsSinceFight++;
         if ((g->stepsSinceFight % 24) == 0) roll_encounter(g, z);
