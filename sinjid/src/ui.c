@@ -92,11 +92,11 @@ void ui_tooltip_item(const ItemDef *it, Rectangle at)
     char b[96];
     struct { const char *tag; int v; } rows[] = {
         { "Life",        it->lifeMax }, { "Mana",       it->manaMax },
-        { "Phys dmg",    it->phyDmg },
-        { "Phys def %",  it->phyDef },  { "Magic dmg",  it->magDmg },
-        { "Magic def",   it->magDef },  { "Shield pts", it->shdPts },
+        { "Physical Dmg:",    it->phyDmg },
+        { "Phys def %",  it->phyDef },  { "Magical Dmg:",  it->magDmg },
+        { "Magical Def:",   it->magDef },  { "Shield pts", it->shdPts },
         { "Shd p.def %", it->shdPhyDef }, { "Shd m.def %", it->shdMagDef },
-        { "Shd damage",  it->shdDmg },  { "Speed",      it->speed },
+        { "Shd damage",  it->shdDmg },  { "Speed:",      it->speed },
     };
     for (unsigned i = 0; i < sizeof rows / sizeof rows[0]; i++) {
         if (!rows[i].v) continue;
@@ -220,7 +220,7 @@ void ui_scene_menu(Game *g)
         struct { const char *tag; int v; int pct; } st[] = {
             { "Life",             c.lifeMax,   0 },
             { "Mana",             c.manaMax,   0 },
-            { "Strength",         c.str,       0 },
+            { "Strength:",         c.str,       0 },
             { "Weapon damage",    c.phyDmg,    0 },
             { "Strength damage",  c.strDmg,    0 },
             { "Magic damage",     c.magDmg,    0 },
@@ -230,7 +230,7 @@ void ui_scene_menu(Game *g)
             { "Shield p.defence", c.shdPhyDef, 1 },
             { "Shield m.defence", c.shdMagDef, 1 },
             { "Shield damage",    c.shdDmg,    0 },
-            { "Speed",            c.speed,     0 },
+            { "Speed:",            c.speed,     0 },
         };
         for (unsigned i = 0; i < sizeof st / sizeof st[0]; i++) {
             char b2[96];
@@ -503,10 +503,10 @@ void ui_scene_train(Game *g)
 {
     Player *p = &g->p;
     /* The trainable list mirrors the original's own stat screen. */
-    static const char *STAT_NAMES[9] = { "Life Points", "Mana Points", "Strength",
+    static const char *STAT_NAMES[9] = { "Life Points", "Mana Points", "Strength:",
                                          "Physical Damage", "Magic Damage",
                                          "Physical Defence", "Magic Defence",
-                                         "Shield Points", "Speed" };
+                                         "Shield Points", "Speed:" };
     int *statPtr[9] = { &p->baseLife, &p->baseMana, &p->baseStr,
                         &p->basePhyDmg, &p->baseMagDmg,
                         &p->basePhyDef, &p->baseMagDef, &p->baseShdPts, &p->baseSpeed };
@@ -791,7 +791,7 @@ void ui_scene_save(Game *g)
     ui_text(CLASS_NAMES[p->cls], PX(94.5f), PY(-101.8f) - PW(9.0f), 17, C_PARCH);
     {
         char lv[24];
-        snprintf(lv, sizeof lv, "Level %d", p->level);
+        snprintf(lv, sizeof lv, "Level: %d", p->level);
         ui_text(lv, PX(225.4f), PY(-100.5f) - PW(9.0f), 17, (Color){ 0, 204, 255, 255 });
     }
 
@@ -808,10 +808,10 @@ void ui_scene_save(Game *g)
 
     /* the two stat columns */
     {
-        const char *LN[4] = { "Phys dmg", "Magic dmg", "Phys def", "Magic def" };
+        const char *LN[4] = { "Physical Dmg:", "Magical Dmg:", "Physical Def:", "Magical Def:" };
         const int   LV[4] = { c.phyDmg, c.magDmg, c.phyDef, c.magDef };
         const float LY[4] = { 9.8f, 27.4f, 43.5f, 61.1f };
-        const char *RN[4] = { "Strength", "Speed", "Max life", "Max mana" };
+        const char *RN[4] = { "Strength:", "Speed:", "Max Life:", "Max Mana:" };
         const int   RV[4] = { c.str, c.speed, c.lifeMax, c.manaMax };
         char b[24];
         for (int i = 0; i < 4; i++) {
@@ -827,7 +827,7 @@ void ui_scene_save(Game *g)
     /* purse and potions */
     {
         char b[32];
-        ui_text("Gold", PX(48.4f), PY(97.5f) - PW(9.0f), 16, C_PARCH2);
+        ui_text("GOLD:", PX(48.4f), PY(97.5f) - PW(9.0f), 16, C_PARCH2);
         snprintf(b, sizeof b, "%d", p->gold);
         ui_text(b, PX(126.8f), PY(97.5f) - PW(9.0f), 17, C_GOLD);
         Rectangle lp = { PX(208.1f), PY(109.9f), PW(18.1f), PW(21.0f) };
@@ -848,7 +848,7 @@ void ui_scene_save(Game *g)
                         PY(-37.7f) - PY(-155.2f) };
         Rectangle r = { PX(-295.0f), PY(6.8f), PX(-9.9f) - PX(-295.0f),
                         PY(124.3f) - PY(6.8f) };
-        action_plate(a, "Save", "Saves the game.", "Save game",
+        action_plate(a, "Save Game", "Saves the game.", "Save Game",
                      g->saveSel == 0, true);
         char rl[64];
         snprintf(rl, sizeof rl, "Completely fills up mana, life, and energy.\n"
@@ -865,7 +865,7 @@ void ui_scene_save(Game *g)
         float a = g->savedFlash > 1.0f ? 1.0f : g->savedFlash;
         DrawRectangle(0, (int)PY(-40.0f), SCREEN_W, (int)PW(70.0f),
                       Fade((Color){ 12, 10, 14, 255 }, 0.82f * a));
-        ui_text_c("SAVED", (float)SCREEN_W / 2, PY(-30.0f), 44, Fade(C_GOLD, a));
+        ui_text_c("Game Saved", (float)SCREEN_W / 2, PY(-30.0f), 40, Fade(C_GOLD, a));
     }
 }
 

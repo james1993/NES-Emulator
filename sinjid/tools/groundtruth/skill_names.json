@@ -1,0 +1,29 @@
+{
+ "_note": "The original's own skill names, decoded from the static text (DefineText, glyph-indexed) in its skill panel. Order is confirmed by the mana cost on each name's panel entry matching the per-button manareq in battle_layout.json, and by the three with no battle button (7, 8, 10) being exactly the three the panel marks Passive. Descriptions are NOT taken from the original.",
+ "names": [
+  "Stab",
+  "Shurikens",
+  "Double Strike",
+  "Speed Strike",
+  "Energy Shot",
+  "Blast Fire",
+  "Vertical Strike",
+  "Shadow Blend",
+  "Energy Field",
+  "Charge",
+  "Inner Strength",
+  "Mana Bomb",
+  "Heal",
+  "Avenger",
+  "Split",
+  "Shadow Strike",
+  "Annihilate",
+  "Execution",
+  "Shadow Replicate"
+ ],
+ "passive": [
+  7,
+  8,
+  10
+ ]
+}

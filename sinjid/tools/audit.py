@@ -440,6 +440,19 @@ check('save', ("%.1ff" % sv['statsLeft']['valueX']) in ui
       "the two stat columns should sit at the original's x")
 check('save', ("%.1ff" % sv['gold'][0]) in ui, "gold should sit at x=%.1f" % sv['gold'][0])
 
+# ---- skill names ------------------------------------------------------
+sn = gt('skill_names.json')
+dat = SRC('data.c')
+i = dat.index('const SkillDef SKILLS[MAX_SKILLS] = {')
+sblk = dat[i:dat.index('\n};', i)]
+ours_names = re.findall(r'\{\s*"([^"]+)"\s*,\s*"', sblk)
+check('skills', ours_names == sn['names'],
+      "skill names ours=%s theirs=%s" % (ours_names, sn['names']))
+# the three the original marks Passive are the three with no battle button
+gridskills = {s_["skill"] for s_ in gt('battle_layout.json')['commandBar']['grid']['slots']}
+check('skills', sorted(set(range(19)) - gridskills) == sn['passive'],
+      "passives ours=%s theirs=%s" % (sorted(set(range(19)) - gridskills), sn['passive']))
+
 print()
 if not FAIL:
     print("PASS -- deep checks clean too.")

@@ -395,32 +395,35 @@ static const NpcSeed ROOM_NPCS[] = {
    ty < 0 marks an edge exit that spans its whole column; entryY < 0 keeps
    the row you left on, which is what the original's Math.ceil does. */
 static const Exit ROOM_EXITS[] = {
-  /* room 0 */ { EX_UP,    10, 4, ZONE_ARENA1,  10,  9, -1, 0, -1 },
-  /* room 1 */ { EX_DOWN,  10,10, ZONE_ARENA0,  10,  5, -1, 0, -1 },
-               { EX_LEFT,   0,-1, ZONE_ARENA2,  18, -1, -1, 0, -1 },
-               { EX_RIGHT, 19,-1, ZONE_ARENA3,   1, -1, -1, 0, -1 },
-  /* room 2 */ { EX_RIGHT, 19,-1, ZONE_ARENA1,   1, -1, -1, 0, -1 },
-  /* room 3 */ { EX_LEFT,   0,-1, ZONE_ARENA1,  18, -1, -1, 0, -1 },
-               { EX_UP,    15, 4, ZONE_ARENA4,  13,  9, -1, 0, -1 },
-  /* room 4 */ { EX_DOWN,  13,10, ZONE_ARENA3,  13,  5, -1, 0, -1 },
-               { EX_LEFT,   0,-1, ZONE_ARENA5,  18, -1, -1, 0, -1 },
-  /* room 5 */ { EX_LEFT,   0,-1, ZONE_ARENA6,  18, -1, -1, 0, -1 },
-               { EX_RIGHT, 19,-1, ZONE_ARENA4,   1, -1, -1, 0, -1 },
-               { EX_UP,    10, 4, ZONE_ARENA7,  10,  9, -1, 0, -1 },
-  /* room 6 */ { EX_RIGHT, 19,-1, ZONE_ARENA5,   1, -1, -1, 0, -1 },
-  /* room 7 */ { EX_DOWN,  10,10, ZONE_ARENA5,  10,  5, -1, 0, -1 },
-               { EX_RIGHT, 19,-1, ZONE_ARENA8,   1, -1, -1, 0, -1 },
-               { EX_LEFT,   0,-1, ZONE_ARENA9,  18, -1, -1, 0, -1 },
-  /* room 8 */ { EX_LEFT,   0,-1, ZONE_ARENA7,  18, -1, -1, 0, -1 },
-  /* room 9 */ { EX_RIGHT, 19,-1, ZONE_ARENA7,   1, -1, -1, 0, -1 },
-               { EX_UP,    10, 4, ZONE_ARENA10, 10,  9,  0,20, -1 },
-  /* room 10*/ { EX_DOWN,  10,10, ZONE_ARENA9,  10,  5, -1, 0, -1 },
+  /* dir, trigger cell, dest, entry, gatePortal, gateNeed, portal, doorX, doorY
+     The doorX/doorY are the original's own doorway-clip placements, read off
+     its room frames; the side exits have no clip and leave them at zero. */
+  /* room 0 */ { EX_UP,    10, 4, ZONE_ARENA1,  10,  9, -1, 0, -1, 300.2f, 122.5f },
+  /* room 1 */ { EX_DOWN,  10,10, ZONE_ARENA0,  10,  5, -1, 0, -1, 300.2f, 309.1f },
+               { EX_LEFT,   0,-1, ZONE_ARENA2,  18, -1, -1, 0, -1, 0, 0 },
+               { EX_RIGHT, 19,-1, ZONE_ARENA3,   1, -1, -1, 0, -1, 0, 0 },
+  /* room 2 */ { EX_RIGHT, 19,-1, ZONE_ARENA1,   1, -1, -1, 0, -1, 0, 0 },
+  /* room 3 */ { EX_LEFT,   0,-1, ZONE_ARENA1,  18, -1, -1, 0, -1, 0, 0 },
+               { EX_UP,    15, 4, ZONE_ARENA4,  13,  9, -1, 0, -1, 449.8f, 126.2f },
+  /* room 4 */ { EX_DOWN,  13,10, ZONE_ARENA3,  13,  5, -1, 0, -1, 418.4f, 307.6f },
+               { EX_LEFT,   0,-1, ZONE_ARENA5,  18, -1, -1, 0, -1, 0, 0 },
+  /* room 5 */ { EX_LEFT,   0,-1, ZONE_ARENA6,  18, -1, -1, 0, -1, 0, 0 },
+               { EX_RIGHT, 19,-1, ZONE_ARENA4,   1, -1, -1, 0, -1, 0, 0 },
+               { EX_UP,    10, 4, ZONE_ARENA7,  10,  9, -1, 0, -1, 300.2f, 123.5f },
+  /* room 6 */ { EX_RIGHT, 19,-1, ZONE_ARENA5,   1, -1, -1, 0, -1, 0, 0 },
+  /* room 7 */ { EX_DOWN,  10,10, ZONE_ARENA5,  10,  5, -1, 0, -1, 300.2f, 305.1f },
+               { EX_RIGHT, 19,-1, ZONE_ARENA8,   1, -1, -1, 0, -1, 0, 0 },
+               { EX_LEFT,   0,-1, ZONE_ARENA9,  18, -1, -1, 0, -1, 0, 0 },
+  /* room 8 */ { EX_LEFT,   0,-1, ZONE_ARENA7,  18, -1, -1, 0, -1, 0, 0 },
+  /* room 9 */ { EX_RIGHT, 19,-1, ZONE_ARENA7,   1, -1, -1, 0, -1, 0, 0 },
+               { EX_UP,    10, 4, ZONE_ARENA10, 10,  9,  0,20, -1, 300.1f, 124.2f },
+  /* room 10*/ { EX_DOWN,  10,10, ZONE_ARENA9,  10,  5, -1, 0, -1, 300.2f, 305.1f },
   /* The three portals are gated doorways of the same kind, not a statue:
      the entrance room's south door, one in Arena8 and one in Arena2, each
      behind its own portallevel threshold. */
-  /* room 0 */ { EX_DOWN,  10,10, ZONE_ARENA0,  10,  9, -1, 0,  0 },
-  /* room 8 */ { EX_UP,    15, 5, ZONE_ARENA8,  15,  6, -1, 0,  1 },
-  /* room 2 */ { EX_UP,     9, 5, ZONE_ARENA2,   9,  6, -1, 0,  2 },
+  /* room 0 */ { EX_DOWN,  10,10, ZONE_ARENA0,  10,  9, -1, 0,  0, 300.2f, 309.1f },
+  /* room 8 */ { EX_UP,    15, 5, ZONE_ARENA8,  15,  6, -1, 0,  1, 466.3f, 157.6f },
+  /* room 2 */ { EX_UP,     9, 5, ZONE_ARENA2,   9,  6, -1, 0,  2, 299.2f, 165.6f },
 };
 static const int EXIT_ROOM[] = { 0, 1,1,1, 2, 3,3, 4,4, 5,5,5, 6, 7,7,7, 8, 9,9, 10,
                                  0, 8, 2 };
@@ -721,26 +724,31 @@ static bool blocked_at(const Zone *z, float px, float py)
     return false;
 }
 
+/* Where a doorway actually stands, in the original's pixels.  Side exits
+   have no clip of their own, so they fall back to the trigger cell. */
+static Vector2 door_at(const Exit *e, float py)
+{
+    if (e->doorX > 0)
+        return (Vector2){ e->doorX, e->doorY };
+    return (Vector2){ e->tx * 30.0f + 15.0f, e->ty < 0 ? py : e->ty * 30.0f + 15.0f };
+}
+
 static const Exit *exit_near(const Zone *z, float px, float py)
 {
     for (int i = 0; i < z->exitCount; i++) {
         const Exit *e = &z->exits[i];
-        float ex = e->tx * 30.0f + 15.0f;
-        /* The trigger clip is 23x38; test it against the player's body as an
-           overlap, the way hitTest does.  Sized generously it swallows most
-           of a room, and pressing space to talk takes an exit instead --
-           which is how a gateway got entered by accident. */
-        const float bodyX = 9.0f, bodyY = 9.0f;
+        Vector2 d = door_at(e, py);
         if (e->ty < 0) {                       /* an edge strip */
-            if (fabsf(px - ex) <= 15.0f + bodyX) return e;
-        } else {
-            /* The clip sits high in its cell: the extraction puts the up
-               triggers at y~123 for a cell centred on 135, and the down ones
-               at ~307 for 315, so the box is centred ten pixels above. */
-            float ey = e->ty * 30.0f + 15.0f - 10.0f;
-            if (fabsf(px - ex) <= 11.5f + bodyX &&
-                fabsf(py - ey) <= 19.0f + bodyY) return e;
+            if (fabsf(px - d.x) <= 15.0f + 9.0f) return e;
+            continue;
         }
+        /* The doorway clip is 22.8 x 38.4 around its placement.  A portal is
+           tested against the clip alone: it is a one-way trip into a gateway,
+           so you have to be standing in the doorway, not merely brushing past
+           the bottom of the room. */
+        float body = e->portal >= 0 ? 6.0f : 9.0f;
+        float mx = 11.4f + body, my = 19.2f + body;
+        if (fabsf(px - d.x) <= mx && fabsf(py - d.y) <= my) return e;
     }
     return NULL;
 }
@@ -948,35 +956,73 @@ void world_draw(Game *g)
     for (int i = 0; i < z->propCount; i++)
         art_draw_scenery(&z->props[i], z, t);
 
-    /* The way out is lit on the doorway itself, not on the ground under the
-       player: the original plays the trigger clip's own highlight. */
+    /* Every way out of a room is a doorway you can see and walk up to -- the
+       original draws its trigger clip (22.8 x 38.4) in every room, and lights
+       it when you are standing in it.  Without them a gateway is an invisible
+       patch of floor, and pressing space to talk drops you into it. */
     {
-        const Exit *e = exit_near(z, p->px, p->py);
-        if (e && (int)(e - z->exits) == g->exitLock) e = NULL;   /* not armed yet */
-        if (e) {
-            float ex = OX + (e->tx * 30.0f + 15.0f) * HUD_S;
-            float ey = OY + (e->ty < 0 ? p->py : e->ty * 30.0f + 15.0f) * HUD_S;
+        const Exit *arm = exit_near(z, p->px, p->py);
+        if (arm && (int)(arm - z->exits) == g->exitLock) arm = NULL;
+        for (int i = 0; i < z->exitCount; i++) {
+            const Exit *e = &z->exits[i];
+            bool lit = (e == arm);
+            bool portal = (e->portal >= 0);
+            bool sealed = (e->gatePortal >= 0 &&
+                           p->portalLevel[e->gatePortal] <= e->gateNeed);
             float pulse = 0.6f + 0.4f * sinf(t * 4.2f);
-            Color glow = (Color){ 120, 224, 255, 255 };
-            /* the trigger cell sits just inside the doorway, so lift the
-               marker onto the opening itself */
-            if (e->dir == EX_UP)   ey -= TILE * 0.55f;
-            if (e->dir == EX_DOWN) ey += TILE * 0.35f;
-            Rectangle door = { ex - TILE * 0.62f, ey - TILE * 1.05f,
-                               TILE * 1.24f, TILE * 1.45f };
-            DrawRectangleRec(door, Fade(glow, 0.10f + 0.08f * pulse));
-            DrawRectangleLinesEx(door, 2.0f, Fade(glow, 0.45f + 0.35f * pulse));
-            const float ddx[4] = { 0, 0, -1, 1 }, ddy[4] = { -1, 1, 0, 0 };
-            float ax = ex + ddx[e->dir] * TILE * 0.78f;
-            float ay = ey + ddy[e->dir] * TILE * 0.90f - TILE * 0.30f;
-            float s2 = TILE * 0.15f;
-            Vector2 tip  = { ax + ddx[e->dir] * s2, ay + ddy[e->dir] * s2 };
-            Vector2 side = { ddy[e->dir] * s2, ddx[e->dir] * s2 };
-            Vector2 b1 = { ax - ddx[e->dir] * s2 + side.x, ay - ddy[e->dir] * s2 + side.y };
-            Vector2 b2 = { ax - ddx[e->dir] * s2 - side.x, ay - ddy[e->dir] * s2 - side.y };
-            Color cg = Fade(glow, 0.6f + 0.4f * pulse);
-            if (e->dir == EX_UP || e->dir == EX_RIGHT) DrawTriangle(tip, b1, b2, cg);
-            else                                      DrawTriangle(tip, b2, b1, cg);
+
+            if (e->ty < 0) {
+                /* a side exit: an arch against the wall at the room's edge */
+                float ex = OX + (e->tx * 30.0f + 15.0f) * HUD_S;
+                float ey = OY + p->py * HUD_S;
+                if (ey < TILE) ey = TILE;
+                Color c = lit ? (Color){ 120, 224, 255, 255 } : (Color){ 96, 120, 132, 255 };
+                float a2 = lit ? 0.30f + 0.25f * pulse : 0.16f;
+                Rectangle bar = { ex - TILE * 0.30f, OY + TILE * 0.6f,
+                                  TILE * 0.60f, 335.0f * HUD_S - TILE * 0.9f };
+                DrawRectangleRec(bar, Fade(c, a2 * 0.5f));
+                DrawRectangleLinesEx(bar, lit ? 2.0f : 1.0f, Fade(c, a2 + 0.2f));
+                continue;
+            }
+
+            Vector2 d = door_at(e, p->py);
+            float ex = OX + d.x * HUD_S, ey = OY + d.y * HUD_S;
+            float hw = 11.4f * HUD_S, hh = 19.2f * HUD_S;
+            Rectangle frame = { ex - hw, ey - hh, hw * 2, hh * 2 };
+
+            /* the opening itself */
+            Color jamb = portal ? (Color){ 92, 62, 120, 255 } : (Color){ 96, 74, 48, 255 };
+            Color mouth = portal ? (Color){ 26, 12, 40, 255 } : (Color){ 14, 12, 16, 255 };
+            if (sealed) { jamb = (Color){ 78, 72, 66, 255 }; mouth = (Color){ 20, 19, 18, 255 }; }
+            DrawRectangleRec(frame, mouth);
+            DrawRectangleLinesEx(frame, 3.0f, jamb);
+            /* a lintel across the top so it reads as a door, not a hole */
+            DrawRectangleRec((Rectangle){ frame.x - 4, frame.y - 6, frame.width + 8, 8 },
+                             art_shade(jamb, 1.15f));
+
+            if (portal && !sealed) {
+                /* the gateway shimmers so it is unmistakably not a door */
+                for (int k = 0; k < 3; k++) {
+                    float ph = t * 1.6f + k * 0.7f;
+                    float yy = frame.y + frame.height * (0.15f + 0.7f * (0.5f + 0.5f * sinf(ph)));
+                    DrawRectangle((int)(frame.x + 4), (int)yy, (int)(frame.width - 8), 2,
+                                  Fade((Color){ 186, 140, 255, 255 }, 0.35f));
+                }
+                DrawRectangleLinesEx(frame, 1.5f,
+                                     Fade((Color){ 186, 140, 255, 255 }, 0.4f + 0.3f * pulse));
+            }
+            if (sealed)
+                ui_text_c("sealed", ex, frame.y + frame.height + 2, 15, (Color){ 150, 140, 130, 255 });
+
+            if (lit) {
+                Color glow = portal ? (Color){ 200, 150, 255, 255 }
+                                    : (Color){ 120, 224, 255, 255 };
+                DrawRectangleLinesEx((Rectangle){ frame.x - 3, frame.y - 3,
+                                                  frame.width + 6, frame.height + 6 },
+                                     2.5f, Fade(glow, 0.5f + 0.4f * pulse));
+                ui_text_c(portal ? "ENTER  gateway" : "ENTER", ex,
+                          frame.y - TILE * 0.62f, 16, Fade(glow, 0.7f + 0.3f * pulse));
+            }
         }
     }
 

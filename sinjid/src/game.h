@@ -325,6 +325,11 @@ typedef struct {
     int    gatePortal;       /* -1, else the portal that must be cleared   */
     int    gateNeed;
     int    portal;           /* -1, else the portal this doorway opens     */
+    /* Where the original's doorway clip (its cid 1504, 22.8x38.4) actually
+       stands, in its own pixels.  Vertical doors are drawn and triggered
+       here; 0 means "derive from the cell", which is what the side exits
+       along the screen edge do. */
+    float  doorX, doorY;
 } Exit;
 
 typedef struct {
