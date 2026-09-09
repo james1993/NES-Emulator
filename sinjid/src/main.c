@@ -472,6 +472,17 @@ void go_scene(Game *g, Scene s)
     g->fadeTarget = s;
 }
 
+/* Panels the original raises over the room -- talk, heal, the merchant --
+   just set _root.pause and become visible.  They do not fade the screen out
+   and back in, so they must not go through the transition. */
+void go_panel(Game *g, Scene s)
+{
+    g->prevScene = g->scene;
+    g->scene = s;
+    g->fadeDir = 0;
+    g->fade = 0.0f;
+}
+
 static void update_fade(Game *g, float dt)
 {
     if (g->fadeDir > 0) {
@@ -523,18 +534,18 @@ bool use_consumable(Game *g, int invIdx, Combatant *on)
 static void load_fonts(Game *g)
 {
     /* The original's interface is set in Arial (its DefineFont2 tags name
-       "Arial" and Flash's device "_sans"), at regular weight.  Arial itself
+       "Arial" and Flash's device "_sans"), and the Arial it embeds is the bold cut.  Arial itself
        cannot be shipped, but Liberation Sans and Arimo are metric-compatible
        with it and are what a Linux box will usually have, so prefer those and
        fall back through the real Arial on macOS and Windows to DejaVu. */
     const char *paths[] = {
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-        "/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf",
-        "/usr/share/fonts/truetype/croscore/Arimo-Regular.ttf",
-        "/System/Library/Fonts/Supplemental/Arial.ttf",
-        "C:/Windows/Fonts/arial.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/liberation-sans/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/croscore/Arimo-Bold.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
     };
     for (unsigned i = 0; i < sizeof paths / sizeof paths[0]; i++) {
         if (!FileExists(paths[i])) continue;

@@ -18,6 +18,7 @@
    the walkmenu bar the 116 below it, on a 30px cell grid.  Everything here is
    that layout scaled by HUD_S, so the room and the bar keep their proportions.
    600 * 1.6 = 960 wide, and 451 * 1.6 = 722, which is the window height. */
+#define TALK_REACH 70.0f   /* how far the original's person clips reach */
 #define HUD_S  1.6f                     /* original pixels -> ours          */
 #define TILE   48                       /* 30 * HUD_S                       */
 #define OX     160                      /* (1280 - 20 * TILE) / 2           */
@@ -572,19 +573,19 @@ static void interact(Game *g, Npc *n)
         g->shopIdx = 0;
         g->shopMode = (n->arg == SHOP_TRADE) ? 1 : 0;   /* Trade opens on sell */
         g->dialogNpc = (int)(n - g->zones[p->zone].npcs);
-        go_scene(g, SCENE_SHOP);
+        go_panel(g, SCENE_SHOP);
         break;
     case NPC_TRAINER:
         g->menuIdx = 0; g->menuTab = 0;
-        go_scene(g, SCENE_TRAIN);
+        go_panel(g, SCENE_TRAIN);
         break;
     case NPC_PORTAL:
         g->portalIdx = 0;
-        go_scene(g, SCENE_PORTAL);
+        go_panel(g, SCENE_PORTAL);
         break;
     case NPC_TRAINER2:
         g->trainGain = 0; g->trainT = 0;
-        go_scene(g, SCENE_TRAINING);
+        go_panel(g, SCENE_TRAINING);
         break;
     case NPC_QUEST: {
         /* The original's small fetch quests, run through SearchItem/GetItem:
@@ -647,7 +648,7 @@ static void interact(Game *g, Npc *n)
         /* The original opens the Heal panel and pauses; it does not charge
            you the moment you walk up. */
         g->healSel = 0;
-        go_scene(g, SCENE_HEAL);
+        go_panel(g, SCENE_HEAL);
         break;
     case NPC_SAVE: {
         Combatant c;
@@ -683,7 +684,7 @@ static void interact(Game *g, Npc *n)
     case NPC_VILLAGER:
     default:
         g->dialogNpc = (int)(n - g->zones[p->zone].npcs);
-        go_scene(g, SCENE_DIALOG);
+        go_panel(g, SCENE_DIALOG);
         break;
     }
 }
@@ -697,6 +698,13 @@ static void interact(Game *g, Npc *n)
    pixels in the original, and a type-2 cell is impassable. */
 static bool blocked_at(const Zone *z, float px, float py)
 {
+    /* A character standing there blocks the way, as in the original. */
+    for (int i = 0; i < z->npcCount; i++) {
+        const Npc *n = &z->npcs[i];
+        if (n->kind == NPC_NONE) continue;
+        float nx = n->tx * 30.0f + 15.0f, ny = n->ty * 30.0f + 15.0f;
+        if (fabsf(px - nx) < 17.0f && fabsf(py - ny) < 15.0f) return true;
+    }
     const float r = 8.0f;                      /* a small body, not a whole cell */
     const float ox[4] = { -r, r, -r, r }, oy[4] = { -r, -r, r, r };
     for (int i = 0; i < 4; i++) {
@@ -734,7 +742,7 @@ static void take_exit(Game *g, const Exit *e)
     if (e->portal >= 0) {
         /* A portal doorway opens the gateway rather than moving you a room. */
         g->portalIdx = e->portal;
-        go_scene(g, SCENE_PORTAL);
+        go_panel(g, SCENE_PORTAL);
         return;
     }
     int nx = e->entryX;
@@ -763,10 +771,10 @@ void world_update(Game *g, float dt)
 
     if (IsKeyPressed(KEY_I) || IsKeyPressed(KEY_ESCAPE)) {
         g->menuTab = 0; g->menuIdx = 0; g->menuScroll = 0;
-        go_scene(g, SCENE_MENU);
+        go_panel(g, SCENE_MENU);
         return;
     }
-    if (IsKeyPressed(KEY_T)) { g->menuIdx = 0; g->menuTab = 0; go_scene(g, SCENE_TRAIN); return; }
+    if (IsKeyPressed(KEY_T)) { g->menuIdx = 0; g->menuTab = 0; go_panel(g, SCENE_TRAIN); return; }
 
     /* Movement is free, not tile-stepped.  The original runs an onEnterFrame
        that walks the character by game.speed pixels: 6 a frame while energy
@@ -790,7 +798,7 @@ void world_update(Game *g, float dt)
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
         /* The original tests the player against the character's clip, so
            reach is a radius rather than the next cell along. */
-        Npc *best = NULL; float bestD = 70.0f;   /* reaches over a counter */
+        Npc *best = NULL; float bestD = TALK_REACH;   /* reaches over a counter */
         for (int i = 0; i < z->npcCount; i++) {
             Npc *n = &z->npcs[i];
             if (n->kind == NPC_NONE) continue;
@@ -830,10 +838,32 @@ void world_update(Game *g, float dt)
 
 /* ------------------------------------------------------------------ draw */
 
+/* True when the player is close enough to talk to this one.  The original
+   plays the character's `yellow` state on hitTest, so the one you can speak
+   to is lit rather than left to guesswork. */
+static bool npc_in_reach(const Game *g, const Npc *n)
+{
+    float dx = (n->tx * 30.0f + 15.0f) - g->p.px;
+    float dy = (n->ty * 30.0f + 15.0f) - g->p.py;
+    return (dx * dx + dy * dy) < TALK_REACH * TALK_REACH;
+}
+
 static void draw_npc(Game *g, Npc *n, float t)
 {
     float px = OX + n->tx * TILE + TILE * 0.5f;
     float py = OY + n->ty * TILE + TILE * 0.9f;
+
+    if (n->kind != NPC_PROP && npc_in_reach(g, n)) {
+        float pulse = 0.72f + 0.28f * sinf(t * 4.0f);
+        Color warm = (Color){ 255, 214, 110, 255 };
+        DrawEllipse((int)px, (int)py, TILE * 0.52f, TILE * 0.24f,
+                    Fade(warm, 0.55f * pulse));
+        DrawEllipse((int)px, (int)py, TILE * 0.34f, TILE * 0.16f,
+                    Fade(warm, 0.75f * pulse));
+        for (int k = 0; k < 3; k++)
+            DrawCircleLines((int)px, (int)(py - TILE * 0.62f),
+                            TILE * (0.46f + k * 0.02f), Fade(warm, 0.42f * pulse));
+    }
 
     if (n->kind == NPC_GATE) {
         float a = 0.35f + 0.25f * sinf(t * 2.5f + n->bob);
@@ -853,8 +883,6 @@ static void draw_npc(Game *g, Npc *n, float t)
     Look lk = n->look;
     art_draw_walker(&lk, (Vector2){ px, py }, 1, 0.0f, 0.62f);
     /* an interaction pip so the player can tell who talks */
-    float bob = sinf(t * 2.2f + n->bob) * 3;
-    ui_text_c("!", px, py - 78 + bob, 22, C_GOLD);
     (void)g;
 }
 
@@ -877,34 +905,37 @@ void world_draw(Game *g)
     for (int i = 0; i < z->propCount; i++)
         art_draw_scenery(&z->props[i], z, t);
 
-    /* The original lights the exit trigger under your feet, so a way out is
-       visible rather than something you only find by pressing space on it. */
+    /* The way out is lit on the doorway itself, not on the ground under the
+       player: the original plays the trigger clip's own highlight. */
     {
         const Exit *e = exit_near(z, p->px, p->py);
         if (e) {
-            float cx = OX + p->tx * TILE + TILE * 0.5f;
-            float cy = OY + p->ty * TILE + TILE * 0.72f;
-            float pulse = 0.55f + 0.45f * sinf(t * 4.2f);
+            float ex = OX + (e->tx * 30.0f + 15.0f) * HUD_S;
+            float ey = OY + (e->ty < 0 ? p->py : e->ty * 30.0f + 15.0f) * HUD_S;
+            float pulse = 0.6f + 0.4f * sinf(t * 4.2f);
             Color glow = (Color){ 120, 224, 255, 255 };
-            DrawEllipse((int)cx, (int)cy, TILE * 0.52f, TILE * 0.26f,
-                        Fade(glow, 0.30f + 0.22f * pulse));
-            DrawEllipse((int)cx, (int)cy, TILE * 0.26f, TILE * 0.13f,
-                        Fade(glow, 0.55f + 0.35f * pulse));
-            /* a chevron pointing the way the exit leads */
+            /* the trigger cell sits just inside the doorway, so lift the
+               marker onto the opening itself */
+            if (e->dir == EX_UP)   ey -= TILE * 0.55f;
+            if (e->dir == EX_DOWN) ey += TILE * 0.35f;
+            Rectangle door = { ex - TILE * 0.62f, ey - TILE * 1.05f,
+                               TILE * 1.24f, TILE * 1.45f };
+            DrawRectangleRec(door, Fade(glow, 0.10f + 0.08f * pulse));
+            DrawRectangleLinesEx(door, 2.0f, Fade(glow, 0.45f + 0.35f * pulse));
             const float ddx[4] = { 0, 0, -1, 1 }, ddy[4] = { -1, 1, 0, 0 };
-            float ax = cx + ddx[e->dir] * TILE * 0.40f;
-            float ay = cy + ddy[e->dir] * TILE * 0.34f - TILE * 0.16f;
-            float s2 = TILE * 0.13f;
+            float ax = ex + ddx[e->dir] * TILE * 0.78f;
+            float ay = ey + ddy[e->dir] * TILE * 0.90f - TILE * 0.30f;
+            float s2 = TILE * 0.15f;
             Vector2 tip  = { ax + ddx[e->dir] * s2, ay + ddy[e->dir] * s2 };
-            Vector2 side = { ddy[e->dir] * s2, ddx[e->dir] * s2 };  /* perpendicular */
+            Vector2 side = { ddy[e->dir] * s2, ddx[e->dir] * s2 };
             Vector2 b1 = { ax - ddx[e->dir] * s2 + side.x, ay - ddy[e->dir] * s2 + side.y };
             Vector2 b2 = { ax - ddx[e->dir] * s2 - side.x, ay - ddy[e->dir] * s2 - side.y };
-            Color cg = Fade(glow, 0.55f + 0.35f * pulse);
-            /* keep the winding counter-clockwise whichever way it points */
+            Color cg = Fade(glow, 0.6f + 0.4f * pulse);
             if (e->dir == EX_UP || e->dir == EX_RIGHT) DrawTriangle(tip, b1, b2, cg);
             else                                      DrawTriangle(tip, b2, b1, cg);
         }
     }
+
 
 
     for (int i = 0; i < z->npcCount; i++)
@@ -922,7 +953,7 @@ void world_draw(Game *g)
         if (ITEMS[id].type == ITEM_ARMOUR) { lk.cloth = ITEMS[id].tint;
                                              lk.clothDark = art_shade(ITEMS[id].tint, 0.62f); }
     }
-    art_draw_walker(&lk, at, p->dir, g->moving ? g->walkT : 0.0f, 0.66f);
+    art_draw_walker(&lk, at, p->dir, g->walkT, 0.66f);
 
     /* dark edges so the 28x18 grid reads as a stage */
     /* Letterbox either side of the room, and mask the strip the bar covers. */

@@ -530,6 +530,7 @@ bool  save_read(Game *g);
 bool  save_exists(void);
 bool  use_consumable(Game *g, int invIdx, Combatant *on);
 void  go_scene(Game *g, Scene s);
+void  go_panel(Game *g, Scene s);
 
 /* ---------------------------------------------------------------- battle */
 void  battle_start(Game *g, const int *enemyDefs, int count, int level, bool arena, bool boss);
