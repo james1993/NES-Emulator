@@ -590,7 +590,7 @@ bool data_dress(Look *lk, const char *name)
     lk->cloth     = a->cloth;
     lk->clothDark = a->clothDark;
     lk->skin      = a->skin;
-    lk->trim      = a->trim;
+    lk->trim      = a->sash;
     lk->metal     = a->metal;
     return true;
 }

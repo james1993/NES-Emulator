@@ -589,9 +589,10 @@ void art_draw_puppet(const Combatant *c, Vector2 at, float facing, float t, floa
                      art_shade(skin, 0.9f));
             }
         }
-        /* sash */
-        limb(vadd(hip, v2(-shoulderW * 0.5f * s, -4 * s)), vadd(hip, v2(shoulderW * 0.5f * s, -2 * s)),
-             4.0f * s, 4.0f * s, lk->trim);
+        /* sash -- kept inside the torso's width, as above */
+        limb(vadd(hip, v2(-shoulderW * 0.30f * s, -4 * s)),
+             vadd(hip, v2(shoulderW * 0.30f * s, -2 * s)),
+             3.2f * s, 3.2f * s, lk->trim);
         limb(vadd(hip, v2(-facing * 2 * s, 0)), vadd(hip, v2(-facing * 7 * s, 16 * s)),
              2.6f * s, 1.2f * s, lk->trim);
     }
@@ -697,7 +698,11 @@ void art_draw_walker(const Look *lk, Vector2 at, int dir, float walkT, float sca
                v2(chest.x + i * 15 * s, chest.y + 34 * s + sway), 4 * s, 3.4f * s, lk->skin, 1.4f);
     }
     limb_o(hip, chest, 10 * s, 14 * s, lk->cloth, 1.8f);
-    limb(v2(hip.x - 8 * s, hip.y - 3 * s), v2(hip.x + 8 * s, hip.y - 3 * s), 4 * s, 4 * s, lk->trim);
+    /* The sash sits inside the torso, not around it: the body is 10s to the
+       half, so the band has to end where its round caps still land within
+       that or it reads as a hoop hung off the waist. */
+    limb(v2(hip.x - 5.4f * s, hip.y - 3 * s), v2(hip.x + 5.4f * s, hip.y - 3 * s),
+         3.2f * s, 3.2f * s, lk->trim);
     blob_o(head, 11 * s, 11.5f * s, back ? lk->hair : lk->skin, 1.6f);
     if (!back) {
         blob_o(v2(head.x, head.y - 6 * s), 11.2f * s, 7 * s, lk->hair, 1.2f);

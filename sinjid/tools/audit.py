@@ -539,6 +539,15 @@ for name, r, g_, b_ in rows:
     if [int(r), int(g_), int(b_)] != want:
         bad.append("%s ours=%s theirs=%s" % (name, [int(r), int(g_), int(b_)], want))
 check('art', not bad, "appearance colours differ: %s" % bad[:4])
+# the sash is the torso's accent, not a colour borrowed from another part
+sashes = re.findall(r'\{\s*"([^"]+)",(?:\s*\{[^}]*\},){3}\s*\{\s*(\d+),\s*(\d+),\s*(\d+),255\s*\}', tbl)
+bad2 = []
+for name, r, g_, b_ in sashes:
+    body = (ap.get(name) or {}).get('body') or []
+    if len(body) > 2 and [int(r), int(g_), int(b_)] != body[2]:
+        bad2.append("%s ours=%s theirs=%s" % (name, [int(r), int(g_), int(b_)], body[2]))
+check('art', not bad2, "sash colours differ: %s" % bad2[:4])
+check('art', 'a->sash' in SRC('data.c'), "the sash should come from the torso's accent fill")
 check('art', 'data_dress' in SRC('battle.c'), "enemies should wear their suit's palette")
 check('art', 'data_dress' in SRC('main.c'), "the player should wear their armour's palette")
 
