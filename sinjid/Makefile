@@ -35,4 +35,17 @@ HDRS := $(wildcard src/*.h)
 clean:
 	rm -f $(OBJ) $(BIN)
 
-.PHONY: all clean
+# The prebuilt binary in bin/ is checked in so the game can be run straight
+# from a clone.  It is not rebuilt by `make`, so it silently goes stale unless
+# this is run: do it in any commit that touches src/.
+PREBUILT := bin/sinjid-linux-x86_64
+
+$(PREBUILT): $(BIN)
+	@mkdir -p bin
+	cp $(BIN) $@
+	@echo "prebuilt refreshed; needs glibc $$(objdump -T $@ | \
+	  grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1)"
+
+prebuilt: $(PREBUILT)
+
+.PHONY: all clean prebuilt

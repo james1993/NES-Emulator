@@ -14,7 +14,12 @@ skills, enemies, maps and writing are all original to this remake.
 
 ## Running without building
 
-A prebuilt Linux x86-64 binary is checked in, so you can pull and run:
+A prebuilt Linux x86-64 binary is checked in, so you can pull and run it
+without a toolchain.  It is **not** rebuilt by a plain `make`, so if you have
+just pulled and the game looks unchanged, you are running a stale copy of it:
+either `make prebuilt` to refresh it, or build and run `./sinjid` instead.
+
+To run it:
 
 ```sh
 ./bin/sinjid-linux-x86_64
