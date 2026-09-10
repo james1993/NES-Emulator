@@ -1,0 +1,75 @@
+{
+ "note": [
+  "The original's audio is driven by one shared clip (sprite 180) and a single",
+  "function:  playSound(name) { if (soundon == 'On') soundfx.gotoAndPlay(name); }",
+  "so every cue is a frame label in that clip.  Only the names, the frame",
+  "layout and the trigger points are recorded here.  No audio from the",
+  "original is used: sound.c and music.c synthesise everything from scratch,",
+  "the same way art.c draws every shape."
+ ],
+
+ "cueClip": { "sprite": 180, "frames": 67 },
+
+ "//": "Frames 2-18 hold the music, 28-65 the effects.  A label with no",
+ "//2": "StartSound on its frame is silent in the original -- that is the",
+ "//3": "case for 'no' and 'skillput', which are called but play nothing.",
+ "cues": [
+  { "frame":  2, "name": "Dream",      "kind": "music", "hasSound": true  },
+  { "frame":  4, "name": "Flute",      "kind": "music", "hasSound": true  },
+  { "frame":  6, "name": "Orc",        "kind": "music", "hasSound": true  },
+  { "frame":  8, "name": "Over",       "kind": "music", "hasSound": true  },
+  { "frame": 10, "name": "Over2",      "kind": "music", "hasSound": true  },
+  { "frame": 12, "name": "Violin",     "kind": "music", "hasSound": true  },
+  { "frame": 14, "name": "Battle1",    "kind": "music", "hasSound": true  },
+  { "frame": 16, "name": "Battle2",    "kind": "music", "hasSound": true  },
+  { "frame": 18, "name": "Battle3",    "kind": "music", "hasSound": true  },
+  { "frame": 20, "name": "no",         "kind": "sfx",   "hasSound": false },
+  { "frame": 22, "name": "skillput",   "kind": "sfx",   "hasSound": false },
+  { "frame": 28, "name": "coins",      "kind": "sfx",   "hasSound": true  },
+  { "frame": 53, "name": "footsteps1", "kind": "sfx",   "hasSound": true  },
+  { "frame": 55, "name": "howl",       "kind": "sfx",   "hasSound": true  },
+  { "frame": 57, "name": "swordc1",    "kind": "sfx",   "hasSound": true  },
+  { "frame": 59, "name": "swordc2",    "kind": "sfx",   "hasSound": true  },
+  { "frame": 61, "name": "thunder",    "kind": "sfx",   "hasSound": true  },
+  { "frame": 63, "name": "songstart1", "kind": "sfx",   "hasSound": true  },
+  { "frame": 65, "name": "songstart2", "kind": "sfx",   "hasSound": true  }
+ ],
+ "distinctSoundAssets": 16,
+
+ "//4": "Cues the code calls that have no frame in the clip at all, so they",
+ "//5": "are silent in the original.  Kept here so they are not mistaken for",
+ "//6": "an omission on our side.",
+ "danglingCues": ["itemget", "miss", "footsteps2", "humanhit1", "humanhit2"],
+
+ "//7": "Where each cue fires, read off the call sites.",
+ "triggers": [
+  { "cue": "songstart1", "at": "root frame 5, the preloader handing over" },
+  { "cue": "thunder",    "at": "intro cinematic, sprite 163 frame 0" },
+  { "cue": "howl",       "at": "intro cinematic, sprite 163 frame 62" },
+  { "cue": "swordc2",    "at": "intro cinematic, sprite 377 frames 0 and 11" },
+  { "cue": "Dream",      "at": "the title screen, once, guarded by a 'played' flag" },
+  { "cue": "Flute",      "at": "root frame 19, entering the arena" },
+  { "cue": "Battle*",    "at": "each battle start, rotating (see battleRotation)" },
+  { "cue": "Orc",        "at": "root frame 84, a battle won" },
+  { "cue": "Over",       "at": "root frame 89, a battle lost" },
+  { "cue": "Dream",      "at": "root frame 100, the ending" },
+  { "cue": "Over2",      "at": "root frame 101, the ending" },
+  { "cue": "Violin",     "at": "root frame 105, the ending" }
+ ],
+
+ "//8": "The battle track rotation, from sprite 922 frame 67.  prevsound is",
+ "//9": "initialised to 0 and the guard is Less2 (opcode 0x48), so the cycle",
+ "//10": "runs Battle1, Battle2, Battle3 and back to Battle1.",
+ "battleRotation": {
+  "init": 0,
+  "rule": "if (prevsound < 3) prevsound++; else prevsound = 1;",
+  "cue": "'Battle' + prevsound",
+  "order": ["Battle1", "Battle2", "Battle3"]
+ },
+
+ "toggle": {
+  "var": "soundon",
+  "values": ["On", "Off"],
+  "note": "playSound() is a no-op unless soundon == 'On'."
+ }
+}

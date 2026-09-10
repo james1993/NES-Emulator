@@ -89,6 +89,40 @@ as names, numbers and coordinates only. The audit parses `src/data.c`,
 `src/world.c` and `src/game.h` and compares field by field, exiting non-zero on
 any disagreement. Run it after touching any table.
 
+## Audio
+
+The original keeps its whole audio vocabulary in one clip whose frame labels
+are the cue names, and plays a cue through a single function:
+
+```
+playSound(name) { if (soundon == 'On') soundfx.gotoAndPlay(name); }
+```
+
+Frames 2-18 of that clip are the nine music cues -- `Dream`, `Flute`, `Orc`,
+`Over`, `Over2`, `Violin`, `Battle1`, `Battle2`, `Battle3` -- and frames 28-65
+the effects. Those names, their order, and the moment each one fires are
+reproduced here; the cue map is recorded in
+[tools/groundtruth/audio.json](tools/groundtruth/audio.json) and checked by
+the audit.
+
+Two details worth having in writing, because they look like omissions
+otherwise. The labels `no` and `skillput` carry no sound on their frames, and
+`itemget`, `miss`, `footsteps2`, `humanhit1` and `humanhit2` are called but
+have no frame at all -- all of them are silent in the original. And the battle
+track is picked by a counter the original keeps for the whole session
+(`if (prevsound < 3) prevsound++; else prevsound = 1;`), so the three battle
+themes cycle in order rather than being chosen at random.
+
+**None of the original's audio is used.** Its music and effects are embedded
+streams; they are not extracted, decoded, or transcribed by ear. Everything
+you hear is synthesised at startup from note tables written for this remake --
+`src/music.c` for the nine tracks and `src/sound.c` for the effects -- in
+exactly the same spirit as `src/art.c` drawing every shape instead of shipping
+images.
+
+`SJ_MUSIC_DUMP=<dir>` writes each rendered track out as a `.wav`, which is how
+the score is checked without a sound card.
+
 ## Fidelity: what is taken from the original, and what is not
 
 A full field-by-field audit, including what is *not* reproduced, lives in

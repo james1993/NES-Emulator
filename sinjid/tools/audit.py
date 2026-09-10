@@ -501,10 +501,14 @@ check('encounters', 'stepsSinceFight % 24' not in wl2,
 
 # ---- the miss check ---------------------------------------------------
 bat2 = SRC('battle.c')
-check('battle', 'spdran2 > spdran1' in bat2,
-      "the original misses only when spdran2 is strictly greater")
-check('battle', 'spdran2 >= spdran1' not in bat2,
-      "a tied speed roll is a hit in the original, not a miss")
+# The original's guard is `if (spdran2 < spdran1) { ...the blow lands... }`,
+# using opcode 0x48 -- Less2, not Greater.  An earlier dump of this file
+# mislabelled 0x48 as GT2, which inverted the reading and made a tied speed
+# roll a hit; it is a miss.  The disassembler and this check are both fixed.
+check('battle', '!(spdran2 < spdran1)' in bat2,
+      "the blow lands only when spdran2 < spdran1")
+check('battle', 'spdran2 > spdran1' not in bat2,
+      "a tied speed roll is a miss in the original, not a hit")
 check('battle', re.search(r'spdran1\s*=\s*rnd\(0,\s*a->atkSpd / 2\)\s*\+\s*a->atkSpd / 2', bat2) is not None,
       "spdran1 = random(atkspd/2) + atkspd/2")
 
@@ -580,6 +584,45 @@ known = set(ap)
 unknown = sorted(s_ for s_ in suits if s_ and s_ not in known)
 check('art', unknown == ['Blood Spirit', 'Mountain Naga', 'Skeleton Mage', 'Training Ward'],
       "unexpected suits without a palette: %s" % unknown)
+
+# ---- audio cues ------------------------------------------------------
+# The original keeps every cue as a frame label in one clip and plays it with
+# playSound(name).  Only the names, their order and the battle rotation are
+# reproduced; the sound itself is synthesised, so nothing here checks samples.
+au = gt('audio.json')
+mus = SRC('music.c')
+want_mus = [c['name'] for c in au['cues'] if c['kind'] == 'music']
+m = re.search(r'const char \*MUSIC_NAMES\[MUS_COUNT\]\s*=\s*\{(.*?)\};', mus, re.S)
+check('audio', m is not None, "music.c should carry the cue-name table")
+if m:
+    got_mus = re.findall(r'"([^"]+)"', m.group(1))
+    check('audio', got_mus == want_mus,
+          "music cue order ours=%s theirs=%s" % (got_mus, want_mus))
+# the enum has to run in the clip's own frame order too
+gh = SRC('game.h')
+m = re.search(r'MUS_NONE = -1,\s*(.*?)MUS_COUNT', gh, re.S)
+if m:
+    got_enum = [x.strip()[4:].title().replace('Battle', 'Battle')
+                for x in m.group(1).replace('\n', ' ').split(',') if x.strip()]
+    check('audio', len(got_enum) == len(want_mus),
+          "the music enum should hold %d cues, holds %d" % (len(want_mus), len(got_enum)))
+# the battle rotation is the original's, counter and all
+br = au['battleRotation']
+fn = mus[mus.index('int music_battle_next'):]
+fn = fn[:fn.index('\n}\n')]
+check('audio', 'prevsound < 3' in fn,
+      "the battle rotation guard is %r" % br['rule'])
+check('audio', 'prevsound++' in fn and 'prevsound = 1' in fn,
+      "the rotation should step then wrap to 1")
+check('audio', 'static int    prevsound = 0;' in mus or 'prevsound = 0' in mus,
+      "prevsound starts at %d" % br['init'])
+# cues the original calls but never gave a frame stay silent on our side too
+for dead in au['danglingCues']:
+    check('audio', ('"%s"' % dead) not in mus,
+          "%r has no frame in the original and should not become a track" % dead)
+check('audio', 'no audio from the original' in SRC('sound.c').lower()
+             or 'NOT' in mus,
+      "the synthesised-not-sampled note should stay in the header comment")
 
 # ---- room floor and scenery ------------------------------------------
 ra = gt('rooms_art.json')

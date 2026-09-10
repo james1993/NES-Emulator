@@ -690,6 +690,7 @@ int main(int argc, char **argv)
     }
     load_fonts(&G);
     sound_init();
+    music_init();
     data_init_zones(G.zones);
     G.scene = SCENE_TITLE;
     G.hasSave = save_exists();
@@ -713,6 +714,22 @@ int main(int argc, char **argv)
         update_fade(&G, dt);
 
         bool blocked = (G.fadeDir > 0);
+
+        /* The original attaches a music cue to a moment, not to a scene: the
+           title plays Dream, entering the arena plays Flute, each fight picks
+           the next of Battle1..3, a win plays Orc and a loss plays Over, and
+           the ending runs Violin.  Everything except the battle rotation is
+           decided by where you are, so it can be re-asserted every frame --
+           asking for the track already playing does nothing. */
+        switch (G.scene) {
+        case SCENE_TITLE:
+        case SCENE_CREATE:   music_play(MUS_DREAM);  break;
+        case SCENE_GAMEOVER: music_play(MUS_OVER);   break;
+        case SCENE_CREDITS:  music_play(MUS_VIOLIN); break;
+        case SCENE_BATTLE:   break;      /* battle.c owns the track here */
+        default:             music_play(MUS_FLUTE);  break;
+        }
+        music_update();
 
         /* ------------------------------------------------------- update */
         switch (G.scene) {
@@ -891,6 +908,7 @@ int main(int argc, char **argv)
     }
 
     UnloadRenderTexture(target);
+    music_close();
     sound_close();
     if (G.fontLoaded) UnloadFont(G.font);
     CloseWindow();

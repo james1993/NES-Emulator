@@ -613,6 +613,31 @@ void  sound_init(void);
 void  sound_play(int id);
 void  sound_close(void);
 
+/* ----------------------------------------------------------------- music
+   The original keeps its whole audio vocabulary in one clip (sprite 180)
+   whose frame labels are the cue names, and plays a cue with
+       playSound(name) { if (soundon == 'On') soundfx.gotoAndPlay(name); }
+   Frames 2..18 of that clip are the nine music cues below, in this order.
+   The names and the moments they fire at are the original's; every note is
+   written for this remake and synthesised in music.c.  See
+   tools/groundtruth/audio.json. */
+typedef enum {
+    MUS_NONE = -1,
+    MUS_DREAM, MUS_FLUTE, MUS_ORC, MUS_OVER, MUS_OVER2, MUS_VIOLIN,
+    MUS_BATTLE1, MUS_BATTLE2, MUS_BATTLE3, MUS_COUNT
+} MusicId;
+
+extern const char *MUSIC_NAMES[MUS_COUNT];
+
+void  music_init(void);
+void  music_play(int id);        /* switching to the current track is a no-op */
+void  music_stop(void);
+void  music_update(void);        /* once a frame                              */
+int   music_battle_next(void);   /* the original's Battle1/2/3 rotation       */
+void  music_set_enabled(bool on);
+bool  music_enabled(void);
+void  music_close(void);
+
 /* ------------------------------------------------------------------ util */
 int   rnd(int lo, int hi);
 float frnd(float lo, float hi);

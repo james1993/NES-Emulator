@@ -233,6 +233,9 @@ void battle_start(Game *g, const int *enemyDefs, int count, int level, bool aren
         b->goldGain += b->foes[i].goldReward;
     }
     b->dropItem = -1;
+    /* The original advances its prevsound counter and plays
+       'Battle' + prevsound at the top of every fight. */
+    music_play(music_battle_next());
     b->phase = BP_INTRO;
     b->timer = 0;
     b->menuIdx = 0; b->menuTab = 0; b->skillIdx = 0;
@@ -296,13 +299,14 @@ static Hit resolve_hit(Battle *b, Combatant *a, Combatant *t, const SkillDef *sk
            spdran1 = random(atkspd / 2) + atkspd / 2
            spdran2 = random(enemytarget.speed / 2)
            if (nomiss) spdran2 = -1
-       and the blow misses only when spdran2 is strictly greater.  A tie is a
-       hit, and "nomiss" is expressed by putting the defender's roll below
-       every possible attacker roll rather than by skipping the test. */
+           if (spdran2 < spdran1) { ...the blow lands... }
+       so the blow lands only on a strict less-than and a tie is a MISS.
+       "nomiss" is expressed by putting the defender's roll below every
+       possible attacker roll rather than by skipping the test. */
     {
         int spdran1 = rnd(0, a->atkSpd / 2) + a->atkSpd / 2;
         int spdran2 = (sk->flags & SKF_NEVER_MISS) ? -1 : rnd(0, t->speed / 2);
-        if (spdran2 > spdran1) { h.missed = true; return h; }
+        if (!(spdran2 < spdran1)) { h.missed = true; return h; }
     }
 
     /* Three damage components, scaled by the skill and any attack buff. */
@@ -562,6 +566,7 @@ static void end_battle_win(Game *g)
 {
     Battle *b = &g->b;
     b->phase = BP_WIN;
+    music_play(MUS_ORC);
     b->timer = 0;
     b->heroes[0].anim = ANIM_VICTORY;
     b->heroes[0].animT = 0;
@@ -602,6 +607,7 @@ static void start_next_turn(Game *g)
     if (!anyFoe) { end_battle_win(g); return; }
     if (!anyHero) {
         b->phase = BP_LOSE; b->timer = 0;
+        music_play(MUS_OVER);
         return;
     }
 
