@@ -522,6 +522,31 @@ check('panels', ours_tree == want_tree,
 check('panels', all(g in ui2 for g in pl['skills']['gateLabels']),
       "the tree should be ruled off at %s" % pl['skills']['gateLabels'])
 
+# ---- appearances taken from the original's part clips ------------------
+ap = gt('appearance.json')
+tbl = open(os.path.join(ROOT, 'src', 'appearance_table.h')).read()
+rows = re.findall(r'\{\s*"([^"]+)",\s*\{\s*(\d+),\s*(\d+),\s*(\d+),255\s*\}', tbl)
+check('art', len(rows) == len(ap),
+      "appearance table has %d rows, the extraction has %d" % (len(rows), len(ap)))
+bad = []
+for name, r, g_, b_ in rows:
+    e = ap.get(name)
+    if not e:
+        bad.append(name); continue
+    want = (e.get('body') or e.get('shin') or e.get('limb') or [[137, 116, 90]])[0]
+    if [int(r), int(g_), int(b_)] != want:
+        bad.append("%s ours=%s theirs=%s" % (name, [int(r), int(g_), int(b_)], want))
+check('art', not bad, "appearance colours differ: %s" % bad[:4])
+check('art', 'data_dress' in SRC('battle.c'), "enemies should wear their suit's palette")
+check('art', 'data_dress' in SRC('main.c'), "the player should wear their armour's palette")
+
+# every suit the encounters name has a row, or is deliberately blank
+suits = {e['suit'] for e in gt('enemies_full.json')}
+known = set(ap)
+unknown = sorted(s_ for s_ in suits if s_ and s_ not in known)
+check('art', unknown == ['Blood Spirit', 'Mountain Naga', 'Skeleton Mage', 'Training Ward'],
+      "unexpected suits without a palette: %s" % unknown)
+
 print()
 if not FAIL:
     print("PASS -- deep checks clean too.")

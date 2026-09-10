@@ -251,6 +251,18 @@ void player_recalc(Player *p, Combatant *out)
         else if (SKILLS[i].tree == 0 && SKILLS[i].flatPerRank == 2) out->strDmg += bonus * 2;
         else out->phyDmg += bonus;
     }
+    /* The original keys a character's colours on the name of what they wear,
+       so take the armour's palette when there is one, then let the helm
+       recolour the head as its own clip frame does. */
+    {
+        const char *worn = (p->equip[SLOT_ARMOUR] >= 0)
+                         ? ITEMS[p->equip[SLOT_ARMOUR]].name : NULL;
+        if (worn) data_dress(&lk, worn);
+        if (p->equip[SLOT_HELM] >= 0) {
+            Look h = lk;
+            if (data_dress(&h, ITEMS[p->equip[SLOT_HELM]].name)) lk.hair = h.cloth;
+        }
+    }
     out->look = lk;
     out->atkBuff = out->defBuff = 1.0f;
 }

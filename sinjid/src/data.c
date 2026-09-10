@@ -2,6 +2,7 @@
    Every name, stat line and map in this file is original to this remake. */
 #include "game.h"
 #include <string.h>
+#include "appearance_table.h"
 
 const char *CLASS_NAMES[CLASS_COUNT] = { "Balanced", "Warrior", "Spell Caster", "Shadow Ninja" };
 
@@ -565,4 +566,31 @@ int portal_stage_count(int portal)
 {
     if (portal < 0 || portal > 2) return 0;
     return PORTALS[portal].count;
+}
+
+
+/* ------------------------------------------------------- appearances */
+/* The original dresses a character by name: every body-part clip holds one
+   frame per armour, helm or creature, so "Ronin" or "Shadow Armour" is both
+   the item and the palette.  Look one up and take its colours. */
+const AppearanceDef *data_appearance(const char *name)
+{
+    if (!name || !*name) return NULL;
+    for (unsigned i = 0; i < sizeof APPEARANCE / sizeof APPEARANCE[0]; i++)
+        if (!strcmp(APPEARANCE[i].name, name)) return &APPEARANCE[i];
+    return NULL;
+}
+
+/* Dress a Look from an appearance name, leaving the shapes alone -- only the
+   palette comes from the original. */
+bool data_dress(Look *lk, const char *name)
+{
+    const AppearanceDef *a = data_appearance(name);
+    if (!a) return false;
+    lk->cloth     = a->cloth;
+    lk->clothDark = a->clothDark;
+    lk->skin      = a->skin;
+    lk->trim      = a->trim;
+    lk->metal     = a->metal;
+    return true;
 }

@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <math.h>
+#include "enemy_suit_table.h"
 
 #define IMPACT_AT   0.46f     /* fraction of the attack animation           */
 #define ANIM_LEN    0.85f
@@ -167,6 +168,13 @@ static void build_enemy(Combatant *c, const EnemyDef *d, int level)
     c->speed   = d->speed;
     c->atkSpd  = d->speed;
     c->look    = d->look;
+    /* Dress the fighter in the original's own palette for its suit, keeping
+       our shapes: the suit name is what its part clips are keyed on. */
+    {
+        int idx = (int)(d - ENEMIES);
+        if (idx >= 0 && idx < (int)(sizeof ENEMY_SUIT / sizeof ENEMY_SUIT[0]))
+            data_dress(&c->look, ENEMY_SUIT[idx]);
+    }
     c->alive   = true;
     c->anim    = ANIM_STAND;
     c->atkBuff = c->defBuff = 1.0f;

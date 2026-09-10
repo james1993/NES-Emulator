@@ -884,7 +884,15 @@ void art_draw_item_icon(int def, Rectangle r)
 {
     if (def < 0 || def >= ITEM_COUNT) return;
     const ItemDef *it = &ITEMS[def];
-    Color c = it->tint, d = art_shade(c, 0.6f), l = art_shade(c, 1.25f);
+    /* Every weapon, shield, armour and helm has a frame of its own in the
+       original's part clips, so the icon can wear that item's real colour
+       instead of a tint of ours. */
+    Color c = it->tint;
+    {
+        Look tmp = { 0 };
+        if (data_dress(&tmp, it->name)) c = tmp.cloth;
+    }
+    Color d = art_shade(c, 0.6f), l = art_shade(c, 1.25f);
     float cx = r.x + r.width * 0.5f, cy = r.y + r.height * 0.5f;
     float w = r.width, h = r.height;
 
