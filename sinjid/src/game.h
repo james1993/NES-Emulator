@@ -317,7 +317,19 @@ typedef enum {
     PROP_GENERIC, PROP_DOORWAY, PROP_TORCH, PROP_PILLAR, PROP_PLANT,
     PROP_BAMBOO, PROP_CRATE, PROP_COUNTER, PROP_SHELF, PROP_LAMP,
     PROP_WINDOW, PROP_URN, PROP_ROCKS, PROP_GLOW, PROP_SHADOW,
-    PROP_EXITSIGN, PROP_EXITARROW, PROP_WATER, PROP_KIND_COUNT
+    PROP_EXITSIGN, PROP_EXITARROW, PROP_WATER,
+    /* The original keeps its furniture in one clip whose frames are named:
+       every placement calls gotoAndStop('Vase'), gotoAndStop('Bamboo2') and
+       so on, so each of these is one of its own frame labels. */
+    PROP_ROCK, PROP_ROCK2, PROP_BARREL, PROP_TREE, PROP_STUMP,
+    PROP_TABLE, PROP_TABLE2, PROP_CUPBOARD, PROP_VASE, PROP_VASE1,
+    PROP_VASE2, PROP_VASE3, PROP_VASE4, PROP_BAMBOO2, PROP_BONSAI1,
+    PROP_BONSAI2, PROP_LAMP1, PROP_LAMP2, PROP_LAMP3,
+    /* A merchant's goods are a second named clip: its frames are
+       'Meal_0', 'Pots', 'Books' and 'Food Bundle', laid out on a mat
+       rather than stacked on a counter. */
+    PROP_WARES_MEAL, PROP_WARES_POTS, PROP_WARES_BOOK, PROP_SIGNBOARD,
+    PROP_KIND_COUNT
 } PropKind;
 
 /* col/colDark are the object's own dominant fills in the original. */
@@ -536,6 +548,7 @@ void  ui_scene_save(Game *g);
 
 /* ------------------------------------------------------------- rendering */
 float gfx_scale(void);                  /* device pixels per logical pixel  */
+void  gfx_scissor(Rectangle r);         /* scissor in logical coordinates   */
 void  gfx_shake_begin(float ox, float oy);  /* world camera, shake included */
 void  gfx_shake_end(void);                  /* back to the plain scale view */
 void  ui_scene_portal(Game *g);

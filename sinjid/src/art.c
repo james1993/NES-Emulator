@@ -1011,12 +1011,26 @@ void art_draw_scenery(const Prop *pr, const Zone *z, float t)
         }
     } break;
     case PROP_BAMBOO: {
-        float sw = r.width * 0.42f;
-        DrawRectangleRec((Rectangle){ cx - sw * 0.5f, r.y, sw, r.height }, (Color){ 176, 154, 84, 255 });
-        for (float sy = r.y + 8; sy < by; sy += 16)
-            DrawLineEx(v2(cx - sw * 0.5f, sy), v2(cx + sw * 0.5f, sy), 1.6f, (Color){ 96, 78, 34, 255 });
-        DrawEllipse((int)(cx + sw * 1.4f), (int)(r.y + r.height * 0.24f), 6, 2.6f, leaf);
-        DrawEllipse((int)(cx - sw * 1.4f), (int)(r.y + r.height * 0.46f), 6, 2.6f, art_shade(leaf, 0.85f));
+        /* A clump of slim canes, not one wide post: the original's shape is a
+           stand of five stalks with leaf blades along the upper half. */
+        const int N = 5;
+        float sw = r.width * 0.085f;
+        for (int i = 0; i < N; i++) {
+            float ox = cx + (i - (N - 1) * 0.5f) * r.width * 0.19f;
+            float top = r.y + r.height * (0.02f + 0.13f * (i % 3));
+            Color cane = (i & 1) ? art_shade(pr->col, 0.88f) : pr->col;
+            DrawRectangleRec((Rectangle){ ox - sw * 0.5f, top, sw, by - top }, cane);
+            for (float sy = top + 14; sy < by; sy += 22)
+                DrawRectangle((int)(ox - sw * 0.5f), (int)sy, (int)sw, 2,
+                              art_shade(cane, 0.62f));
+            for (int k = 0; k < 4; k++) {
+                float ly = top + (by - top) * (0.08f + 0.17f * k);
+                float dir = ((i + k) & 1) ? 1.0f : -1.0f;
+                DrawEllipse((int)(ox + dir * r.width * 0.13f), (int)ly,
+                            r.width * 0.13f, 2.8f,
+                            (k & 1) ? pr->colDark : art_shade(pr->colDark, 0.82f));
+            }
+        }
     } break;
     case PROP_CRATE:
         DrawRectangleRec(r, wood);
@@ -1067,15 +1081,263 @@ void art_draw_scenery(const Prop *pr, const Zone *z, float t)
         DrawEllipse((int)cx, (int)(r.y + r.height * 0.5f), r.width * 0.5f, r.height * 0.5f,
                     alpha(C_INK, 0.22f));
         break;
-    case PROP_EXITSIGN:
-        DrawCircleV(v2(cx, r.y + r.height * 0.5f), r.width * 0.62f,
-                    alpha((Color){ 255, 214, 120, 255 }, 0.18f));
-        break;
-    case PROP_EXITARROW: {
-        float g = 0.7f + 0.3f * sinf(t * 3.1f);
-        DrawTriangle(v2(cx, r.y - 7), v2(cx - 6, r.y + 4), v2(cx + 6, r.y + 4),
-                     alpha((Color){ 255, 204, 0, 255 }, g));
+
+    /* ---- the original's own named furniture ------------------------------ */
+    case PROP_ROCK:
+    case PROP_ROCK2: {
+        /* a low boulder: two flat lobes and a lighter cap */
+        DrawEllipse((int)(cx - r.width * 0.16f), (int)(by - r.height * 0.30f),
+                    r.width * 0.40f, r.height * 0.42f, pr->colDark);
+        DrawEllipse((int)(cx + r.width * 0.18f), (int)(by - r.height * 0.26f),
+                    r.width * 0.34f, r.height * 0.36f, pr->colDark);
+        DrawEllipse((int)cx, (int)(by - r.height * 0.42f),
+                    r.width * 0.42f, r.height * 0.40f, pr->col);
+        DrawEllipse((int)(cx - r.width * 0.10f), (int)(by - r.height * 0.58f),
+                    r.width * 0.20f, r.height * 0.14f, art_shade(pr->col, 1.14f));
     } break;
+    case PROP_BARREL: {
+        Rectangle b = { cx - r.width * 0.42f, r.y, r.width * 0.84f, r.height };
+        DrawRectangleRec(b, pr->col);
+        DrawEllipse((int)cx, (int)b.y, b.width * 0.5f, b.height * 0.11f,
+                    art_shade(pr->col, 1.16f));
+        for (int i = 0; i < 3; i++)
+            DrawRectangle((int)b.x, (int)(b.y + b.height * (0.20f + 0.28f * i)),
+                          (int)b.width, 3, pr->colDark);
+        DrawRectangleLinesEx(b, 1.5f, alpha(C_INK, 0.4f));
+    } break;
+    case PROP_TREE: {
+        float trunkW = r.width * 0.13f;
+        DrawRectangleRec((Rectangle){ cx - trunkW * 0.5f, by - r.height * 0.34f,
+                                      trunkW, r.height * 0.34f },
+                         (Color){ 137, 116, 90, 255 });
+        for (int i = 0; i < 5; i++) {
+            float k = 1.0f - i * 0.16f;
+            float yy = by - r.height * (0.30f + 0.14f * i);
+            DrawEllipse((int)cx, (int)yy, r.width * 0.46f * k, r.height * 0.15f * k,
+                        (i & 1) ? pr->colDark : pr->col);
+        }
+    } break;
+    case PROP_STUMP:
+        DrawEllipse((int)cx, (int)(by - r.height * 0.30f), r.width * 0.44f,
+                    r.height * 0.46f, pr->colDark);
+        DrawEllipse((int)cx, (int)(by - r.height * 0.58f), r.width * 0.40f,
+                    r.height * 0.22f, pr->col);
+        break;
+    case PROP_TABLE:
+    case PROP_TABLE2: {
+        /* a low table: a slab top, a dark shadow under it and stubby legs */
+        Rectangle top = { r.x, r.y + r.height * 0.10f, r.width, r.height * 0.36f };
+        DrawEllipse((int)cx, (int)by, r.width * 0.52f, r.height * 0.16f,
+                    alpha(C_INK, 0.22f));
+        DrawRectangleRec((Rectangle){ r.x + r.width * 0.10f, top.y + top.height,
+                                      r.width * 0.08f, r.height * 0.44f }, pr->colDark);
+        DrawRectangleRec((Rectangle){ r.x + r.width * 0.82f, top.y + top.height,
+                                      r.width * 0.08f, r.height * 0.44f }, pr->colDark);
+        DrawRectangleRec(top, pr->col);
+        DrawRectangleRec((Rectangle){ top.x, top.y, top.width, top.height * 0.30f },
+                         art_shade(pr->col, 1.10f));
+        DrawRectangleLinesEx(top, 1.5f, alpha(C_INK, 0.35f));
+        if (pr->kind == PROP_TABLE) {  /* the lantern that stands on it */
+            DrawCircleV(v2(cx, top.y - r.height * 0.16f), r.width * 0.24f,
+                        alpha((Color){ 255, 226, 150, 255 }, 0.22f));
+            DrawCircleV(v2(cx, top.y - r.height * 0.16f), r.width * 0.10f,
+                        (Color){ 254, 220, 118, 255 });
+        }
+    } break;
+    case PROP_CUPBOARD: {
+        DrawRectangleRec(r, pr->col);
+        DrawRectangleRec((Rectangle){ r.x, r.y, r.width, r.height * 0.12f },
+                         art_shade(pr->col, 1.12f));
+        DrawLineEx(v2(cx, r.y + r.height * 0.14f), v2(cx, by), 1.8f, pr->colDark);
+        DrawLineEx(v2(r.x, r.y + r.height * 0.55f), v2(r.x + r.width, r.y + r.height * 0.55f),
+                   1.8f, pr->colDark);
+        DrawRectangleLinesEx(r, 1.6f, alpha(C_INK, 0.4f));
+    } break;
+    /* Five ceramics, all the same silhouette in the original -- a footed body
+       with a narrow neck -- told apart by their glaze and what grows out. */
+    case PROP_VASE:
+    case PROP_VASE1:
+    case PROP_VASE2:
+    case PROP_VASE3:
+    case PROP_VASE4: {
+        float bodyTop = r.y + r.height * 0.34f;
+        float bw = r.width * 0.86f;
+        /* the growth first, so the pot sits in front of its own stems */
+        if (pr->kind == PROP_VASE) {
+            for (int i = 0; i < 5; i++) {
+                float a = (i - 2) * 0.36f;
+                Vector2 tip = v2(cx + sinf(a) * r.width * 0.62f,
+                                 r.y - r.height * 0.06f + fabsf(a) * r.height * 0.12f);
+                DrawLineEx(v2(cx, bodyTop), tip, 2.2f, (Color){ 0, 102, 0, 255 });
+                DrawEllipse((int)tip.x, (int)tip.y, r.width * 0.13f, r.width * 0.07f,
+                            (Color){ 159, 210, 38, 255 });
+            }
+        } else if (pr->kind == PROP_VASE2) {
+            for (int i = 0; i < 4; i++) {
+                float a = (i - 1.5f) * 0.42f;
+                Vector2 tip = v2(cx + sinf(a) * r.width * 0.52f, r.y + r.height * 0.02f);
+                DrawLineEx(v2(cx, bodyTop), tip, 2.0f, (Color){ 69, 104, 66, 255 });
+                DrawCircleV(tip, r.width * 0.13f, (i & 1) ? (Color){ 226, 143, 139, 255 }
+                                                          : (Color){ 166, 46, 40, 255 });
+            }
+        } else if (pr->kind == PROP_VASE1) {
+            /* the banner on its pole */
+            DrawRectangleRec((Rectangle){ cx - 1.5f, r.y, 3, r.height * 0.44f },
+                             (Color){ 105, 80, 65, 255 });
+            DrawRectangleRec((Rectangle){ cx + 1.5f, r.y + r.height * 0.04f,
+                                          r.width * 0.34f, r.height * 0.26f },
+                             (Color){ 189, 91, 91, 255 });
+        } else if (pr->kind == PROP_VASE3) {
+            DrawEllipse((int)cx, (int)(r.y + r.height * 0.16f), r.width * 0.32f,
+                        r.height * 0.16f, (Color){ 134, 167, 185, 255 });
+        }
+        /* the pot */
+        DrawEllipse((int)cx, (int)(by - r.height * 0.22f), bw * 0.5f, r.height * 0.30f,
+                    pr->col);
+        DrawEllipse((int)(cx + bw * 0.16f), (int)(by - r.height * 0.24f),
+                    bw * 0.30f, r.height * 0.24f, art_shade(pr->col, 1.10f));
+        DrawRectangleRec((Rectangle){ cx - bw * 0.22f, bodyTop, bw * 0.44f,
+                                      r.height * 0.30f }, pr->col);
+        DrawEllipse((int)cx, (int)bodyTop, bw * 0.26f, r.height * 0.06f, pr->colDark);
+        DrawEllipse((int)cx, (int)by, bw * 0.34f, r.height * 0.07f, pr->colDark);
+    } break;
+    case PROP_BAMBOO2:
+    case PROP_BONSAI1:
+    case PROP_BONSAI2: {
+        if (pr->kind == PROP_BAMBOO2) {
+            /* the short clump: three canes with leaf blades along them */
+            for (int i = 0; i < 3; i++) {
+                float ox = cx + (i - 1) * r.width * 0.26f;
+                DrawRectangleRec((Rectangle){ ox - 2.0f, r.y + r.height * (0.06f * i),
+                                              4.0f, r.height * (1.0f - 0.06f * i) },
+                                 pr->col);
+                for (int k = 0; k < 4; k++) {
+                    float yy = r.y + r.height * (0.18f + 0.20f * k);
+                    DrawEllipse((int)(ox + ((i + k) & 1 ? 7 : -7)), (int)yy, 7.0f, 2.6f,
+                                pr->colDark);
+                }
+            }
+        } else {
+            /* a bonsai: a low stand with a clipped crown */
+            DrawRectangleRec((Rectangle){ cx - r.width * 0.38f, by - r.height * 0.30f,
+                                          r.width * 0.76f, r.height * 0.30f }, pr->col);
+            DrawRectangleRec((Rectangle){ cx - r.width * 0.44f, by - r.height * 0.34f,
+                                          r.width * 0.88f, r.height * 0.08f },
+                             art_shade(pr->col, 1.12f));
+            DrawRectangleRec((Rectangle){ cx - 2.0f, r.y + r.height * 0.26f, 4.0f,
+                                          r.height * 0.44f }, pr->colDark);
+            Color crown = (pr->kind == PROP_BONSAI1) ? (Color){ 168, 81, 45, 255 }
+                                                     : (Color){ 150, 173, 92, 255 };
+            DrawEllipse((int)cx, (int)(r.y + r.height * 0.22f), r.width * 0.44f,
+                        r.height * 0.20f, crown);
+            DrawEllipse((int)(cx - r.width * 0.18f), (int)(r.y + r.height * 0.32f),
+                        r.width * 0.24f, r.height * 0.13f, art_shade(crown, 0.86f));
+        }
+    } break;
+    case PROP_LAMP1:
+    case PROP_LAMP2:
+    case PROP_LAMP3: {
+        /* a standing lantern: a post, a shade, and a lit paper globe */
+        float postW = r.width * 0.11f;
+        DrawRectangleRec((Rectangle){ cx - postW * 0.5f, r.y + r.height * 0.40f,
+                                      postW, r.height * 0.60f },
+                         (Color){ 92, 74, 56, 255 });
+        DrawEllipse((int)cx, (int)by, r.width * 0.40f, r.height * 0.05f,
+                    alpha(C_INK, 0.25f));
+        float gy = r.y + r.height * 0.24f, gr = r.width * 0.42f;
+        float f = 0.86f + 0.14f * sinf(t * 2.7f + pr->x * 0.03f);
+        DrawCircleV(v2(cx, gy), gr * 2.1f * f, alpha((Color){ 255, 226, 150, 255 }, 0.10f));
+        DrawCircleV(v2(cx, gy), gr * 1.35f * f, alpha((Color){ 255, 226, 150, 255 }, 0.13f));
+        DrawEllipse((int)cx, (int)gy, gr * 0.72f, r.height * 0.15f,
+                    art_shade(pr->col, 0.86f));
+        DrawEllipse((int)cx, (int)gy, gr * 0.72f, r.height * 0.15f,
+                    alpha((Color){ 255, 238, 190, 255 }, 0.30f));
+        DrawEllipse((int)cx, (int)(gy - r.height * 0.04f), gr * 0.44f,
+                    r.height * 0.08f, art_shade(pr->col, 1.16f));
+        DrawRectangleRec((Rectangle){ cx - gr * 0.86f, gy - r.height * 0.19f,
+                                      gr * 1.72f, r.height * 0.04f },
+                         art_shade(pr->colDark, 0.75f));
+    } break;
+
+    case PROP_WARES_MEAL:
+    case PROP_WARES_POTS:
+    case PROP_WARES_BOOK: {
+        /* Goods on a mat.  The original lays each merchant's stock out flat on
+           the ground: a dark mat, then a row of small shapes on top. */
+        Rectangle mat = { r.x + r.width * 0.04f, r.y + r.height * 0.46f,
+                          r.width * 0.92f, r.height * 0.46f };
+        DrawRectangleRec(mat, (Color){ 122, 104, 68, 255 });
+        DrawRectangleRec((Rectangle){ mat.x, mat.y, mat.width, mat.height * 0.18f },
+                         (Color){ 141, 121, 80, 255 });
+        for (float lx = mat.x + 8; lx < mat.x + mat.width - 4; lx += 12)
+            DrawRectangle((int)lx, (int)mat.y, 1, (int)mat.height,
+                          alpha(C_INK, 0.14f));
+        DrawRectangleLinesEx(mat, 1.6f, (Color){ 88, 74, 48, 255 });
+        int n = 7;
+        for (int i = 0; i < n; i++) {
+            float gx = r.x + r.width * (0.10f + 0.80f * i / (float)(n - 1));
+            float gy = mat.y + mat.height * ((i & 1) ? 0.52f : 0.86f);
+            float gw = r.width * 0.055f, gh = r.height * 0.20f;
+            if (pr->kind == PROP_WARES_BOOK) {
+                /* scrolls and bound books, cream with a coloured tie */
+                DrawRectangleRec((Rectangle){ gx - gw, gy - gh, gw * 2, gh }, pr->col);
+                DrawRectangleRec((Rectangle){ gx - gw, gy - gh * 0.35f, gw * 2, gh * 0.22f },
+                                 pr->colDark);
+                DrawRectangleLinesEx((Rectangle){ gx - gw, gy - gh, gw * 2, gh }, 1.2f,
+                                     alpha(C_INK, 0.35f));
+            } else if (pr->kind == PROP_WARES_POTS) {
+                /* the potion bottles: porcelain bodies, coloured contents */
+                static const Color TINT[4] = { {  89,125, 60,255 }, { 148, 33, 33,255 },
+                                               { 101, 87,147,255 }, { 171,121, 20,255 } };
+                Color tn = TINT[i & 3];
+                DrawEllipse((int)gx, (int)(gy - gh * 0.30f), gw, gh * 0.42f, pr->col);
+                DrawRectangleRec((Rectangle){ gx - gw * 0.34f, gy - gh, gw * 0.68f,
+                                              gh * 0.62f }, tn);
+                DrawEllipse((int)gx, (int)(gy - gh), gw * 0.40f, gh * 0.14f,
+                            art_shade(tn, 1.25f));
+            } else {
+                /* rice bundles and bowls, wrapped in cloth */
+                DrawEllipse((int)gx, (int)(gy - gh * 0.34f), gw * 1.1f, gh * 0.44f,
+                            pr->col);
+                DrawEllipse((int)gx, (int)(gy - gh * 0.56f), gw * 0.72f, gh * 0.30f,
+                            pr->colDark);
+            }
+        }
+    } break;
+    case PROP_SIGNBOARD: {
+        /* The shop board hanging over a stall: a plank frame around a pale
+           panel, on two short posts. */
+        Rectangle bd = { r.x + r.width * 0.06f, r.y, r.width * 0.88f, r.height * 0.70f };
+        DrawRectangleRec((Rectangle){ bd.x + bd.width * 0.12f, bd.y + bd.height,
+                                      bd.width * 0.10f, r.height * 0.30f }, pr->col);
+        DrawRectangleRec((Rectangle){ bd.x + bd.width * 0.78f, bd.y + bd.height,
+                                      bd.width * 0.10f, r.height * 0.30f }, pr->col);
+        DrawRectangleRec(bd, pr->col);
+        DrawRectangleRec((Rectangle){ bd.x + 4, bd.y + 4, bd.width - 8, bd.height - 8 },
+                         pr->colDark);
+        for (int i = 0; i < 3; i++)
+            DrawRectangle((int)(bd.x + bd.width * 0.5f - 6),
+                          (int)(bd.y + bd.height * (0.22f + 0.22f * i)), 12, 3,
+                          alpha((Color){ 98, 60, 55, 255 }, 0.8f));
+        DrawRectangleLinesEx(bd, 2.0f, alpha(C_INK, 0.40f));
+    } break;
+    case PROP_EXITSIGN:
+        /* The original's marker is a small dark disc (55,49,40) with a soft
+           white halo behind it, not a sign board. */
+        DrawCircleV(v2(cx, r.y + r.height * 0.5f), r.width * 0.62f,
+                    alpha((Color){ 255, 255, 255, 255 }, 0.10f));
+        DrawCircleV(v2(cx, r.y + r.height * 0.5f), r.width * 0.40f, pr->col);
+        DrawCircleLines((int)cx, (int)(r.y + r.height * 0.5f), r.width * 0.40f,
+                        alpha((Color){ 153, 134, 102, 255 }, 0.8f));
+        break;
+    case PROP_EXITARROW:
+        /* And its companion is a steady little amber lamp (255,204,0) with its
+           own halo -- there is no blinking arrow anywhere in the original. */
+        DrawEllipse((int)cx, (int)(r.y + r.height * 0.5f), r.width * 0.62f,
+                    r.height * 0.62f, alpha((Color){ 255, 255, 255, 255 }, 0.10f));
+        DrawEllipse((int)cx, (int)(r.y + r.height * 0.5f), r.width * 0.20f,
+                    r.height * 0.20f, (Color){ 255, 204, 0, 255 });
+        break;
     default:
         DrawRectangleRec(r, alpha(stone, 0.55f));
         DrawRectangleLinesEx(r, 1.2f, alpha(C_INK, 0.25f));

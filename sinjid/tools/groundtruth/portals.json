@@ -1,11 +1,11 @@
 {
- "note": "gated doorways using the same clip as the exits (id 1504), not a statue",
+ "note": "The three gateways are doorway clips (id 1504).  Their rooms are fixed by the door in each that carries 'You have completed all the levels in this portal': Arena2 for the human road, Arena8 for the blue monster portal, Arena10 for the last one.  The Arena0 south door is NOT a gateway -- it is the arena exit, gated on portallevel[0] > 20, and it jumps the root to 'theend'.",
  "portals": [
   {
-   "room": 0,
+   "room": 2,
    "cell": [
-    10,
-    10
+    9,
+    5
    ],
    "gate": 0,
    "index": 0
@@ -16,17 +16,30 @@
     15,
     5
    ],
-   "gate": 10,
+   "gate": 0,
    "index": 1
   },
   {
-   "room": 2,
+   "room": 10,
    "cell": [
-    9,
+    10,
     5
    ],
-   "gate": 20,
+   "gate": 0,
    "index": 2
   }
- ]
+ ],
+ "arenaExit": {
+  "room": 0,
+  "cell": [
+   10,
+   10
+  ],
+  "gatePortal": 0,
+  "gateNeed": 20,
+  "doorPixel": [
+   300.25,
+   309.05
+  ]
+ }
 }

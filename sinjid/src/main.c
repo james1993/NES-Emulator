@@ -438,8 +438,10 @@ static void new_player(Game *g, ClassId cls, const char *name)
     p->exp = 0;
     p->expNext = player_exp_for_level(1);
     p->gold = 75;
-    p->statPts = 3;      /* something to spend on the first visit to the trainer */
-    p->skillPts = 2;
+    /* The original's init block sets statpts and skillpts to zero; you earn
+       your first of each by levelling. */
+    p->statPts = 0;
+    p->skillPts = 0;
     data_class_base(p, cls);
     p->look = data_class_look(cls);
     for (int i = 0; i < SLOT_COUNT; i++) p->equip[i] = -1;
@@ -456,8 +458,8 @@ static void new_player(Game *g, ClassId cls, const char *name)
     /* Three classes start with the Iron Knife; the Spell Caster's button
        swaps in the Energy Knife instead. */
     p->equip[SLOT_WEAPON] = (cls == CLASS_SPELLCASTER) ? IT_ENERGY_KNIFE : IT_IRON_KNIFE;
-    player_add_item(p, IT_RICE_BALL); player_add_item(p, IT_RICE_BALL);
-    player_add_item(p, IT_RICE_BALL); player_add_item(p, IT_GREEN_TEA);
+    /* itemstats[] starts as 28 slots of 'None' with the knife in slot 0, so
+       the pack itself is empty. */
     p->zone = ZONE_VILLAGE;
     /* Clear of the gateway at the room's foot: starting on its trigger meant
        a press of space by the entrance put you straight into the portal. */
@@ -613,6 +615,17 @@ static float RENDER_SCALE = 1.0f;
 
 float gfx_scale(void) { return RENDER_SCALE; }
 
+/* BeginScissorMode takes raw framebuffer pixels: the camera that applies
+   RENDER_SCALE does not touch it.  Every layout rectangle in this game is in
+   the 1280x720 logical space, so a scissor set from one clipped the wrong
+   region -- and at scale > 1 it clipped the whole thing away, which is why
+   the portraits came up empty on a big monitor. */
+void gfx_scissor(Rectangle r)
+{
+    BeginScissorMode((int)(r.x * RENDER_SCALE), (int)(r.y * RENDER_SCALE),
+                     (int)(r.width * RENDER_SCALE), (int)(r.height * RENDER_SCALE));
+}
+
 static Camera2D gfx_base_cam(void)
 {
     Camera2D c = { 0 };
@@ -726,10 +739,16 @@ int main(int argc, char **argv)
         case SCENE_CREATE:
             if (!blocked) {
                 if (G.createField == 0) {
-                    if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D))
-                        G.createIdx = (G.createIdx + 1) % CLASS_COUNT;
-                    if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A))
-                        G.createIdx = (G.createIdx + CLASS_COUNT - 1) % CLASS_COUNT;
+                    /* The original lays the four classes out as a 2x2 grid of
+                       cards -- Balanced and Spell Caster down the left, Warrior
+                       and Shadow Ninja down the right -- so the arrows move in
+                       two dimensions, not one. */
+                    if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D) ||
+                        IsKeyPressed(KEY_LEFT)  || IsKeyPressed(KEY_A))
+                        G.createIdx ^= 1;
+                    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S) ||
+                        IsKeyPressed(KEY_UP)   || IsKeyPressed(KEY_W))
+                        G.createIdx ^= 2;
                     if (IsKeyPressed(KEY_ENTER)) G.createField = 1;
                     if (IsKeyPressed(KEY_ESCAPE)) go_scene(&G, SCENE_TITLE);
                 } else {

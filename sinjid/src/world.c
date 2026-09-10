@@ -309,83 +309,83 @@ typedef struct {
 static const NpcSeed ROOM_NPCS[] = {
   /* --- Arena0, the entrance, and the closest thing to a hub ------------ */
   { 0, NPC_SAVE,     16, 7, "Elder",
-    "You were away on the mountain when it came.  What is left of\nus is standing in this room.", 0 },
+    "I keep the record here.  Speak to me and I will set down where\nyou stand, or give you a bed if you need one.", 0 },
   { 0, NPC_HEALER,    3, 5, "Healer",
-    "Sit.  Breathe out.  I can close most of what the road opens.", 0 },
+    "Sit.  Life or mana, a little or all of it -- I mend what you can\nafford and no more.", 0 },
   { 0, NPC_VILLAGER,  6, 8, "Student",
-    "They say the deeper rooms are worse.  I have not gone far\nenough to argue.", 0 },
+    "This is the arena gate.  The man in white robes will patch you up\nfor very little; the old man with the stick keeps the records.", 0 },
   /* --- Arena1 --------------------------------------------------------- */
   { 1, NPC_VENDOR,   13, 4, "Food Vendor",
-    "Eat before you walk.  It is cheaper than bleeding.", SHOP_MEALS },
+    "Eat before you walk.  Low energy bleeds your life and mana away\nwhile you stand still.", SHOP_MEALS },
   { 1, NPC_VENDOR,    6, 4, "Potion Vendor",
-    "Life and mana, bottled.  You will want both.", SHOP_POTS },
+    "Life and mana, bottled.  Fill up before a gateway, not after.", SHOP_POTS },
   { 1, NPC_VILLAGER, 16, 9, "Ninja",
-    "West is quiet.  East is not.  Choose by what you can carry.", 0 },
+    "The first gateway is left of here.  Turn right instead if you want\nequipment.  And eat -- once your energy runs out, life and mana\nstart draining.", 0 },
   /* --- Arena2 --------------------------------------------------------- */
   { 2, NPC_VILLAGER,  4, 9, "Apprentice",
-    "I sweep this room so I do not have to think about the next one.", 0 },
+    "Step into the portal and you fight a human.  Check your potions,\nyour equipment and your energy before each one.", 0 },
   { 2, NPC_VILLAGER, 14, 5, "Guard",
-    "Nothing through here but dust.  Go back the way you came.", 0 },
+    "Finding this gateway hard?  There is a training room upstairs.", 0 },
   /* --- Arena3 --------------------------------------------------------- */
   { 3, NPC_VENDOR,    6, 4, "Item Vendor",
     "Steel, leather, and a wrist guard if you have the sense.\nStrength first -- you cannot swing what you cannot lift.", SHOP_ITEMS0 },
   { 3, NPC_VILLAGER,  7, 9, "Apprentice",
-    "Two vendors in one room.  They argue about prices all day.", 0 },
+    "You can buy gear here, and there is more of it upstairs.  Out of\nmoney?  Talk to the busy merchant over by the crates.", 0 },
   { 3, NPC_VENDOR,   14,10, "Item Vendor2",
-    "Better stock than his, and I will not pretend otherwise.", SHOP_TRADE },
+    "I buy what you have no use for, and I keep white leaves in stock\nfor anyone who knows what to do with them.", SHOP_TRADE },
   /* --- Arena4 --------------------------------------------------------- */
   { 4, NPC_VILLAGER,  3,10, "Drinker",
-    "One more and I will go home.  I have said that four times.", 0 },
+    "No.. no.. YOU be quiet!", 0 },
   { 4, NPC_VILLAGER,  8,10, "Drunkard",
-    "The statues move.  I have watched them.  Nobody believes me.", 0 },
+    "Give me back my bottle!", 0 },
   { 4, NPC_VILLAGER, 15, 5, "Drinker",
-    "Do not mind him.  He is right, but do not mind him.", 0 },
+    "I love you.  *hic*", 0 },
   { 4, NPC_VILLAGER,  4, 3, "Ninja",
-    "Drink here if you must.  Do not drink past this room.", 0 },
+    "These two should not be in here.  Step around them.", 0 },
   /* --- Arena5 --------------------------------------------------------- */
   { 5, NPC_VENDOR,   14, 4, "Vendor2",
     "Relics.  Odd things.  They do more than they look like they do.", SHOP_ITEMS1 },
   { 5, NPC_VILLAGER, 11, 7, "Apprentice",
-    "Up from here is the hall of statues.  Mind your footing.", 0 },
+    "Check your strength before you buy.  Carry more than you can lift\nand the weight works against you.", 0 },
   { 5, NPC_VENDOR,    7, 9, "Vendor",
     "Supplies, same as the last room, worse light.", SHOP_ITEMS2 },
   /* --- Arena6 --------------------------------------------------------- */
   { 6, NPC_VILLAGER,  5, 4, "Scribe",
-    "Rest, and I will write down where you stood.", 0 },
+    "Welcome to the library.  The books and scrolls here hold a great\ndeal -- reading them may be what gets you through the monster\nportal and the dark rift.", 0 },
   { 6, NPC_QUEST,     7, 8, "Lady",
-    "My husband went east with the guard.  Three came back.\nHe was not one of the three.", 2 },
+    "I study herbs here.  Bring me white leaves and I will work them\ndown into medicine for you.", 2 },
   { 6, NPC_VILLAGER, 15, 9, "Relaxing Ninja",
-    "I have earned this floor and I intend to keep sitting on it.", 0 },
+    "Most of these books are worth the time.  I have just finished the\none on shadow wolves.", 0 },
   /* --- Arena7, the hall of statues: the three gateways ----------------- */
   { 7, NPC_QUEST,    10, 5, "Statue",
-    "Three gateways, and a long walk behind each.  A worn dish is set\ninto the plinth, waiting for something.", 1 },
+    "A worn dish is set into the plinth, waiting for an offering.", 1 },
   { 7, NPC_PROP,      5, 5, "Statue2",
     "Carved mid-step, as though it meant to leave.", 0 },
   { 7, NPC_PROP,     14, 5, "Statue2",
     "The same face as the other, worn smoother.", 0 },
   /* --- Arena8 --------------------------------------------------------- */
   { 8, NPC_TRAINER2,  3, 2, "Posted Note",
-    "Training room.  Strike the ward for experience, and break its\nguard for more.", 0 },
+    "Training Room -- step inside and choose your training.  Strike the\ntarget for experience.", 0 },
   { 8, NPC_VENDOR,   10, 4, "Vendor3",
     "Everything here is overpriced.  You will buy it anyway.", SHOP_ITEMS3 },
   { 8, NPC_VILLAGER, 11, 9, "Dark Ninja",
-    "You smell like the shallow rooms.  That will change.", 0 },
+    "The training room can hurt you.  Stop the session if your life or\nenergy runs low -- you keep the experience either way.", 0 },
   { 8, NPC_VILLAGER, 17, 5, "Guard",
-    "Train first.  The rooms past here do not offer a second try.", 0 },
+    "The monsters in the blue portal are strong.  Be around level 7\nbefore you go in.", 0 },
   /* --- Arena9 --------------------------------------------------------- */
   { 9, NPC_VILLAGER,  4, 6, "Dark Ninja",
-    "The gate above opens for whoever finishes the human gateway.\nNot before.", 0 },
+    "That doorway leads to a chamber only the greatest warriors are\nallowed to enter.", 0 },
   { 9, NPC_QUEST,    8, 7, "Meditating Ninja",
-    "Sit.  Spend what you have earned before you spend your life.", 0 },
+    "I found a strange ring washed up on the beach.  I have no use for\nit -- take it.", 0 },
   /* --- Arena10 -------------------------------------------------------- */
   {10, NPC_VILLAGER, 13, 5, "Guard",
-    "You came up the stairs.  Few do.", 0 },
+    "This is the temple's last portal.  Only five levels, and every one\nof them is brutal.  Learn what you are facing first.", 0 },
   {10, NPC_VENDOR,    3, 7, "Vendor4",
     "Last of the stock, and the last room that sells any.", SHOP_ITEMS4 },
   {10, NPC_VENDOR,   17, 7, "Shadow",
     "Stand and be counted, one after another.", SHOP_ITEMS5 },
   {10, NPC_VILLAGER,  5, 4, "Wounded Warrior",
-    "I got this far.  That is the whole of what I have to teach.", 0 },
+    "I went into the dark rift and the blood spirit finished me.  Heavy\nmagic, no physical attack at all, and a shield I could not break.", 0 },
 };
 
 /* The room graph, recovered from the original's edge trigger clips.  Each
@@ -416,15 +416,20 @@ static const Exit ROOM_EXITS[] = {
   /* room 9 */ { EX_RIGHT, 19,-1, ZONE_ARENA7,   1, -1, -1, 0, -1, 0, 0 },
                { EX_UP,    10, 4, ZONE_ARENA10, 10,  9,  0,20, -1, 300.1f, 124.2f },
   /* room 10*/ { EX_DOWN,  10,10, ZONE_ARENA9,  10,  5, -1, 0, -1, 300.2f, 305.1f },
-  /* The three portals are gated doorways of the same kind, not a statue:
-     the entrance room's south door, one in Arena8 and one in Arena2, each
-     behind its own portallevel threshold. */
-  /* room 0 */ { EX_DOWN,  10,10, ZONE_ARENA0,  10,  9, -1, 0,  0, 300.2f, 309.1f },
+  /* The three gateways are doorway clips of the same kind, one per portal.
+     Their rooms are fixed by the door that says "You have completed all the
+     levels in this portal": Arena2 for the human road, Arena8 for the blue
+     monster portal, Arena10 for the last one. */
+  /* room 2 */ { EX_UP,     9, 5, ZONE_ARENA2,   9,  6, -1, 0,  0, 299.3f, 165.6f },
   /* room 8 */ { EX_UP,    15, 5, ZONE_ARENA8,  15,  6, -1, 0,  1, 466.3f, 157.6f },
-  /* room 2 */ { EX_UP,     9, 5, ZONE_ARENA2,   9,  6, -1, 0,  2, 299.2f, 165.6f },
+  /* room 10*/ { EX_UP,    10, 5, ZONE_ARENA10, 10,  6, -1, 0,  2, 309.4f, 156.6f },
+  /* The entrance room's south door is not a gateway at all: it is the way
+     out of the arena, and it only opens once the human gateway's twenty
+     levels are behind you.  Walking through it ends the game. */
+  /* room 0 */ { EX_DOWN,  10,10, ZONE_ARENA0,  10,  9,  0,20, -2, 300.3f, 309.1f },
 };
 static const int EXIT_ROOM[] = { 0, 1,1,1, 2, 3,3, 4,4, 5,5,5, 6, 7,7,7, 8, 9,9, 10,
-                                 0, 8, 2 };
+                                 2, 8, 10, 0 };
 
 #include "scenery_table.h"
 
@@ -746,7 +751,15 @@ static void take_exit(Game *g, const Exit *e)
 {
     Player *p = &g->p;
     if (e->gatePortal >= 0 && p->portalLevel[e->gatePortal] <= e->gateNeed) {
-        ui_toast(g, "Sealed. Finish the gateway below and come back.");
+        ui_toast(g, e->portal == -2
+                 ? "The gate holds. Clear all twenty human levels first."
+                 : "Sealed. Finish the gateway below and come back.");
+        return;
+    }
+    if (e->portal == -2) {
+        /* The arena's own front gate.  In the original it clears the stage
+           and jumps the root to 'theend'. */
+        go_panel(g, SCENE_CREDITS);
         return;
     }
     if (e->portal >= 0) {
@@ -891,17 +904,28 @@ static void draw_npc(Game *g, Npc *n, float t)
        colour; instead lay a warm aura shaped to the body -- roughly 46px tall
        and 30 wide at this scale -- behind the character, plus a glow at the feet. */
     if (n->kind != NPC_PROP && npc_in_reach(g, n)) {
+        /* The original tints a figure you can talk to with a blue glow, the
+           same cyan its doorways use (12,193,254).  It has to read as light
+           coming off the whole model, so it is a stack of soft bands that
+           follow the figure's silhouette -- head, torso and legs -- rather
+           than a ring around the waist. */
         float pulse = 0.72f + 0.28f * sinf(t * 4.0f);
-        Color warm = (Color){ 255, 226, 140, 255 };
-        const float cy = py - TILE * 0.42f;             /* middle of the body */
-        const float rx[3] = { 0.44f, 0.36f, 0.27f };    /* in tiles           */
-        const float ry[3] = { 0.68f, 0.58f, 0.46f };
-        const float al[3] = { 0.20f, 0.26f, 0.34f };
-        for (int k = 0; k < 3; k++)
-            DrawEllipse((int)px, (int)cy, TILE * rx[k], TILE * ry[k],
-                        Fade(warm, al[k] * pulse));
-        DrawEllipse((int)px, (int)py, TILE * 0.42f, TILE * 0.17f,
-                    Fade(warm, 0.30f * pulse));
+        Color blue = (Color){ 12, 193, 254, 255 };
+        const float head = py - TILE * 0.80f;
+        const float chest = py - TILE * 0.50f;
+        const float shin  = py - TILE * 0.16f;
+        for (int k = 3; k >= 0; k--) {
+            float sp = 1.0f + k * 0.22f;                /* outer bands wider  */
+            float a  = (0.46f - k * 0.09f) * pulse;
+            DrawEllipse((int)px, (int)head,  TILE * 0.17f * sp, TILE * 0.19f * sp,
+                        Fade(blue, a));
+            DrawEllipse((int)px, (int)chest, TILE * 0.23f * sp, TILE * 0.26f * sp,
+                        Fade(blue, a));
+            DrawEllipse((int)px, (int)shin,  TILE * 0.19f * sp, TILE * 0.22f * sp,
+                        Fade(blue, a));
+        }
+        DrawEllipse((int)px, (int)py, TILE * 0.40f, TILE * 0.15f,
+                    Fade(blue, 0.34f * pulse));
     }
 
     if (n->kind == NPC_GATE) {
@@ -1066,7 +1090,7 @@ void world_draw(Game *g)
                       59 * HUD_S, 54 * HUD_S };
     DrawRectangleRec(por, (Color){ 40, 34, 28, 255 });
     DrawRectangleLinesEx(por, 2, (Color){ 122, 100, 62, 255 });
-    BeginScissorMode((int)por.x + 2, (int)por.y + 2, (int)por.width - 4, (int)por.height - 4);
+    gfx_scissor((Rectangle){ por.x + 2, por.y + 2, por.width - 4, por.height - 4 });
     art_draw_walker(&p->look, (Vector2){ por.x + por.width * 0.5f,
                                          por.y + por.height * 1.25f }, 1, 0.0f, 1.15f);
     EndScissorMode();

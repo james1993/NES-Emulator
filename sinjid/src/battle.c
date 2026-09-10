@@ -923,7 +923,7 @@ static void portrait(const Combatant *c, float cx, float cy)
     float w = BW(62.0f), h = BW(58.0f);
     Rectangle r = { cx - w * 0.5f, cy - h * 0.5f, w, h };
     DrawRectangleRec(r, (Color){ 30, 26, 23, 255 });
-    BeginScissorMode((int)r.x + 1, (int)r.y + 1, (int)r.width - 2, (int)r.height - 2);
+    gfx_scissor((Rectangle){ r.x + 1, r.y + 1, r.width - 2, r.height - 2 });
     Combatant t = *c;
     t.anim = ANIM_STAND; t.animT = 0;
     art_draw_puppet(&t, (Vector2){ cx, r.y + h * 1.22f }, 1.0f, 0.0f, 1.30f);

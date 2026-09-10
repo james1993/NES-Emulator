@@ -213,8 +213,11 @@ rg = gt('roomgraph.json')
 world = SRC('world.c')
 exits = table_rows(world, 'static const Exit ROOM_EXITS[]')
 want_n = sum(len(v) for v in rg['graph'].values())
+# field 8 is the doorway's role: >= 0 is one of the three gateways, -2 is the
+# arena's own front gate (it ends the game rather than moving you a room), and
+# only -1 is an ordinary way through to another room.
 travel = [r for r in exits
-          if not (len(r) > 8 and num(r[8]) is not None and num(r[8]) >= 0)]
+          if len(r) > 8 and num(r[8]) is not None and num(r[8]) == -1]
 check('rooms', len(travel) == want_n,
       "exit count ours=%d theirs=%d" % (len(travel), want_n))
 npcs = table_rows(world, 'static const NpcSeed ROOM_NPCS[]')
@@ -237,9 +240,12 @@ exit_room = [int(x) for x in re.findall(r'\d+', exit_room.group(1))]
 ours = {}
 portal_rows = []
 for ridx, row in zip(exit_room, exits):
-    if len(row) > 8 and num(row[8]) is not None and num(row[8]) >= 0:
-        portal_rows.append((ridx, num(row[1]), num(row[2]), num(row[8])))
+    role = num(row[8]) if len(row) > 8 else None
+    if role is not None and role >= 0:
+        portal_rows.append((ridx, num(row[1]), num(row[2]), role))
         continue                      # a portal doorway, not a way to a room
+    if role == -2:
+        continue                      # the arena's front gate, checked below
     d = DIRS[row[0].strip()]
     dest = row[3].strip()
     ours.setdefault(ROOMNAME[ridx], []).append((d, dest))
@@ -347,6 +353,23 @@ for r in props:
     check('scenery', w > 0 and h > 0, "prop with an empty box at (%d,%d)" % (x, y))
 check('scenery', rooms_seen == set(range(11)),
       "rooms with no scenery: %s" % sorted(set(range(11)) - rooms_seen))
+
+# ---- the arena's front gate -------------------------------------------
+# The Arena0 south door is not a gateway: it carries "come here to exit the
+# arena" and tests portallevel[0] > 20, then jumps the root to 'theend'.
+ae = gt('portals.json')['arenaExit']
+exitRows = [r for r in exits if len(r) > 8 and num(r[8]) == -2]
+check('portals', len(exitRows) == 1,
+      "expected exactly one arena exit, found %d" % len(exitRows))
+if len(exitRows) == 1:
+    r = exitRows[0]
+    check('portals', num(r[1]) == ae['cell'][0] and num(r[2]) == ae['cell'][1],
+          "the arena exit should stand on cell %s" % (ae['cell'],))
+    check('portals', num(r[6]) == ae['gatePortal'] and num(r[7]) == ae['gateNeed'],
+          "the arena exit opens on portal %d past level %d"
+          % (ae['gatePortal'], ae['gateNeed']))
+check('portals', 'SCENE_CREDITS' in SRC('world.c'),
+      "walking out of the arena should end the game")
 
 # ---- the three portal doorways ----------------------------------------
 want_p = {(p_['room'], p_['cell'][0], p_['cell'][1], p_['index'])

@@ -867,6 +867,15 @@ void ui_scene_save(Game *g)
     }
 
     /* ---- the character sheet on the right ---- */
+    /* The original's panel clip covers the screen, so nothing here floats over
+       the room: lay its backdrop down first, then the sheet at the edge the
+       clip actually gives it. */
+    {
+        Rectangle back = { PX(-310.0f), PY(-236.0f), PX(320.0f) - PX(-310.0f),
+                           PY(232.0f) - PY(-236.0f) };
+        DrawRectangleRec(back, (Color){ 24, 21, 19, 255 });
+        DrawRectangleLinesEx(back, 2, (Color){ 115, 89, 66, 255 });
+    }
     Rectangle sheet = { PX(36.0f), PY(-180.2f), PX(322.8f) - PX(36.0f),
                         PY(232.1f) - PY(-180.2f) };
     DrawRectangleRec(sheet, (Color){ 30, 27, 24, 255 });
@@ -883,7 +892,7 @@ void ui_scene_save(Game *g)
         Rectangle pr = { PX(156.9f), PY(-208.3f), PX(218.8f) - PX(156.9f),
                          PY(-150.0f) - PY(-208.3f) };
         DrawRectangleRec(pr, (Color){ 22, 20, 18, 255 });
-        BeginScissorMode((int)pr.x + 1, (int)pr.y + 1, (int)pr.width - 2, (int)pr.height - 2);
+        gfx_scissor((Rectangle){ pr.x + 1, pr.y + 1, pr.width - 2, pr.height - 2 });
         Combatant t = c;
         t.anim = ANIM_STAND; t.animT = 0;
         art_draw_puppet(&t, (Vector2){ pr.x + pr.width * 0.5f, pr.y + pr.height * 1.22f },
@@ -976,66 +985,123 @@ void ui_scene_save(Game *g)
    the original's clip sets inventorytype = "Heal" and does
    _root.inventory.gotoAndStop(inventorytype) with _root.pause = true, so
    talking to them brings up a panel you accept or walk away from. */
+/* The healer's own panel is frame 'Heal' of the interface clip: four service
+   rows, each with its name and price right-aligned to x -148, a button at
+   x -9, and the effect spelled out at x 23.5.  Its numbers are the original's:
+   Life Heal 10g/40 life, Mana Heal 5g/40 mana, Heal All 20g/60 of each,
+   Restoration 30g/120 of each. */
+typedef struct { const char *name; int cost, life, mana; } HealService;
+static const HealService HEALS[4] = {
+    { "Life Heal",   10,  40,   0 },
+    { "Mana Heal",    5,   0,  40 },
+    { "Heal All",    20,  60,  60 },
+    { "Restoration", 30, 120, 120 },
+};
+/* The four rows' own y placements, in the panel clip's pixels. */
+static const float HEAL_ROW_Y[4] = { -123.75f, -40.05f, 54.45f, 146.25f };
+
 void ui_scene_heal(Game *g)
 {
     Player *p = &g->p;
     Combatant c;
     player_recalc(p, &c);
-    int cost = 10 + p->level * 4;
-    bool whole = (p->curLife >= c.lifeMax && p->curMana >= c.manaMax);
-    bool afford = p->gold >= cost;
 
     if (ui_input_ready(g)) {
-        if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A) ||
-            IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D) ||
-            IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN))
-            g->healSel ^= 1;
+        if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S))
+            g->healSel = (g->healSel + 1) & 3;
+        if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W))
+            g->healSel = (g->healSel + 3) & 3;
         if (IsKeyPressed(KEY_ESCAPE)) {
             go_panel(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
             return;
         }
         if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-            if (g->healSel == 0 && !whole && afford) {
-                p->gold -= cost;
-                p->curLife = c.lifeMax;
-                p->curMana = c.manaMax;
+            const HealService *h = &HEALS[g->healSel & 3];
+            bool needs = (h->life && p->curLife < c.lifeMax) ||
+                         (h->mana && p->curMana < c.manaMax);
+            if (p->gold < h->cost) {
+                ui_toast(g, "You need %d gold.", h->cost);
+            } else if (!needs) {
+                ui_toast(g, "Nothing there to mend.");
+            } else {
+                p->gold -= h->cost;
+                if (h->life) {
+                    p->curLife += h->life;
+                    if (p->curLife > c.lifeMax) p->curLife = c.lifeMax;
+                }
+                if (h->mana) {
+                    p->curMana += h->mana;
+                    if (p->curMana > c.manaMax) p->curMana = c.manaMax;
+                }
                 sound_play(SFX_HEAL);
-                ui_toast(g, "Healed. (-%d gold)", cost);
-            } else if (g->healSel == 0 && whole) {
-                ui_toast(g, "You are already whole.");
-            } else if (g->healSel == 0) {
-                ui_toast(g, "You need %d gold.", cost);
+                ui_toast(g, "%s. (-%d gold)", h->name, h->cost);
             }
-            go_panel(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
-            return;
         }
     }
 
-    Rectangle box = { 300, 170, SCREEN_W - 600, 300 };
-    ui_panel(box, "Healer");
+    /* the panel body, over the room */
+    Rectangle body = { PX(-310.0f), PY(-236.0f), PX(320.0f) - PX(-310.0f),
+                       PY(232.0f) - PY(-236.0f) };
+    DrawRectangleRec(body, (Color){ 30, 27, 24, 255 });
+    DrawRectangleLinesEx(body, 2, (Color){ 115, 89, 66, 255 });
 
-    char buf[96];
-    ui_text("Rest here and be made whole.", box.x + 30, box.y + 56, 20, C_PARCH);
+    /* gold on the left of the header, life and mana on the right */
+    {
+        char b[48];
+        ui_text("GOLD:", PX(-300.5f), PY(-220.3f) - PW(9.0f), 20, C_PARCH2);
+        snprintf(b, sizeof b, "%d", p->gold);
+        ui_text(b, PX(-222.1f), PY(-220.0f) - PW(9.0f), 20, C_GOLD);
+        snprintf(b, sizeof b, "%d", p->curLife);
+        ui_text(b, PX(246.0f) - ui_text_w(b, 17), PY(-224.0f) - PW(7.0f), 17,
+                (Color){ 36, 224, 36, 255 });
+        snprintf(b, sizeof b, "/ %d", c.lifeMax);
+        ui_text(b, PX(290.3f) - PW(38.0f), PY(-224.0f) - PW(7.0f), 17, C_PARCH2);
+        snprintf(b, sizeof b, "%d", p->curMana);
+        ui_text(b, PX(246.0f) - ui_text_w(b, 17), PY(-200.3f) - PW(7.0f), 17,
+                (Color){ 4, 204, 254, 255 });
+        snprintf(b, sizeof b, "/ %d", c.manaMax);
+        ui_text(b, PX(290.3f) - PW(38.0f), PY(-200.2f) - PW(7.0f), 17, C_PARCH2);
+    }
 
-    snprintf(buf, sizeof buf, "Life   %d / %d", p->curLife, c.lifeMax);
-    ui_text(buf, box.x + 30, box.y + 100, 19, C_PARCH);
-    snprintf(buf, sizeof buf, "Mana   %d / %d", p->curMana, c.manaMax);
-    ui_text(buf, box.x + 30, box.y + 126, 19, C_PARCH);
+    for (int i = 0; i < 4; i++) {
+        const HealService *h = &HEALS[i];
+        float ry   = HEAL_ROW_Y[i];
+        bool  on   = (g->healSel == i);
+        bool  rich = p->gold >= h->cost;
 
-    snprintf(buf, sizeof buf, "Cost   %d gold", cost);
-    ui_text(buf, box.x + 30, box.y + 164, 19, afford ? C_GOLD : C_STEEL2);
-    snprintf(buf, sizeof buf, "Purse  %d gold", p->gold);
-    ui_text(buf, box.x + 30, box.y + 190, 19, C_STEEL2);
+        /* name and price, right-aligned where the original's fields end */
+        char b[32];
+        ui_text(h->name, PX(-148.0f) - ui_text_w(h->name, 24),
+                PY(ry - 25.05f) - PW(11.0f), 24, rich ? C_PARCH : C_STEEL2);
+        snprintf(b, sizeof b, "%d gold", h->cost);
+        ui_text(b, PX(-148.0f) - ui_text_w(b, 22), PY(ry + 0.6f) - PW(11.0f),
+                22, rich ? C_GOLD : C_STEEL2);
 
-    const char *opt0 = whole ? "Already whole" : (afford ? "Accept" : "Cannot pay");
-    Color c0 = (whole || !afford) ? C_STEEL2 : C_GOLD;
-    ui_text(opt0, box.x + 40, box.y + 236, 22,
-            g->healSel == 0 ? c0 : C_PARCH);
-    ui_text("Leave", box.x + 240, box.y + 236, 22,
-            g->healSel == 1 ? C_GOLD : C_PARCH);
-    ui_text(g->healSel == 0 ? ">" : " ", box.x + 22, box.y + 236, 22, C_GOLD);
-    ui_text(g->healSel == 1 ? ">" : " ", box.x + 222, box.y + 236, 22, C_GOLD);
-    ui_text("ENTER choose   ESC leave", box.x + 30, box.y + box.height - 28, 16, C_STEEL2);
+        /* the button itself */
+        Rectangle btn = { PX(-130.0f), PY(ry - 20.0f), PW(150.0f), PW(40.0f) };
+        DrawRectangleRec(btn, on ? (Color){ 72, 58, 42, 255 }
+                                 : (Color){ 44, 38, 32, 255 });
+        DrawRectangleLinesEx(btn, on ? 2.5f : 1.5f,
+                             on ? C_GOLD : (Color){ 115, 89, 66, 255 });
+        ui_text_c("Buy", btn.x + btn.width * 0.5f,
+                  btn.y + btn.height * 0.5f - 12, 20,
+                  on ? C_GOLD : C_PARCH2);
+
+        /* what it does, one line per stat it touches */
+        float ty = PY(ry - 8.7f) - PW(8.0f);
+        if (h->life) {
+            snprintf(b, sizeof b, "Recovers %d life", h->life);
+            ui_text(b, PX(23.5f), ty, 20, (Color){ 36, 224, 36, 255 });
+            ty += PW(22.9f);
+        }
+        if (h->mana) {
+            snprintf(b, sizeof b, "Recovers %d mana", h->mana);
+            ui_text(b, PX(23.5f), ty, 20, (Color){ 4, 204, 254, 255 });
+        }
+    }
+
+    ui_text("ENTER choose    ESC leave", PX(180.0f), PY(205.4f) - PW(9.0f),
+            18, C_PARCH2);
 }
 
 /* ---------------------------------------------------------------- title */
@@ -1071,62 +1137,129 @@ void ui_scene_title(Game *g)
 
 /* --------------------------------------------------------------- create */
 
+/* The original's class screen is a 2x2 grid of parchment cards on root frame
+   18: Balanced and Spell Caster down the left, Warrior and Shadow Ninja down
+   the right, each card 240x144 of its own pixels centred on (145.55|445.55,
+   176.65|356.65).  Inside a card the class figure stands at x 61 (x 360 on the
+   right), the class name sits at y+7.75, "Starting Skill:" at y+26 with the
+   skill's own name under it at y+39, and the description block runs the width
+   of the card from y+63.6.  Every number below is that layout; the wording is
+   this project's own. */
+#define CX(v)  (160.0f + (v) * 1.6f)     /* original stage pixel -> screen */
+#define CY(v)  ((v) * 1.6f)
+
+/* Which of the original's four skills each class opens with, read off the
+   card's own "Starting Skill" field. */
+static const int CLASS_START_SKILL[CLASS_COUNT] = { 1, 0, 9, 7 };
+
+/* Draw `s` into a box `w` wide, breaking on spaces. */
+static float ui_text_wrap(const char *s, float x, float y, float w,
+                          float size, float lead, Color col)
+{
+    char line[160]; int li = 0;
+    const char *word = s;
+    while (1) {
+        const char *e = word;
+        while (*e && *e != ' ' && *e != '\n') e++;
+        int wl = (int)(e - word);
+        char cand[160];
+        int cl = li;
+        if (cl) { memcpy(cand, line, cl); cand[cl++] = ' '; }
+        if (cl + wl >= (int)sizeof cand) wl = (int)sizeof cand - cl - 1;
+        memcpy(cand + cl, word, wl); cand[cl + wl] = 0;
+        if (li && ui_text_w(cand, size) > w) {
+            line[li] = 0;
+            ui_text(line, x, y, size, col);
+            y += lead;
+            li = wl; memcpy(line, word, wl); line[li] = 0;
+        } else {
+            li = cl + wl; memcpy(line, cand, li + 1);
+        }
+        if (*e == '\n') {
+            line[li] = 0; ui_text(line, x, y, size, col); y += lead; li = 0;
+        }
+        if (!*e) break;
+        word = e + 1;
+    }
+    if (li) { line[li] = 0; ui_text(line, x, y, size, col); y += lead; }
+    return y;
+}
+
 void ui_scene_create(Game *g)
 {
+    static const Color CARD_FACE = { 197, 175, 154, 255 };
+    static const Color CARD_FACE2= { 175, 153, 133, 255 };
+    static const Color CARD_EDGE = { 115,  89,  66, 255 };
+    static const Color CARD_DARK = {  78,  63,  50, 255 };
+    static const Color CARD_INK  = {  46,  36,  28, 255 };
+
     art_draw_battle_bg(BG_VILLAGE, g->time);
-    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 170 });
-    ui_text_sh("CHOOSE YOUR DISCIPLINE", 60, 40, 40, C_GOLD);
+    DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 10, 8, 14, 190 });
+
+    ui_text("Choose your Character Class:", CX(175.65f), CY(26.4f), 24, C_GOLD);
+    ui_text("Your stats will differ greatly depending on the class you select.",
+            CX(47.85f), CY(46.4f), 17, C_PARCH2);
 
     for (int i = 0; i < CLASS_COUNT; i++) {
-        Rectangle r = { 60 + i * 300, 110, 280, 60 };
-        ui_button(r, CLASS_NAMES[i], g->createIdx == i, true);
+        float ox = (i & 1) ? 445.55f : 145.55f;   /* bit 0 is the column */
+        float oy = (i & 2) ? 356.65f : 176.65f;   /* bit 1 is the row    */
+        float lx = ox - 120.0f, ty = oy - 72.0f;  /* card's own top-left */
+        bool  on = (g->createIdx == i);
+
+        Rectangle card = { CX(lx), CY(ty), 240.0f * 1.6f, 144.0f * 1.6f };
+        DrawRectangleRec(card, on ? CARD_FACE : CARD_FACE2);
+        DrawRectangleRec((Rectangle){ card.x, card.y, card.width, 6 },
+                         art_shade(CARD_FACE, 1.06f));
+        DrawRectangleLinesEx(card, on ? 4.0f : 2.0f, on ? CARD_EDGE : CARD_DARK);
+        if (on) DrawRectangleLinesEx((Rectangle){ card.x - 4, card.y - 4,
+                                                  card.width + 8, card.height + 8 },
+                                     2.0f, Fade(C_GOLD, 0.55f + 0.35f *
+                                                sinf(g->time * 4.0f)));
+
+        /* the class figure, standing where its button does */
+        Player tmp;
+        memset(&tmp, 0, sizeof tmp);
+        tmp.level = 1;
+        tmp.cls = (ClassId)i;
+        data_class_base(&tmp, tmp.cls);
+        tmp.look = data_class_look(tmp.cls);
+        for (int k = 0; k < SLOT_COUNT; k++) tmp.equip[k] = -1;
+        tmp.equip[SLOT_WEAPON] = (i == CLASS_SPELLCASTER) ? IT_ENERGY_KNIFE
+                                                          : IT_IRON_KNIFE;
+        Combatant c;
+        player_recalc(&tmp, &c);
+        c.anim = ANIM_STAND;
+        float fx = (i & 1) ? 360.0f : 61.35f;
+        /* the figure is small: it stands in the card's upper-left corner,
+           its feet clear of the description block below it */
+        art_draw_puppet(&c, (Vector2){ CX(fx), CY(ty + 54.0f) }, 1.0f,
+                        g->time, 0.78f);
+
+        float tx = lx + 70.35f;
+        ui_text(CLASS_NAMES[i], CX(tx), CY(ty + 7.75f), 26,
+                on ? CARD_INK : art_shade(CARD_INK, 1.5f));
+        ui_text("Starting Skill:", CX(tx + 2.1f), CY(ty + 26.0f), 20,
+                CARD_EDGE);
+        ui_text(SKILLS[CLASS_START_SKILL[i]].name, CX(tx + 2.1f),
+                CY(ty + 41.0f), 23, CARD_DARK);
+        ui_text_wrap(CLASS_BLURB[i], CX(lx + 14.65f), CY(ty + 68.0f),
+                     (240.0f - 14.65f * 2.0f) * 1.6f, 19, 23, CARD_INK);
     }
 
-    Player tmp;
-    memset(&tmp, 0, sizeof tmp);
-    tmp.level = 1;
-    tmp.cls = (ClassId)g->createIdx;
-    data_class_base(&tmp, tmp.cls);
-    tmp.look = data_class_look(tmp.cls);
-    for (int i = 0; i < SLOT_COUNT; i++) tmp.equip[i] = -1;
-    tmp.equip[SLOT_WEAPON] = IT_IRON_KNIFE;
-    Combatant c;
-    player_recalc(&tmp, &c);
-    c.anim = ANIM_STAND;
-    art_draw_puppet(&c, (Vector2){ 300, 600 }, 1.0f, g->time, 1.9f);
-
-    Rectangle info = { 540, 200, 680, 300 };
-    ui_panel(info, CLASS_NAMES[g->createIdx]);
-    float y = info.y + 46;
-    char line[128]; int li = 0;
-    for (const char *q = CLASS_BLURB[g->createIdx];; q++) {
-        if (*q == 0 || *q == '\n') {
-            line[li] = 0;
-            ui_text(line, info.x + 20, y, 20, C_PARCH);
-            y += 28; li = 0;
-            if (*q == 0) break;
-            continue;
-        }
-        if (li < 126) line[li++] = *q;
+    if (g->createField == 1) {
+        Rectangle nb = { SCREEN_W * 0.5f - 300, SCREEN_H * 0.5f - 70, 600, 140 };
+        DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 8, 6, 10, 190 });
+        ui_panel(nb, "NAME YOUR WARRIOR");
+        char nameLine[64];
+        snprintf(nameLine, sizeof nameLine, "%s%s", g->nameBuf,
+                 (fmodf(g->time, 1.0f) < 0.5f) ? "_" : "");
+        ui_text(nameLine, nb.x + 24, nb.y + 76, 30, C_PARCH);
+        ui_text_c("ENTER to begin, ESC to go back", SCREEN_W * 0.5f,
+                  nb.y + nb.height + 12, 19, C_PARCH2);
+    } else {
+        ui_text_c("arrow keys to choose a class, ENTER to name your warrior",
+                  SCREEN_W * 0.5f, SCREEN_H - 32, 19, C_PARCH2);
     }
-    y += 12;
-    char b[128];
-    snprintf(b, sizeof b, "Life %d    Mana %d    Speed %d", c.lifeMax, c.manaMax, c.speed);
-    ui_text(b, info.x + 20, y, 20, C_GOLD);
-    snprintf(b, sizeof b, "Damage %d+%d phys / %d magic     Guard %d",
-             c.phyDmg, c.strDmg, c.magDmg, c.shdMax);
-    ui_text(b, info.x + 20, y + 28, 20, C_GOLD);
-
-    Rectangle nb = { 540, 530, 680, 90 };
-    ui_panel(nb, "NAME");
-    char nameLine[64];
-    snprintf(nameLine, sizeof nameLine, "%s%s", g->nameBuf,
-             (g->createField == 1 && fmodf(g->time, 1.0f) < 0.5f) ? "_" : "");
-    ui_text(nameLine, nb.x + 20, nb.y + 42, 26, g->createField == 1 ? C_PARCH : C_PARCH2);
-
-    ui_text(g->createField == 0 ? "left/right to pick a discipline, ENTER to name your warrior"
-                                : "type a name, ENTER to begin, ESC to go back",
-            60, SCREEN_H - 40, 19, C_PARCH2);
 }
 
 

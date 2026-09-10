@@ -15,10 +15,10 @@ const ClassGrowth CLASS_GROWTH[CLASS_COUNT] = {
     { 3, 1, 10, 10 },   /* Shadow Ninja */
 };
 const char *CLASS_BLURB[CLASS_COUNT] = {
-    "Even growth in every direction. Gains ground steadily and is\nnever badly wrong-footed by a fight.",
-    "Toughest of the four, and hits hardest with steel. Gains the\nmost life per level and the most physical damage.",
-    "Trades life for ki. The fastest-growing magic damage in the\ngame, and armour barely slows a spell down.",
-    "Fastest of the four. Speed decides who strikes first and who\ngets missed, so the ninja does both.",
+    "Even growth in every direction. Gains ground steadily and is never badly wrong-footed by a fight.",
+    "Toughest of the four, and hits hardest with steel. Gains the most life per level and the most physical damage.",
+    "Trades life for ki. The fastest-growing magic damage in the game, and armour barely slows a spell down.",
+    "Fastest of the four. Speed decides who strikes first and who gets missed, so the ninja does both.",
 };
 
 
@@ -480,6 +480,11 @@ static const int SHOP_ITEMS_2[] = { 44, 45, 46, 50, 53, 54, 58, -1 };
 static const int SHOP_ITEMS_3[] = {  9, 48, 56, 51, 57, 37, 39, -1 };
 static const int SHOP_ITEMS_4[] = { 17, 18, 59, 49, 36, -1 };
 static const int SHOP_ITEMS_5[] = { 15, 23, 14, 55, 47, 38, 41, -1 };
+/* The 'Trade' frame of the original's interface clip stocks exactly one line:
+   White Leaves.  That is where the herb comes from -- you buy leaves here,
+   the herbalist in the library turns them into Medicine, and Medicine is the
+   only thing a merchant pays for.  The loop is the game's small income. */
+static const int SHOP_TRADE_T[] = { IT_WHITE_LEAVES, -1 };
 
 /* What a merchant pays for something.  The original does not price a sale as
    a fraction of the asking price: it matches the item's *type* against a list
@@ -507,6 +512,7 @@ int data_shop_table(int vendor, const int **out)
     case SHOP_ITEMS5: t = SHOP_ITEMS_5; break;
     case SHOP_MEALS:  t = SHOP_GOODS;   break;
     case SHOP_POTS:   t = SHOP_RELIC;   break;
+    case SHOP_TRADE:  t = SHOP_TRADE_T; break;
     default:          t = SHOP_ITEMS_0; break;
     }
     *out = t;
