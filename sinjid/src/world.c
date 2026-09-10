@@ -454,20 +454,12 @@ void data_init_zones(Zone *zones)
         z->enemyPoolCount = 5;
         for (int k = 0; k < 5; k++) z->enemyPool[k] = POOLS[i][k];
 
-        switch (STAGES[i].bg) {
-        case BG_ARENA2:
-            z->ground = (Color){ 150, 138, 104, 255 };
-            z->groundDark = (Color){ 118, 108, 80, 255 }; break;
-        case BG_ARENA3:
-            z->ground = (Color){ 122, 118, 110, 255 };
-            z->groundDark = (Color){ 92, 88, 82, 255 }; break;
-        case BG_DARK:
-            z->ground = (Color){ 52, 36, 58, 255 };
-            z->groundDark = (Color){ 34, 24, 40, 255 }; break;
-        default:
-            z->ground = (Color){ 96, 120, 72, 255 };
-            z->groundDark = (Color){ 70, 92, 56, 255 }; break;
-        }
+        /* Every room in the temple stands on one floor: the original places
+           the same backdrop clip at depth 2 for all eleven and only swaps the
+           clip, never the palette.  These are its three stone fills. */
+        z->ground     = (Color){ 140, 120, 87, 255 };
+        z->groundDark = (Color){ 123, 102, 68, 255 };
+        z->groundEdge = (Color){  95,  79, 54, 255 };
         z->propA = art_shade(z->ground, 1.15f);
         z->propB = art_shade(z->ground, 0.85f);
         fill_zone(z, STAGES[i].rows);
@@ -499,6 +491,8 @@ void data_init_zones(Zone *zones)
         const float k = TILE / 30.0f;
         Prop *pr = &z->props[z->propCount++];
         pr->kind = ps->kind;
+        pr->col = ps->col;
+        pr->colDark = ps->colDark;
         pr->x = OX + ps->x * k;
         pr->y = OY + ps->y * k;
         pr->w = ps->w * k;

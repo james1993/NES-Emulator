@@ -221,8 +221,9 @@ npcs = table_rows(world, 'static const NpcSeed ROOM_NPCS[]')
 want_npc = sum(len(v) for v in rg['npcs'].values())
 check('rooms', len(npcs) >= want_npc,
       "npc count ours=%d theirs=%d" % (len(npcs), want_npc))
-props = table_rows(SRC('scenery_table.h'), 'static const PropSeed ROOM_PROPS[]')
-check('rooms', len(props) == 197, "scenery count ours=%d theirs=197" % len(props))
+# the scenery count is checked against rooms_art.json below; the old literal
+# came from an extraction that counted the persistent UI chrome and the soft
+# shadow gradients as room objects
 
 # ============================ deeper checks =================================
 # Counts prove little; these compare the actual values.
@@ -335,6 +336,7 @@ check('battle', re.search(r'phyDmg\s*/\s*3', battle) is not None,
       "the random damage term should be random(phydmg / 3)")
 
 # ---- scenery table integrity ------------------------------------------
+props = table_rows(SRC('scenery_table.h'), 'static const PropSeed ROOM_PROPS[]')
 rooms_seen = set()
 for r in props:
     ri = int(r[0]); rooms_seen.add(ri)
@@ -546,6 +548,34 @@ known = set(ap)
 unknown = sorted(s_ for s_ in suits if s_ and s_ not in known)
 check('art', unknown == ['Blood Spirit', 'Mountain Naga', 'Skeleton Mage', 'Training Ward'],
       "unexpected suits without a palette: %s" % unknown)
+
+# ---- room floor and scenery ------------------------------------------
+ra = gt('rooms_art.json')
+sc = open(os.path.join(ROOT, 'src', 'scenery_table.h')).read()
+srows = re.findall(r'\{\s*(\d+),\s*(PROP_\w+),\s*(-?\d+),\s*(-?\d+),\s*(\d+),\s*(\d+),\s*'
+                   r'\{\s*(\d+),\s*(\d+),\s*(\d+),255\s*\},\s*\{\s*(\d+),\s*(\d+),\s*(\d+),255\s*\}', sc)
+ours_p = [{"room": int(a), "kind": b, "x": int(c), "y": int(d), "w": int(e), "h": int(f),
+           "col": [int(g), int(i), int(j)], "colDark": [int(k), int(l), int(m)]}
+          for a, b, c, d, e, f, g, i, j, k, l, m in srows]
+check('rooms', ours_p == ra['props'],
+      "scenery table has %d rows, the extraction has %d%s"
+      % (len(ours_p), len(ra['props']),
+         "" if len(ours_p) == len(ra['props']) else "",))
+if len(ours_p) == len(ra['props']):
+    bad = [i for i, (a, b) in enumerate(zip(ours_p, ra['props'])) if a != b]
+    check('rooms', not bad, "scenery rows differ at %s" % bad[:4])
+
+# the whole temple stands on one floor, and it is the original's
+wl3 = SRC('world.c')
+g_ = ra['ground']
+for tag, v in (("ground", g_['col']), ("groundDark", g_['dark']), ("groundEdge", g_['edge'])):
+    want = "{ %d, %d, %d, 255 }" % tuple(v)
+    check('rooms', want.replace(' ', '') in wl3.replace(' ', ''),
+          "%s should be %s" % (tag, v))
+
+# props carry the original's own colours through to the drawing
+check('rooms', 'pr->col' in SRC('art.c') and 'pr->colDark' in SRC('art.c'),
+      "art.c should draw each prop in its own extracted colour")
 
 print()
 if not FAIL:

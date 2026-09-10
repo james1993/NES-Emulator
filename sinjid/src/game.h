@@ -317,10 +317,11 @@ typedef enum {
     PROP_GENERIC, PROP_DOORWAY, PROP_TORCH, PROP_PILLAR, PROP_PLANT,
     PROP_BAMBOO, PROP_CRATE, PROP_COUNTER, PROP_SHELF, PROP_LAMP,
     PROP_WINDOW, PROP_URN, PROP_ROCKS, PROP_GLOW, PROP_SHADOW,
-    PROP_EXITSIGN, PROP_EXITARROW, PROP_KIND_COUNT
+    PROP_EXITSIGN, PROP_EXITARROW, PROP_WATER, PROP_KIND_COUNT
 } PropKind;
 
-typedef struct { int kind; float x, y, w, h; } Prop;
+/* col/colDark are the object's own dominant fills in the original. */
+typedef struct { int kind; float x, y, w, h; Color col, colDark; } Prop;
 
 typedef struct {
     int    dir;              /* ExitDir                                    */
@@ -351,7 +352,7 @@ typedef struct {
     int  exitCount;
     Prop props[MAX_PROPS];
     int  propCount;
-    Color skyTop, skyBot, ground, groundDark, fog, propA, propB;
+    Color skyTop, skyBot, ground, groundDark, groundEdge, fog, propA, propB;
     int  bgStyle;
 } Zone;
 

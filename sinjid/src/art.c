@@ -942,12 +942,30 @@ void art_draw_scenery(const Prop *pr, const Zone *z, float t)
 {
     Rectangle r = { pr->x, pr->y, pr->w, pr->h };
     float cx = r.x + r.width * 0.5f, by = r.y + r.height;
-    Color wood     = (Color){ 138, 105, 74, 255 };
-    Color woodDark = (Color){  86,  63, 44, 255 };
-    Color stone    = art_shade(z->groundDark, 1.05f);
-    Color leaf     = (Color){ 122, 158,  70, 255 };
+    /* Each object carries the two dominant fills of its own shapes in the
+       original, so the palette here is its, not ours. */
+    Color wood     = pr->col;
+    Color woodDark = pr->colDark;
+    Color stone    = pr->col;
+    Color leaf     = pr->col;
 
     switch (pr->kind) {
+    case PROP_WATER:
+        DrawRectangleRec(r, pr->colDark);
+        for (int i = 0; i < 4; i++) {
+            float yy = r.y + r.height * (0.2f + 0.2f * i) + sinf(t * 1.4f + i) * 2.0f;
+            DrawRectangle((int)(r.x + 6), (int)yy, (int)(r.width - 12), 2,
+                          alpha(pr->col, 0.55f));
+        }
+        DrawRectangleLinesEx(r, 1.5f, alpha(C_INK, 0.4f));
+        break;
+    case PROP_GENERIC:
+        /* Flat fill and a thin edge -- the original's shapes are flat colour
+           with a dark outline, and a shaded band would invent depth it has not
+           got (most of these are floor inlays and wall panels seen head on). */
+        DrawRectangleRec(r, pr->col);
+        DrawRectangleLinesEx(r, 1.5f, alpha(C_INK, 0.35f));
+        break;
     case PROP_DOORWAY:
         DrawRectangleRec(r, art_shade(stone, 0.75f));
         DrawRectangleRec((Rectangle){ r.x + r.width * 0.16f, r.y + r.height * 0.14f,
@@ -957,15 +975,19 @@ void art_draw_scenery(const Prop *pr, const Zone *z, float t)
         break;
     case PROP_TORCH: {
         float fx = cx, fy = r.y + r.height * 0.34f;
-        DrawRectangleRec((Rectangle){ cx - 2.5f, fy, 5, r.height * 0.62f }, woodDark);
+        DrawRectangleRec((Rectangle){ cx - 2.5f, fy, 5, r.height * 0.62f },
+                         (Color){ 86, 63, 44, 255 });
         float f = 0.75f + 0.25f * sinf(t * 7.3f + pr->x * 0.05f);
-        DrawCircleV(v2(fx, fy), r.width * 0.34f * f, alpha((Color){ 255, 176, 48, 255 }, 0.30f));
-        DrawCircleV(v2(fx, fy), r.width * 0.19f * f, (Color){ 255, 204, 0, 255 });
-        DrawCircleV(v2(fx, fy - 3), r.width * 0.10f * f, (Color){ 255, 246, 200, 255 });
+        DrawCircleV(v2(fx, fy), r.width * 0.34f * f, alpha(pr->col, 0.30f));
+        DrawCircleV(v2(fx, fy), r.width * 0.19f * f, pr->col);          /* 255,204,0 */
+        DrawCircleV(v2(fx, fy - 3), r.width * 0.10f * f, pr->colDark);  /* the highlight */
     } break;
     case PROP_PILLAR:
-        DrawRectangleRec(r, alpha(C_INK, 0.55f));
-        DrawRectangleRec((Rectangle){ r.x, r.y, r.width * 0.28f, r.height }, alpha(C_INK, 0.30f));
+        /* The original's side pillars are a flat dark column against the wall. */
+        DrawRectangleRec(r, art_shade(pr->col, 0.42f));
+        DrawRectangleRec((Rectangle){ r.x, r.y, r.width * 0.26f, r.height },
+                         art_shade(pr->col, 0.55f));
+        DrawRectangleLinesEx(r, 1.5f, alpha(C_INK, 0.4f));
         break;
     case PROP_PLANT: {
         /* A sprite's bounds are the union over all of its frames, so the box
