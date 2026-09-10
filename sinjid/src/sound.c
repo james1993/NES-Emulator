@@ -15,6 +15,7 @@
 
 static Sound SFX[SFX_COUNT];
 static bool  audioReady = false;
+static bool  realSfx[SFX_COUNT];   /* true where a real recording replaced the synth */
 
 /* --- tiny synth helpers ------------------------------------------------- */
 
@@ -160,10 +161,43 @@ void sound_init(void)
     SFX[SFX_DIE]     = synth(0.50f, v_die);
 }
 
+/* The original's own effect recordings, when they have been extracted.  Six
+   of its cues map onto ours; the rest of the vocabulary here (a block, a
+   guard breaking, a level, a refusal) has no recording in the original -- in
+   several cases its own label carries no sound at all -- so those stay
+   synthesised either way.
+
+   Called from music_init(), not from sound_init(), because the asset
+   directory is not located until then. */
+void sound_load_originals(void)
+{
+    static const struct { int id; const char *cue; } MAP[] = {
+        { SFX_COINS,   "coins"      },
+        { SFX_STEP,    "footsteps1" },
+        { SFX_HOWL,    "howl"       },
+        { SFX_SWORD1,  "swordc1"    },
+        { SFX_SWORD2,  "swordc2"    },
+        { SFX_THUNDER, "thunder"    },
+    };
+    for (unsigned i = 0; i < sizeof MAP / sizeof MAP[0]; i++) {
+        char path[512];
+        if (!audio_asset_path(MAP[i].cue, ".mp3", path, sizeof path) &&
+            !audio_asset_path(MAP[i].cue, ".wav", path, sizeof path)) continue;
+        Sound s = LoadSound(path);
+        if (!IsSoundValid(s)) continue;
+        UnloadSound(SFX[MAP[i].id]);
+        SFX[MAP[i].id] = s;
+        realSfx[MAP[i].id] = true;
+    }
+}
+
 void sound_play(int id)
 {
     if (!audioReady || id < 0 || id >= SFX_COUNT) return;
-    SetSoundPitch(SFX[id], 0.94f + (rand() % 13) * 0.01f);
+    /* the synth voices are identical every time, so a little pitch jitter
+       keeps repeats from sounding mechanical; a real recording already
+       has its own variation and is left alone */
+    if (!realSfx[id]) SetSoundPitch(SFX[id], 0.94f + (rand() % 13) * 0.01f);
     PlaySound(SFX[id]);
 }
 

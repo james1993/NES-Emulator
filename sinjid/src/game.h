@@ -611,6 +611,7 @@ typedef enum {
 
 void  sound_init(void);
 void  sound_play(int id);
+void  sound_load_originals(void);  /* swap in extracted effects, if present */
 void  sound_close(void);
 
 /* ----------------------------------------------------------------- music
@@ -636,6 +637,8 @@ void  music_update(void);        /* once a frame                              */
 int   music_battle_next(void);   /* the original's Battle1/2/3 rotation       */
 void  music_set_enabled(bool on);
 bool  music_enabled(void);
+bool  music_using_originals(void);   /* the extracted soundtrack was found */
+bool  audio_asset_path(const char *name, const char *ext, char *out, int n);
 void  music_close(void);
 
 /* ------------------------------------------------------------------ util */

@@ -5,3 +5,8 @@ sinjid_save.dat
 
 # the checked-in prebuilt binary is deliberately tracked
 !/bin/sinjid-linux-x86_64
+
+# The original's extracted audio.  tools/extract_audio.py writes it here from
+# your own copy of the SWF; it is the original soundtrack and is not part of
+# this repository.
+assets/

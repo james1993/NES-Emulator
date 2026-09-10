@@ -691,6 +691,10 @@ int main(int argc, char **argv)
     load_fonts(&G);
     sound_init();
     music_init();
+    /* The synthesised score is a stand-in, not a match for the original's, so
+       it stays off unless you ask for it.  Extract the real soundtrack with
+       tools/extract_audio.py and it plays automatically.  M toggles either. */
+    music_set_enabled(music_using_originals());
     data_init_zones(G.zones);
     G.scene = SCENE_TITLE;
     G.hasSave = save_exists();
@@ -714,6 +718,13 @@ int main(int argc, char **argv)
         update_fade(&G, dt);
 
         bool blocked = (G.fadeDir > 0);
+
+        if (IsKeyPressed(KEY_M)) {
+            music_set_enabled(!music_enabled());
+            ui_toast(&G, music_enabled()
+                     ? (music_using_originals() ? "Music on." : "Music on (synthesised).")
+                     : "Music off.");
+        }
 
         /* The original attaches a music cue to a moment, not to a scene: the
            title plays Dream, entering the arena plays Flute, each fight picks

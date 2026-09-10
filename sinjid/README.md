@@ -101,27 +101,47 @@ playSound(name) { if (soundon == 'On') soundfx.gotoAndPlay(name); }
 Frames 2-18 of that clip are the nine music cues -- `Dream`, `Flute`, `Orc`,
 `Over`, `Over2`, `Violin`, `Battle1`, `Battle2`, `Battle3` -- and frames 28-65
 the effects. Those names, their order, and the moment each one fires are
-reproduced here; the cue map is recorded in
-[tools/groundtruth/audio.json](tools/groundtruth/audio.json) and checked by
+reproduced here; the cue map is in
+[tools/groundtruth/audio.json](tools/groundtruth/audio.json) and is checked by
 the audit.
 
-Two details worth having in writing, because they look like omissions
-otherwise. The labels `no` and `skillput` carry no sound on their frames, and
-`itemget`, `miss`, `footsteps2`, `humanhit1` and `humanhit2` are called but
-have no frame at all -- all of them are silent in the original. And the battle
-track is picked by a counter the original keeps for the whole session
-(`if (prevsound < 3) prevsound++; else prevsound = 1;`), so the three battle
-themes cycle in order rather than being chosen at random.
+### Using the original's soundtrack
 
-**None of the original's audio is used.** Its music and effects are embedded
-streams; they are not extracted, decoded, or transcribed by ear. Everything
-you hear is synthesised at startup from note tables written for this remake --
-`src/music.c` for the nine tracks and `src/sound.c` for the effects -- in
-exactly the same spirit as `src/art.c` drawing every shape instead of shipping
-images.
+The sixteen sound assets are embedded in the SWF as `DefineSound` tags
+(fifteen MP3 streams and one ADPCM). They are the game's copyrighted
+soundtrack, so **they are not in this repository** and never will be. If you
+have your own copy of the SWF you can extract them into place:
 
-`SJ_MUSIC_DUMP=<dir>` writes each rendered track out as a `.wav`, which is how
-the score is checked without a sound card.
+```sh
+python3 tools/extract_audio.py /path/to/Sinjid-Shadow-of-the-Warrior.swf
+```
+
+That writes `assets/audio/<CueName>.mp3` (and one `.wav`), which is what the
+game looks for at startup. `assets/` is gitignored. Point `SJ_ASSETS` at
+another directory if you keep them elsewhere.
+
+With those files present the game plays the original's music and its coin,
+footstep, howl, sword and thunder effects, and music is on by default.
+
+### Without them
+
+With no assets the game falls back to a synthesised score in
+[src/music.c](src/music.c) -- nine looping tracks built from note tables
+written for this remake, rendered at startup. It is a stand-in and does not
+resemble the original, so **it is off by default**. Press <kbd>M</kbd> to turn
+music on or off either way.
+
+`SJ_MUSIC_DUMP=<dir>` writes each synthesised track out as a `.wav`, which is
+how the score is checked without a sound card.
+
+### Two details worth having in writing
+
+The labels `no` and `skillput` carry no sound on their frames, and `itemget`,
+`miss`, `footsteps2`, `humanhit1` and `humanhit2` are called but have no frame
+at all -- all silent in the original, not omissions here. And the battle track
+is not random: a counter kept for the whole session
+(`if (prevsound < 3) prevsound++; else prevsound = 1;`) cycles the three
+battle themes in order.
 
 ## Fidelity: what is taken from the original, and what is not
 

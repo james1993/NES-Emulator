@@ -291,6 +291,51 @@ static void render_note(float *buf, int n, int at, const Note *no, float spb)
 
 /* --- playback ----------------------------------------------------------- */
 
+/* --- the original's own recordings, when they are present ---------------
+   The sixteen sound assets are embedded in the SWF as DefineSound tags.
+   tools/extract_audio.py writes them out under assets/audio/ named by cue.
+   They are the original soundtrack, so they are NOT part of this repository
+   and assets/ is gitignored: if they are there we play them, and if they are
+   not we fall back to the synthesised score above.  Nothing else changes --
+   the cue names and trigger points are the same either way. */
+
+static char assetDir[384];   /* kept short so the joined path cannot overflow */
+static bool assetDirFound = false;
+
+/* Look for assets/audio next to the working directory, next to the binary,
+   or wherever SJ_ASSETS points. */
+static void find_assets(void)
+{
+    static const char *TRY[] = {
+        "assets/audio", "../assets/audio", "sinjid/assets/audio", NULL
+    };
+    const char *env = getenv("SJ_ASSETS");
+    if (env && env[0]) {
+        snprintf(assetDir, sizeof assetDir, "%s", env);
+        if (DirectoryExists(assetDir)) { assetDirFound = true; return; }
+    }
+    for (int i = 0; TRY[i]; i++) {
+        if (DirectoryExists(TRY[i])) {
+            snprintf(assetDir, sizeof assetDir, "%s", TRY[i]);
+            assetDirFound = true;
+            return;
+        }
+    }
+    assetDirFound = false;
+}
+
+/* Fill `out` with <assets>/<name><ext> if that file exists. */
+bool audio_asset_path(const char *name, const char *ext, char *out, int n)
+{
+    if (!assetDirFound) return false;
+    snprintf(out, (size_t)n, "%s/%s%s", assetDir, name, ext);
+    return FileExists(out);
+}
+
+static Music real[MUS_COUNT];
+static bool  hasReal[MUS_COUNT];
+static int   realPlaying = MUS_NONE;
+
 static AudioStream stream;
 static bool   ready = false;
 static bool   enabled = true;
@@ -351,6 +396,17 @@ void music_init(void)
     SetAudioStreamVolume(stream, 0.55f);
     PlayAudioStream(stream);
     ready = true;
+    /* The original's own recordings, if they have been extracted. */
+    find_assets();
+    sound_load_originals();
+    for (int i = 0; i < MUS_COUNT; i++) {
+        char path[512];
+        if (!audio_asset_path(MUSIC_NAMES[i], ".mp3", path, sizeof path) &&
+            !audio_asset_path(MUSIC_NAMES[i], ".wav", path, sizeof path)) continue;
+        real[i] = LoadMusicStream(path);
+        if (IsMusicValid(real[i])) { real[i].looping = true; hasReal[i] = true; }
+    }
+
     /* Render every loop up front.  Together they come to about 3 MB, and
        doing it here keeps the first bar of a track from hitching the frame
        it starts on. */
@@ -377,6 +433,24 @@ void music_init(void)
 void music_play(int id)
 {
     if (!ready || id < MUS_NONE || id >= MUS_COUNT) return;
+
+    /* A real recording is played straight through raylib rather than mixed
+       into the synth stream, so switching between the two means stopping
+       whichever one is currently sounding. */
+    if (id != MUS_NONE && hasReal[id]) {
+        if (realPlaying == id) return;
+        if (realPlaying != MUS_NONE) StopMusicStream(real[realPlaying]);
+        current = MUS_NONE; pending = MUS_NONE;      /* silence the synth */
+        realPlaying = id;
+        PlayMusicStream(real[id]);
+        SetMusicVolume(real[id], enabled ? 0.55f : 0.0f);
+        return;
+    }
+    if (realPlaying != MUS_NONE) {
+        StopMusicStream(real[realPlaying]);
+        realPlaying = MUS_NONE;
+    }
+
     if (id == current && pending == MUS_NONE) return;
     if (id == current) { pending = MUS_NONE; return; }
     if (current == MUS_NONE) {           /* nothing playing: start clean */
@@ -393,10 +467,19 @@ void music_stop(void) { music_play(MUS_NONE); }
 void music_set_enabled(bool on)
 {
     enabled = on;
-    if (ready) SetAudioStreamVolume(stream, on ? 0.55f : 0.0f);
+    if (!ready) return;
+    SetAudioStreamVolume(stream, on ? 0.55f : 0.0f);
+    if (realPlaying != MUS_NONE) SetMusicVolume(real[realPlaying], on ? 0.55f : 0.0f);
 }
 
 bool music_enabled(void) { return enabled; }
+
+/* True when the original's own recordings were found and loaded. */
+bool music_using_originals(void)
+{
+    for (int i = 0; i < MUS_COUNT; i++) if (hasReal[i]) return true;
+    return false;
+}
 
 /* The original picks the battle track from a counter it keeps across the
    whole session: prevsound starts at 0, and each fight does
@@ -412,6 +495,7 @@ int music_battle_next(void)
 void music_update(void)
 {
     if (!ready) return;
+    if (realPlaying != MUS_NONE) { UpdateMusicStream(real[realPlaying]); return; }
     while (IsAudioStreamProcessed(stream)) {
         for (int i = 0; i < CHUNK; i++) {
             float v = 0.0f;
@@ -444,6 +528,10 @@ void music_update(void)
 
 void music_close(void)
 {
-    if (ready) { StopAudioStream(stream); UnloadAudioStream(stream); ready = false; }
+    if (ready) {
+        if (realPlaying != MUS_NONE) StopMusicStream(real[realPlaying]);
+        for (int i = 0; i < MUS_COUNT; i++) if (hasReal[i]) UnloadMusicStream(real[i]);
+        StopAudioStream(stream); UnloadAudioStream(stream); ready = false;
+    }
     for (int i = 0; i < MUS_COUNT; i++) { free(loop[i]); loop[i] = NULL; loopN[i] = 0; }
 }
