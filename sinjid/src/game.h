@@ -141,7 +141,14 @@ typedef enum { SLOT_WEAPON, SLOT_SHIELD, SLOT_ARMOUR, SLOT_HELM, SLOT_RELIC, SLO
 /* Silhouette families the puppet renderer knows how to draw. */
 typedef enum {
     WEAP_NONE, WEAP_KNIFE, WEAP_KATANA, WEAP_BROAD, WEAP_AXE, WEAP_STAFF,
-    WEAP_SCYTHE, WEAP_CLAW, WEAP_SPEAR, WEAP_COUNT
+    WEAP_SCYTHE, WEAP_CLAW, WEAP_SPEAR,
+    /* Four more families, because the original gives every weapon its own
+       frame and eleven of them were sharing one broad blade here. */
+    WEAP_CLEAVER,   /* short, wide and blunt-backed                        */
+    WEAP_RAZOR,     /* twin edges down a narrow blade                      */
+    WEAP_SPIKE,     /* serrated, barbed along the back                     */
+    WEAP_ENERGY,    /* a translucent blade; the original fills it part-alpha */
+    WEAP_COUNT
 } WeaponShape;
 
 typedef enum {
@@ -157,6 +164,20 @@ typedef enum {
 typedef enum {
     BODY_HUMAN, BODY_BRUTE, BODY_UNDEAD, BODY_BEAST, BODY_WISP, BODY_COUNT
 } BodyShape;
+
+/* Per-weapon art, from the original's own weapon clip (cid 465).  Each
+   weapon has its own frame there, hence its own box and its own fills.  See
+   src/weapon_art_table.h. */
+typedef struct {
+    const char   *name;      /* the item's own name, for the lookup        */
+    unsigned char shape;     /* WeaponShape silhouette family              */
+    short         len, wide; /* the original's own box, in its pixels      */
+    Color         blade, fitting, accent;
+    unsigned char glow;      /* the original backs it with a radial glow   */
+} WeaponArt;
+
+int                data_weapon_art(const char *name);   /* 0 when unknown */
+const WeaponArt   *data_weapon_art_row(int idx);
 
 /* ------------------------------------------------------------------ items */
 typedef struct {
@@ -236,6 +257,10 @@ typedef struct {
     Color weaponTint, shieldTint;
     float scale;
     bool  glow;
+    /* Which row of the original's weapon clip this is, or 0 for none.  Zero
+       is the sentinel rather than -1 so that the enemy table's positional
+       initialisers, which do not mention it, still mean "no named weapon". */
+    int   weaponArt;
 } Look;
 
 typedef struct {
@@ -525,7 +550,8 @@ typedef struct AppearanceDef AppearanceDef;
 bool  data_dress(Look *lk, const char *name);
 void  art_draw_tile(int tile, int px, int py, int size, const Zone *z, int wx, int wy);
 void  art_draw_prop(int kind, Vector2 at, float scale, Color a, Color b);
-void  art_weapon_shape(int shape, Vector2 grip, float ang, float scale, Color tint, Color edge);
+void  art_weapon_shape(int shape, Vector2 grip, float ang, float scale, Color tint, Color edge,
+                       const WeaponArt *wa);   /* wa may be NULL */
 void  art_shield_shape(int shape, Vector2 grip, float ang, float scale, Color tint);
 Color art_shade(Color c, float f);
 

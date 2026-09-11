@@ -325,59 +325,141 @@ static Pose pose_for(AnimState st, float t)
 
 /* ------------------------------------------------------------- equipment */
 
-void art_weapon_shape(int shape, Vector2 grip, float ang, float s, Color tint, Color edge)
+/* Draw the weapon in hand.
+
+   `wa` is the row for this exact weapon out of the original's weapon clip, or
+   NULL when the caller only knows a silhouette family.  When it is there it
+   supplies the length and width of the original's own box and its three real
+   fills, which is what keeps twenty-five weapons from reading as five. */
+void art_weapon_shape(int shape, Vector2 grip, float ang, float s, Color tint, Color edge,
+                      const WeaponArt *wa)
 {
-    Vector2 tipv = polar(grip, ang, 0);
-    (void)tipv;
+    /* The original's boxes run from about 40 to 51 long; normalise against the
+       middle of that so an unknown weapon still comes out the size it used to. */
+    float L = wa ? wa->len  / 44.0f : 1.0f;
+    float W = wa ? wa->wide / 36.0f : 1.0f;
+    Color blade = wa ? wa->blade   : tint;
+    Color fit   = wa ? wa->fitting : edge;
+    Color acc   = wa ? wa->accent  : art_shade(tint, 1.4f);
+
+    /* Two of them are backed by a radial glow in the original. */
+    if (wa && wa->glow) {
+        Vector2 mid = polar(grip, ang, 22 * s * L);
+        DrawCircleV(mid, 16.0f * s, alpha(acc, 0.16f));
+        DrawCircleV(mid, 10.0f * s, alpha(acc, 0.20f));
+    }
+
     switch (shape) {
     case WEAP_KNIFE: {
-        Vector2 tip = polar(grip, ang, 26 * s);
-        limb_o(grip, tip, 2.4f * s, 0.8f * s, tint, 1.2f);
+        Vector2 tip = polar(grip, ang, 26 * s * L);
+        limb_o(grip, tip, 2.4f * s * W, 0.8f * s, blade, 1.2f);
+        limb_o(grip, polar(grip, ang, 7 * s), 2.8f * s * W, 2.6f * s * W, fit, 1.1f);
         limb_o(grip, polar(grip, ang + PI, 5 * s), 2.0f * s, 2.0f * s, C_INK2, 1.0f);
+        DrawCircleV(polar(grip, ang, 20 * s * L), 1.3f * s, acc);
     } break;
     case WEAP_KATANA: {
-        Vector2 mid = polar(grip, ang - 4 * DEG, 24 * s);
-        Vector2 tip = polar(mid, ang + 6 * DEG, 26 * s);
-        limb_o(grip, mid, 2.6f * s, 2.2f * s, tint, 1.3f);
-        limb_o(mid, tip, 2.2f * s, 0.6f * s, tint, 1.3f);
-        limb(grip, polar(grip, ang, 6 * s), 3.4f * s, 3.0f * s, edge);       /* tsuba */
+        Vector2 mid = polar(grip, ang - 4 * DEG, 24 * s * L);
+        Vector2 tip = polar(mid, ang + 6 * DEG, 26 * s * L);
+        limb_o(grip, mid, 2.6f * s * W, 2.2f * s * W, blade, 1.3f);
+        limb_o(mid, tip, 2.2f * s * W, 0.6f * s, blade, 1.3f);
+        /* the hardened edge the original paints as a lighter stripe */
+        limb(polar(grip, ang + 78 * DEG, 1.6f * s), polar(tip, ang + 78 * DEG, 1.6f * s),
+             0.7f * s, 0.5f * s, acc);
+        limb(grip, polar(grip, ang, 6 * s), 3.4f * s, 3.0f * s, fit);        /* tsuba */
         limb_o(grip, polar(grip, ang + PI, 11 * s), 2.2f * s, 2.0f * s, C_INK2, 1.0f);
     } break;
     case WEAP_BROAD: {
-        Vector2 tip = polar(grip, ang, 46 * s);
-        limb_o(grip, tip, 4.2f * s, 1.4f * s, tint, 1.4f);
-        limb(polar(grip, ang + PI / 2, 6 * s), polar(grip, ang - PI / 2, 6 * s),
-             1.8f * s, 1.8f * s, edge);
+        Vector2 tip = polar(grip, ang, 46 * s * L);
+        limb_o(grip, tip, 4.2f * s * W, 1.4f * s, blade, 1.4f);
+        limb(grip, polar(grip, ang, 40 * s * L), 1.1f * s, 0.7f * s, acc);   /* fuller */
+        limb(polar(grip, ang + PI / 2, 6 * s * W), polar(grip, ang - PI / 2, 6 * s * W),
+             1.8f * s, 1.8f * s, fit);
         limb_o(grip, polar(grip, ang + PI, 10 * s), 2.0f * s, 2.4f * s, C_INK2, 1.0f);
     } break;
-    case WEAP_AXE: {
-        Vector2 tip = polar(grip, ang, 42 * s);
-        limb_o(grip, tip, 2.6f * s, 2.2f * s, C_BARK, 1.2f);
-        Vector2 h = polar(grip, ang, 34 * s);
+    case WEAP_CLEAVER: {
+        /* short and wide, with a blunt back: the silhouette is a wedge */
+        Vector2 tip = polar(grip, ang, 34 * s * L);
         Vector2 pts[4] = {
-            polar(h, ang + 90 * DEG, 4 * s), polar(h, ang + 40 * DEG, 17 * s),
-            polar(h, ang - 20 * DEG, 15 * s), polar(h, ang - 70 * DEG, 5 * s)
+            polar(grip, ang + 96 * DEG, 3.0f * s * W),
+            polar(tip,  ang + 96 * DEG, 6.4f * s * W),
+            polar(tip,  ang - 96 * DEG, 2.0f * s * W),
+            polar(grip, ang - 96 * DEG, 2.4f * s * W),
         };
-        poly_o(pts, 4, tint, 1.4f);
+        poly_o(pts, 4, blade, 1.35f);
+        limb(polar(grip, ang + 96 * DEG, 3.0f * s * W),
+             polar(tip, ang + 96 * DEG, 6.4f * s * W), 0.9f * s, 0.7f * s, acc);
+        limb(polar(grip, ang + PI / 2, 5 * s), polar(grip, ang - PI / 2, 5 * s),
+             2.0f * s, 2.0f * s, fit);
+        limb_o(grip, polar(grip, ang + PI, 9 * s), 2.1f * s, 2.4f * s, C_INK2, 1.0f);
+    } break;
+    case WEAP_RAZOR: {
+        /* twin edges down a narrow blade */
+        Vector2 tip = polar(grip, ang, 42 * s * L);
+        limb_o(grip, tip, 2.0f * s * W, 0.7f * s, blade, 1.3f);
+        for (int k = -1; k <= 1; k += 2) {
+            Vector2 a = polar(grip, ang + k * 90 * DEG, 2.6f * s * W);
+            Vector2 b = polar(tip,   ang + k * 90 * DEG, 1.0f * s * W);
+            limb(a, b, 0.9f * s, 0.6f * s, acc);
+        }
+        limb(polar(grip, ang + PI / 2, 5 * s), polar(grip, ang - PI / 2, 5 * s),
+             1.7f * s, 1.7f * s, fit);
+        limb_o(grip, polar(grip, ang + PI, 9 * s), 2.0f * s, 2.2f * s, C_INK2, 1.0f);
+    } break;
+    case WEAP_SPIKE: {
+        /* barbed along the back */
+        Vector2 tip = polar(grip, ang, 40 * s * L);
+        limb_o(grip, tip, 3.2f * s * W, 1.1f * s, blade, 1.35f);
+        for (int k = 0; k < 4; k++) {
+            float f = 0.30f + k * 0.18f;
+            Vector2 base = polar(grip, ang, 40 * s * L * f);
+            Vector2 barb = polar(base, ang + 58 * DEG, 5.4f * s * W);
+            tri(base, barb, polar(base, ang, 6.0f * s), acc);
+        }
+        limb(polar(grip, ang + PI / 2, 5 * s), polar(grip, ang - PI / 2, 5 * s),
+             1.9f * s, 1.9f * s, fit);
+        limb_o(grip, polar(grip, ang + PI, 9 * s), 2.0f * s, 2.4f * s, C_INK2, 1.0f);
+    } break;
+    case WEAP_ENERGY: {
+        /* the original fills these part-alpha, so the blade is translucent
+           over a solid core and a plain haft */
+        Vector2 a = polar(grip, ang, 40 * s * L), b = polar(grip, ang + PI, 20 * s);
+        limb_o(a, b, 2.1f * s, 1.9f * s, fit, 1.1f);                  /* the haft */
+        Vector2 tip = polar(grip, ang, 44 * s * L);
+        limb(grip, tip, 5.0f * s * W, 2.6f * s * W, alpha(acc, 0.34f));
+        limb(grip, tip, 2.6f * s * W, 1.2f * s * W, alpha(acc, 0.55f));
+        limb(grip, tip, 1.1f * s, 0.5f * s, (Color){ 236, 252, 253, 255 });
+        DrawCircleV(grip, 3.4f * s, alpha(acc, 0.5f));
+    } break;
+    case WEAP_AXE: {
+        Vector2 tip = polar(grip, ang, 42 * s * L);
+        limb_o(grip, tip, 2.6f * s, 2.2f * s, C_BARK, 1.2f);
+        Vector2 h = polar(grip, ang, 34 * s * L);
+        Vector2 pts[4] = {
+            polar(h, ang + 90 * DEG, 4 * s * W), polar(h, ang + 40 * DEG, 17 * s * W),
+            polar(h, ang - 20 * DEG, 15 * s * W), polar(h, ang - 70 * DEG, 5 * s * W)
+        };
+        poly_o(pts, 4, blade, 1.4f);
+        limb(polar(h, ang + 40 * DEG, 17 * s * W), polar(h, ang - 20 * DEG, 15 * s * W),
+             1.0f * s, 0.8f * s, acc);
     } break;
     case WEAP_STAFF: {
-        Vector2 a = polar(grip, ang, 34 * s), b = polar(grip, ang + PI, 26 * s);
-        limb_o(a, b, 2.2f * s, 2.0f * s, C_BARK, 1.2f);
+        Vector2 a = polar(grip, ang, 34 * s * L), b = polar(grip, ang + PI, 26 * s);
+        limb_o(a, b, 2.2f * s, 2.0f * s, fit, 1.2f);
         DrawCircleV(a, 6.0f * s, C_INK);
-        DrawCircleV(a, 4.6f * s, tint);
-        DrawCircleV(polar(a, ang - 40 * DEG, 1.4f * s), 2.0f * s, art_shade(tint, 1.6f));
+        DrawCircleV(a, 4.6f * s, blade);
+        DrawCircleV(polar(a, ang - 40 * DEG, 1.4f * s), 2.0f * s, acc);
     } break;
     case WEAP_SCYTHE: {
         Vector2 a = polar(grip, ang, 40 * s), b = polar(grip, ang + PI, 22 * s);
         limb_o(a, b, 2.4f * s, 2.0f * s, C_INK2, 1.2f);
         Vector2 pts[5] = { a, polar(a, ang - 60 * DEG, 22 * s), polar(a, ang - 100 * DEG, 30 * s),
                            polar(a, ang - 116 * DEG, 22 * s), polar(a, ang - 80 * DEG, 12 * s) };
-        poly_o(pts, 5, tint, 1.3f);
+        poly_o(pts, 5, blade, 1.3f);
     } break;
     case WEAP_CLAW: {
         for (int i = -1; i <= 1; i++) {
             Vector2 t = polar(grip, ang + i * 16 * DEG, 20 * s);
-            limb_o(grip, t, 1.8f * s, 0.5f * s, tint, 1.0f);
+            limb_o(grip, t, 1.8f * s, 0.5f * s, blade, 1.0f);
         }
     } break;
     case WEAP_SPEAR: {
@@ -385,7 +467,7 @@ void art_weapon_shape(int shape, Vector2 grip, float ang, float s, Color tint, C
         limb_o(a, b, 2.0f * s, 1.8f * s, C_BARK, 1.1f);
         Vector2 pts[4] = { polar(a, ang, 14 * s), polar(a, ang + 100 * DEG, 5 * s),
                            polar(a, ang + PI, 6 * s), polar(a, ang - 100 * DEG, 5 * s) };
-        poly_o(pts, 4, tint, 1.2f);
+        poly_o(pts, 4, blade, 1.2f);
     } break;
     default: break;
     }
@@ -647,7 +729,8 @@ void art_draw_puppet(const Combatant *c, Vector2 at, float facing, float t, floa
     if (lk->weapon != WEAP_NONE) {
         float wang = aA + p.elA * facing + p.weapon * facing + (facing > 0 ? -0.35f : 0.35f);
         art_weapon_shape(lk->weapon, handA, wang, s, lk->weaponTint,
-                         art_shade(lk->weaponTint, 0.6f));
+                         art_shade(lk->weaponTint, 0.6f),
+                         data_weapon_art_row(lk->weaponArt));
     }
 }
 

@@ -265,6 +265,9 @@ void ui_scene_menu(Game *g)
                         p->curMana = c.mana;
                     }
                 } else if (!player_can_equip(p, p->inv[ps].def)) {
+                    /* The original's equip button refuses with playSound('no')
+                       when strb is short of the item's strneed. */
+                    sound_play(SFX_NO);
                     ui_toast(g, "%s needs %d Strength; you have %d.",
                              it->name, it->strNeed, p->baseStr);
                 } else {
@@ -300,7 +303,7 @@ void ui_scene_menu(Game *g)
         const ItemDef *it = (i < p->invCount) ? &ITEMS[p->inv[i].def] : NULL;
         inv_cell(r, it, g->menuIdx == i, false);
         if (it && p->inv[i].count > 1) {
-            char n[8];
+            char n[16];   /* an int needs 11 bytes plus the terminator */
             snprintf(n, sizeof n, "%d", p->inv[i].count);
             ui_text(n, r.x + r.width - 16, r.y + r.height - 22, 16, C_PARCH);
         }

@@ -624,6 +624,28 @@ check('audio', 'no audio from the original' in SRC('sound.c').lower()
              or 'NOT' in mus,
       "the synthesised-not-sampled note should stay in the header comment")
 
+# ---- per-weapon art -------------------------------------------------
+# Every weapon has its own frame in the original's weapon clip, so every
+# weapon needs its own row here; eleven of them sharing one broad blade was
+# the bug this table fixes.  Only the boxes and fills are the original's.
+wat = open(os.path.join(ROOT, 'src', 'weapon_art_table.h'), encoding='utf-8').read()
+arows = re.findall(r'\{\s*"([^"]+)",\s*WEAP_(\w+),\s*(\d+),\s*(\d+),'
+                   r'\s*\{([^}]+)\},\s*\{([^}]+)\},\s*\{([^}]+)\},\s*(\d)', wat)
+art_names = {a[0] for a in arows}
+wnames = [unq(r['name']) for r in items if r['type'].strip() == 'ITEM_WEAPON']
+check('weaponart', arows and arows[0][0] == 'None',
+      "index 0 must stay the 'no named weapon' sentinel")
+for w in wnames:
+    check('weaponart', w in art_names, "%s has no weapon-art row" % w)
+for a in arows:
+    if a[0] == 'None':
+        continue
+    check('weaponart', a[0] in wnames, "%s is not in the item table" % a[0])
+# and every weapon has to end up visually distinct
+looks = {(a[1], a[4].strip(), a[5].strip(), a[6].strip()) for a in arows if a[0] != 'None'}
+check('weaponart', len(looks) == len(wnames),
+      "only %d distinct looks for %d weapons" % (len(looks), len(wnames)))
+
 # ---- room floor and scenery ------------------------------------------
 ra = gt('rooms_art.json')
 sc = open(os.path.join(ROOT, 'src', 'scenery_table.h')).read()

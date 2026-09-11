@@ -204,6 +204,7 @@ void player_recalc(Player *p, Combatant *out)
 
     Look lk = p->look;
     lk.weapon = WEAP_NONE; lk.shield = SHLD_NONE; lk.helm = HELM_NONE;
+    lk.weaponArt = 0;
 
     for (int s = 0; s < SLOT_COUNT; s++) {
         int id = p->equip[s];
@@ -214,7 +215,14 @@ void player_recalc(Player *p, Combatant *out)
         mdmg += it->magDmg;  mdef += it->magDef;
         shd  += it->shdPts;  shdPDef += it->shdPhyDef; shdMDef += it->shdMagDef;
         shdDmg += it->shdDmg; spd += it->speed;
-        if (it->type == ITEM_WEAPON) { lk.weapon = it->shape; lk.weaponTint = it->tint; }
+        if (it->type == ITEM_WEAPON) {
+            /* The original draws each weapon from its own frame, so prefer
+               that row's silhouette and palette over the shared family. */
+            lk.weaponArt = data_weapon_art(it->name);
+            const WeaponArt *wa = data_weapon_art_row(lk.weaponArt);
+            lk.weapon     = wa ? wa->shape : it->shape;
+            lk.weaponTint = wa ? wa->blade : it->tint;
+        }
         if (it->type == ITEM_SHIELD) { lk.shield = it->shape; lk.shieldTint = it->tint; }
         if (it->type == ITEM_HELM)   { lk.helm   = it->shape; }
         if (it->type == ITEM_ARMOUR) { lk.cloth  = it->tint;
