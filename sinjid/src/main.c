@@ -58,19 +58,35 @@ void ui_toast(Game *g, const char *fmt, ...)
        waitN       idle for N frames
        shot:name   write name.png
        quit        close the window
-   Recognised keys: up down left right ret esc space tab i t q e a-z digits. */
+       m:X;Y       park the pointer at logical X,Y (1280x720 space)
+       down up     press or release the left button
+       click       press and release in one step
+   Recognised keys: up down left right ret esc space tab i t q e a-z digits.
+   The mouse steps are what make the drag-and-drop panels testable head-lessly;
+   they found the bug where an un-initialised carried item read as item 0. */
 #undef IsKeyPressed
 #undef IsKeyDown
 #undef GetCharPressed
+#undef IsMouseButtonPressed
+#undef IsMouseButtonReleased
 
 #define SCRIPT_MAX 256
 #define HOLD_FRAMES 1
 #define GAP_FRAMES  10
 
-typedef struct { int key, key2; int wait; int hold; char shot[64]; bool quit; } ScriptStep;
+typedef struct {
+    int key, key2; int wait; int hold; char shot[64]; bool quit;
+    /* Mouse steps, so the drag-and-drop panels can be driven head-lessly:
+       "m:640,360" parks the pointer, "down"/"up" press and release, and
+       "click" does both in one step. */
+    bool  hasMouse; float mx, my;
+    int   btn;        /* 0 none, 1 press, 2 release, 3 press+release */
+} ScriptStep;
 static ScriptStep SCRIPT[SCRIPT_MAX];
 static int  scriptLen = 0, scriptAt = 0, scriptFrame = 0;
 static bool scriptOn = false;
+/* The scripted pointer persists between steps, the way a real one does. */
+static Vector2 scriptMouse = { 0, 0 };
 
 static int key_from_name(const char *s)
 {
@@ -97,6 +113,15 @@ static void script_parse(const char *spec)
         memset(st, 0, sizeof *st);
         while (*tok == ' ') tok++;
         if (!strncmp(tok, "wait", 4)) st->wait = atoi(tok + 4);
+        else if (!strncmp(tok, "m:", 2)) {
+            st->hasMouse = true;
+            st->mx = (float)atof(tok + 2);
+            const char *c = strchr(tok + 2, ';');
+            st->my = c ? (float)atof(c + 1) : 0.0f;
+        }
+        else if (!strcmp(tok, "down"))  st->btn = 1;
+        else if (!strcmp(tok, "up"))    st->btn = 2;
+        else if (!strcmp(tok, "click")) st->btn = 3;
         else if (!strncmp(tok, "shot:", 5)) snprintf(st->shot, sizeof st->shot, "%s", tok + 5);
         else if (!strcmp(tok, "quit")) st->quit = true;
         else {
@@ -133,6 +158,8 @@ static void script_tick(void)
     if (!scriptOn || scriptAt >= scriptLen) return;
     ScriptStep *st = &SCRIPT[scriptAt];
     scriptFrame++;
+    if (st->hasMouse && scriptFrame == 1) scriptMouse = (Vector2){ st->mx, st->my };
+    if (st->btn == 3 && !st->wait) st->wait = 3;   /* room for both edges */
     int budget = st->wait ? st->wait : (HOLD_FRAMES + GAP_FRAMES);
     if (st->shot[0] && scriptFrame == 1) {
         char path[96];
@@ -145,6 +172,24 @@ static void script_tick(void)
 }
 
 static bool script_done(void) { return scriptOn && scriptAt >= scriptLen; }
+
+bool sj_mouse_pressed(int b)
+{
+    if (!scriptOn) return IsMouseButtonPressed(b);
+    if (b != MOUSE_BUTTON_LEFT || scriptAt >= scriptLen) return false;
+    ScriptStep *st = &SCRIPT[scriptAt];
+    return (st->btn == 1 || st->btn == 3) && scriptFrame == 1;
+}
+
+bool sj_mouse_released(int b)
+{
+    if (!scriptOn) return IsMouseButtonReleased(b);
+    if (b != MOUSE_BUTTON_LEFT || scriptAt >= scriptLen) return false;
+    ScriptStep *st = &SCRIPT[scriptAt];
+    if (st->btn == 2) return scriptFrame == 1;
+    if (st->btn == 3) return scriptFrame == 2;   /* click = press then release */
+    return false;
+}
 
 bool sj_key_pressed(int key)
 {
@@ -170,6 +215,8 @@ int sj_char_pressed(void)
     return 0;
 }
 
+#define IsMouseButtonPressed(b)  sj_mouse_pressed(b)
+#define IsMouseButtonReleased(b) sj_mouse_released(b)
 #define IsKeyPressed(k)  sj_key_pressed(k)
 #define IsKeyDown(k)     sj_key_down(k)
 #define GetCharPressed() sj_char_pressed()
@@ -310,6 +357,9 @@ int player_pack_free(const Player *p)
     int free = MAX_INVENTORY - p->invCount;
     return free < 0 ? 0 : free;
 }
+
+static void inv_remove(Player *p, int idx, int n);
+void player_inv_remove(Player *p, int idx, int n) { inv_remove(p, idx, n); }
 
 static void inv_remove(Player *p, int idx, int n)
 {
@@ -628,6 +678,24 @@ float gfx_scale(void) { return RENDER_SCALE; }
    the 1280x720 logical space, so a scissor set from one clipped the wrong
    region -- and at scale > 1 it clipped the whole thing away, which is why
    the portraits came up empty on a big monitor. */
+/* The mouse in logical 1280x720 coordinates.
+
+   The frame is drawn to an offscreen buffer and then blitted letterboxed to
+   whatever size the window is, so the raw pointer position is in neither the
+   layout's space nor the buffer's.  Every panel hit-test wants the layout's,
+   so undo the blit here rather than in each of them -- the same trap that
+   made the scissor rectangles wrong. */
+Vector2 gfx_mouse(void)
+{
+    float sw = (float)GetScreenWidth(), sh = (float)GetScreenHeight();
+    float scale = fminf(sw / SCREEN_W, sh / SCREEN_H);
+    if (scale <= 0.0f) scale = 1.0f;
+    if (scriptOn) return scriptMouse;        /* already in logical space */
+    Vector2 m = GetMousePosition();
+    return (Vector2){ (m.x - (sw - SCREEN_W * scale) * 0.5f) / scale,
+                      (m.y - (sh - SCREEN_H * scale) * 0.5f) / scale };
+}
+
 void gfx_scissor(Rectangle r)
 {
     BeginScissorMode((int)(r.x * RENDER_SCALE), (int)(r.y * RENDER_SCALE),
@@ -704,6 +772,7 @@ int main(int argc, char **argv)
        tools/extract_audio.py and it plays automatically.  M toggles either. */
     music_set_enabled(music_using_originals());
     data_init_zones(G.zones);
+    G.dragDef = -1; G.dragCount = 0;    /* nothing on the cursor; def 0 is real */
     G.scene = SCENE_TITLE;
     G.hasSave = save_exists();
     G.fade = 1.0f; G.fadeDir = -1;

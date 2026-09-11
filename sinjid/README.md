@@ -70,6 +70,23 @@ make RAYLIB=./raylib
 | I | character, pack and skills |
 | T | training (spend stat and skill points) |
 | TAB / Q / E | switch tabs |
+| M | music on or off |
+| **mouse** | **drag items** -- see below |
+
+The original works its inventory and its shops with the pointer, and so does
+this. An item is lifted out of a slot, rides the cursor, and is put down
+somewhere else:
+
+* drop one on a **worn slot** to equip it (the one it replaces comes back onto
+  the cursor, and a refusal sounds if you are not strong enough for it)
+* lift one out of a merchant's **stock** to buy it -- that is when the gold is
+  taken, exactly as the original's buy button does it
+* drop one onto that stock to **sell** it
+* drop it on nothing and it goes back where it came from; letting go can never
+  destroy an item
+
+Press-drag-release and click-then-click both work, and every keyboard binding
+still does what it did.
 
 Talk to the shrine in the village to rest and save; the save file is written to
 `sinjid_save.dat` in the working directory.

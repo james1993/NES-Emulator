@@ -235,6 +235,149 @@ static void inv_move(Game *g, int dx, int dy)
     else if (dx) g->menuIdx = INV_PACK_N + SLOT_ARMOUR;
 }
 
+/* ---------------------------------------------------- the carried item ---
+   The original works its inventory with the mouse.  An item is lifted out of
+   a slot, rides the pointer as `itempick`, and is put down somewhere else:
+   dropping it on a worn slot equips it, lifting one out of a merchant's stock
+   buys it (the buy button checks gold against cost first), and dropping one
+   onto that stock sells it.  All of that is reproduced here; the keyboard
+   bindings still work alongside it.
+
+   The one rule these helpers must never break is that letting go of an item
+   cannot destroy it, so every path either places it or keeps carrying it. */
+
+/* Which inventory cell the pointer is over: a pack index 0..INV_PACK_N-1, or
+   INV_PACK_N + slot for a worn one, or -1 for neither. */
+static int inv_hit(Vector2 m)
+{
+    for (int i = 0; i < INV_PACK_N; i++)
+        if (CheckCollisionPointRec(m, inv_cell_rect(PACK_X[i % 4], PACK_Y[i / 4])))
+            return i;
+    for (int w = 0; w < SLOT_COUNT; w++)
+        if (CheckCollisionPointRec(m, inv_cell_rect(WORN_XY[w][0], WORN_XY[w][1])))
+            return INV_PACK_N + w;
+    return -1;
+}
+
+/* Both halves matter: Game is zero-initialised and item def 0 is a real item
+   (the Iron Knife), so testing the def alone reported a carried knife before
+   anything had been picked up.  dragCount is 0 until something is. */
+static bool drag_held(const Game *g) { return g->dragDef >= 0 && g->dragCount > 0; }
+
+static void drag_clear(Game *g)
+{
+    g->dragDef = -1; g->dragCount = 0;
+    g->dragSrc = DRAG_NONE; g->dragSlot = -1;
+}
+
+static void drag_take(Game *g, int def, int count, int src, int slot)
+{
+    g->dragDef   = def;
+    g->dragCount = count > 0 ? count : 1;
+    g->dragSrc   = src;
+    g->dragSlot  = slot;
+}
+
+/* Put the carried item somewhere safe: back on if it came off a worn slot
+   that is still free, refunded if it was an unpaid purchase, otherwise into
+   the pack -- and if even that is full it stays on the cursor. */
+static void drag_stow(Game *g)
+{
+    Player *p = &g->p;
+    if (!drag_held(g)) return;
+    if (g->dragSrc == DRAG_WORN && g->dragSlot >= 0 && g->dragSlot < SLOT_COUNT
+        && p->equip[g->dragSlot] < 0) {
+        p->equip[g->dragSlot] = g->dragDef;
+        drag_clear(g);
+        return;
+    }
+    if (g->dragSrc == DRAG_STOCK) {          /* never bought after all */
+        p->gold += ITEMS[g->dragDef].price;
+        drag_clear(g);
+        return;
+    }
+    while (g->dragCount > 0) {
+        if (player_add_item(p, g->dragDef) < 0) return;   /* pack full; keep it */
+        g->dragCount--;
+    }
+    drag_clear(g);
+}
+
+/* Drop the carried item into a worn slot, with the original's own gate. */
+static void drag_drop_worn(Game *g, int slot)
+{
+    Player *p = &g->p;
+    if (!drag_held(g)) return;
+    const ItemDef *it = &ITEMS[g->dragDef];
+    int want;
+    switch (it->type) {
+    case ITEM_WEAPON: want = SLOT_WEAPON; break;
+    case ITEM_SHIELD: want = SLOT_SHIELD; break;
+    case ITEM_ARMOUR: want = SLOT_ARMOUR; break;
+    case ITEM_HELM:   want = SLOT_HELM;   break;
+    case ITEM_RELIC:  want = SLOT_RELIC;  break;
+    default:          want = -1;          break;
+    }
+    if (want != slot || !player_can_equip(p, g->dragDef)) {
+        sound_play(SFX_NO);                  /* the original's refusal cue */
+        return;
+    }
+    int old = p->equip[slot];
+    p->equip[slot] = g->dragDef;
+    if (--g->dragCount > 0) {                /* a stack: keep the remainder */
+        if (old >= 0) player_add_item(p, old);
+    } else if (old >= 0) {
+        drag_take(g, old, 1, DRAG_WORN, slot);   /* swap onto the cursor */
+    } else {
+        drag_clear(g);
+    }
+    sound_play(SFX_ITEM);
+}
+
+/* Drop the carried item into pack slot `idx`, swapping with what is there. */
+static void drag_drop_pack(Game *g, int idx)
+{
+    Player *p = &g->p;
+    if (!drag_held(g)) return;
+    if (idx < 0 || idx >= MAX_INVENTORY) return;
+    if (idx >= p->invCount) {                /* an empty tail slot: append */
+        while (g->dragCount > 0 && player_add_item(p, g->dragDef) >= 0) g->dragCount--;
+        if (g->dragCount <= 0) drag_clear(g);
+        return;
+    }
+    if (p->inv[idx].def == g->dragDef) {     /* same thing: merge the stack */
+        while (g->dragCount > 0 && player_add_item(p, g->dragDef) >= 0) g->dragCount--;
+        if (g->dragCount <= 0) drag_clear(g);
+        return;
+    }
+    if (g->dragCount > 1) {                  /* a stack cannot swap; append */
+        while (g->dragCount > 0 && player_add_item(p, g->dragDef) >= 0) g->dragCount--;
+        if (g->dragCount <= 0) drag_clear(g);
+        return;
+    }
+    int other = p->inv[idx].def, otherN = p->inv[idx].count;
+    p->inv[idx].def = g->dragDef;
+    p->inv[idx].count = 1;
+    drag_take(g, other, otherN, DRAG_PACK, idx);
+}
+
+/* The carried item, drawn under the pointer. */
+static void drag_draw(const Game *g)
+{
+    if (!drag_held(g)) return;
+    Vector2 m = gfx_mouse();
+    float s = 46.0f;
+    Rectangle r = { m.x - s * 0.5f, m.y - s * 0.5f, s, s };
+    DrawRectangleRec(r, Fade((Color){ 26, 22, 18, 255 }, 0.88f));
+    art_draw_item_icon(g->dragDef, r);
+    DrawRectangleLinesEx(r, 2, C_GOLD);
+    if (g->dragCount > 1) {
+        char n[16];
+        snprintf(n, sizeof n, "%d", g->dragCount);
+        ui_text(n, r.x + r.width - 14, r.y + r.height - 18, 15, C_PARCH);
+    }
+}
+
 void ui_scene_menu(Game *g)
 {
     Player *p = &g->p;
@@ -245,9 +388,51 @@ void ui_scene_menu(Game *g)
 
     if (ui_input_ready(g)) {
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_I)) {
+            drag_stow(g);          /* never walk away holding something */
             go_panel(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
             return;
         }
+
+        /* ---- the mouse: lift an item out of a slot and put it in another --
+           A press on a filled slot with an empty hand lifts it; a press with
+           something in hand puts it down, swapping if that slot is taken.
+           Releasing over a different slot than the one you pressed on drops
+           it there too, so press-drag-release and click-move-click both
+           work. */
+        {
+            Vector2 m = gfx_mouse();
+            int over = inv_hit(m);
+            if (over >= 0) g->menuIdx = over;     /* hover moves the cursor */
+
+            bool press   = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+            bool release = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+
+            if (press && over >= 0) {
+                if (drag_held(g)) {
+                    if (over < INV_PACK_N) drag_drop_pack(g, over);
+                    else                   drag_drop_worn(g, over - INV_PACK_N);
+                } else if (over < INV_PACK_N) {
+                    if (over < p->invCount) {
+                        drag_take(g, p->inv[over].def, p->inv[over].count,
+                                  DRAG_PACK, over);
+                        player_inv_remove(p, over, p->inv[over].count);
+                    }
+                } else {
+                    int w = over - INV_PACK_N;
+                    if (p->equip[w] >= 0) {
+                        drag_take(g, p->equip[w], 1, DRAG_WORN, w);
+                        p->equip[w] = -1;
+                    }
+                }
+            } else if (release && drag_held(g) && over >= 0
+                       && !(g->dragSrc == DRAG_PACK && g->dragSlot == over)) {
+                if (over < INV_PACK_N) drag_drop_pack(g, over);
+                else                   drag_drop_worn(g, over - INV_PACK_N);
+            } else if (press && over < 0 && drag_held(g)) {
+                drag_stow(g);          /* dropped on nothing: put it back */
+            }
+        }
+
         if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) inv_move(g,  1, 0);
         if (IsKeyPressed(KEY_LEFT)  || IsKeyPressed(KEY_A)) inv_move(g, -1, 0);
         if (IsKeyPressed(KEY_DOWN)  || IsKeyPressed(KEY_S)) inv_move(g, 0,  1);
@@ -379,10 +564,12 @@ void ui_scene_menu(Game *g)
         }
     }
 
-    ui_text_c(ps >= 0 ? "ENTER equip or use   ESC close"
-                      : "ENTER take off   ESC close",
+    ui_text_c(ps >= 0 ? "drag with the mouse, or ENTER equip or use   ESC close"
+                      : "drag with the mouse, or ENTER take off   ESC close",
               plate.x + plate.width * 0.5f, plate.y + plate.height - PW(22.0f),
               17, C_GOLD);
+
+    drag_draw(g);       /* the carried item rides above everything else */
 }
 
 /* ---------------------------------------------------------------- shop */
@@ -411,6 +598,36 @@ static void shop_cell(Rectangle r, const ItemDef *it, bool sel, bool dim)
     if (dim) DrawRectangleRec(r, Fade(C_INK, 0.45f));
 }
 
+/* The shop's three regions under the pointer.  `kind` comes back as one of
+   the DragSrc values and `idx` as the cell within it; the merchant's stock
+   counts as hit anywhere in its grid so that something can be sold onto it
+   even when every cell is occupied. */
+static bool shop_hit(Vector2 m, int *kind, int *idx)
+{
+    for (int i = 0; i < 8; i++) {
+        Rectangle r = { SX(-273.2f + 59.05f * (i % 4)),
+                        SY(i < 4 ? -160.8f : -105.3f), CELL_W, CELL_H };
+        if (CheckCollisionPointRec(m, r)) { *kind = DRAG_PACK; *idx = i; return true; }
+    }
+    static const struct { float x, y; int slot; } W[4] = {
+        { -189.1f,   0.5f, SLOT_HELM   }, { -189.1f,  52.8f, SLOT_ARMOUR },
+        { -248.2f,  52.8f, SLOT_WEAPON }, { -130.0f,  52.8f, SLOT_SHIELD },
+    };
+    for (int i = 0; i < 4; i++) {
+        Rectangle r = { SX(W[i].x), SY(W[i].y), CELL_W, CELL_H };
+        if (CheckCollisionPointRec(m, r)) { *kind = DRAG_WORN; *idx = W[i].slot; return true; }
+    }
+    for (int i = 0; i < 10; i++) {
+        Rectangle r = { SX(22.1f + 56.28f * (i % 5)),
+                        SY(i < 5 ? -138.7f : -55.1f), CELL_W, CELL_H };
+        if (CheckCollisionPointRec(m, r)) { *kind = DRAG_STOCK; *idx = i; return true; }
+    }
+    Rectangle all = { SX(22.1f), SY(-138.7f),
+                      56.28f * 4 * SHOP_S + CELL_W, SY(-55.1f) - SY(-138.7f) + CELL_H };
+    if (CheckCollisionPointRec(m, all)) { *kind = DRAG_STOCK; *idx = -1; return true; }
+    return false;
+}
+
 void ui_scene_shop(Game *g)
 {
     Player *p = &g->p;
@@ -424,9 +641,78 @@ void ui_scene_shop(Game *g)
 
     if (ui_input_ready(g)) {
         if (IsKeyPressed(KEY_ESCAPE)) {
+            drag_stow(g);
             go_panel(g, p->zone == ZONE_VILLAGE ? SCENE_VILLAGE : SCENE_WORLD);
             return;
         }
+
+        /* ---- the mouse: buying is lifting out of the stock, selling is
+           dropping onto it ------------------------------------------------
+           The original's buy button checks gold against cost and then hands
+           the item to the cursor, and its sell button pays sellprice for
+           whatever the cursor is holding and plays the coin cue. */
+        {
+            Vector2 m = gfx_mouse();
+            int kind = DRAG_NONE, idx = -1;
+            bool over = shop_hit(m, &kind, &idx);
+            bool press   = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+            bool release = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+            bool act = press || (release && drag_held(g));
+
+            if (over && kind == DRAG_PACK && idx < p->invCount && !drag_held(g))
+                { g->shopMode = 1; g->shopIdx = idx; }
+            else if (over && kind == DRAG_STOCK && idx >= 0 && idx < n && !drag_held(g))
+                { g->shopMode = 0; g->shopIdx = idx; }
+
+            if (act && over) {
+                if (!drag_held(g)) {
+                    if (press && kind == DRAG_PACK && idx < p->invCount) {
+                        drag_take(g, p->inv[idx].def, p->inv[idx].count, DRAG_PACK, idx);
+                        player_inv_remove(p, idx, p->inv[idx].count);
+                    } else if (press && kind == DRAG_WORN && p->equip[idx] >= 0) {
+                        drag_take(g, p->equip[idx], 1, DRAG_WORN, idx);
+                        p->equip[idx] = -1;
+                    } else if (press && kind == DRAG_STOCK && idx >= 0 && idx < n) {
+                        const ItemDef *it = &ITEMS[stock[idx]];
+                        if (p->gold < it->price) {
+                            sound_play(SFX_NO);
+                            ui_toast(g, "Not enough gold.");
+                        } else {
+                            p->gold -= it->price;
+                            drag_take(g, stock[idx], 1, DRAG_STOCK, idx);
+                        }
+                    }
+                } else if (kind == DRAG_PACK) {
+                    drag_drop_pack(g, idx);
+                } else if (kind == DRAG_WORN) {
+                    drag_drop_worn(g, idx);
+                } else {                       /* dropped on the merchant */
+                    if (g->dragSrc == DRAG_STOCK) {
+                        drag_stow(g);          /* putting a purchase back */
+                    } else {
+                        int price = data_sell_price(g->dragDef);
+                        if (price <= 0) {
+                            sound_play(SFX_NO);
+                            ui_toast(g, "\"I have no use for that.\"");
+                        } else {
+                            int sold = g->dragCount;
+                            p->gold += price * sold;
+                            if (sold > 1)
+                                ui_toast(g, "Sold %d x %s for %d gold.",
+                                         sold, ITEMS[g->dragDef].name, price * sold);
+                            else
+                                ui_toast(g, "Sold %s for %d gold.",
+                                         ITEMS[g->dragDef].name, price);
+                            sound_play(SFX_COINS);
+                            drag_clear(g);
+                        }
+                    }
+                }
+            } else if (press && !over && drag_held(g)) {
+                drag_stow(g);
+            }
+        }
+
         if (IsKeyPressed(KEY_TAB)) { g->shopMode = !g->shopMode; g->shopIdx = 0; }
         int cols = g->shopMode ? 4 : 5;
         if (count > 0) {
@@ -544,9 +830,11 @@ void ui_scene_shop(Game *g)
     ui_text(purse, SX(180.0f), SY(122.8f) - 26, 19, C_GOLD);
     /* The original's frame is taller than its own stage, so at this scale it
        bleeds off the bottom; keep the key hint on screen regardless. */
-    ui_text(g->shopMode ? "TAB to buy    ENTER sell    ESC leave"
-                        : "TAB to sell   ENTER buy     ESC leave",
+    ui_text("drag stock to your pack to buy, your gear onto the stock to sell"
+            "    TAB/ENTER also work    ESC leave",
             frame.x + 16, (float)(SCREEN_H - 26), 16, C_STEEL2);
+
+    drag_draw(g);
 }
 
 /* ------------------------------------------------------------- training */

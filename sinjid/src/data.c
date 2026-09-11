@@ -2,6 +2,7 @@
    Every name, stat line and map in this file is original to this remake. */
 #include "game.h"
 #include <string.h>
+#include <math.h>
 #include "appearance_table.h"
 
 const char *CLASS_NAMES[CLASS_COUNT] = { "Balanced", "Warrior", "Spell Caster", "Shadow Ninja" };
@@ -161,7 +162,7 @@ const ItemDef ITEMS[] = {
         "Worth more to a merchant than the leaves it was made from." },
 /*61*/ { "Mendo's Ring", ITEM_RELIC, 0, 1, 0, 0,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_STEEL,
         "Worth nothing to a merchant. Something else wants it." },
-/*62*/ { "White Leaves", ITEM_CONSUMABLE, 0, 1, 0, 0,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_STEEL,
+/*62*/ { "White Leaves", ITEM_HERB,       0, 1, 0, 0,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_STEEL,
         "Useless as they are. Someone can make medicine of them." },
 /*63*/ { "Rice Ball", ITEM_CONSUMABLE, 20, 1, 0, 120,0, 0,0, 0,0, 0,0,0,0, 0, 0, P_PARCH,
         "Restores 120 life." },
@@ -495,10 +496,35 @@ static const int SHOP_TRADE_T[] = { IT_WHITE_LEAVES, -1 };
 int data_sell_price(int def)
 {
     if (def < 0 || def >= ITEM_COUNT) return 0;
-    switch (ITEMS[def].type) {
-    case ITEM_CONSUMABLE: return 3;
-    default:              return 0;
+    const ItemDef *it = &ITEMS[def];
+
+    /* A Drink is a flat 3. */
+    if (it->type == ITEM_CONSUMABLE) return 3;
+
+    /* Everything wearable is valued off its own stat line: the original sums
+       the item's eleven stat columns and scales the total by a rate that
+       depends on the slot.
+
+           pricegain = 1.3                       (a weapon, the default)
+           Head Gear -> 0.7      Shield -> 0.4
+           Suit      -> pricegain * 1.8 = 2.34
+           sellprice = round(pricegain * sum(columns 2..12))
+
+       Those eleven columns are the eleven summed below.  Nothing else in the
+       table is priced, so a relic or a herb is worth nothing to a merchant. */
+    float rate;
+    switch (it->type) {
+    case ITEM_WEAPON: rate = 1.3f;        break;
+    case ITEM_HELM:   rate = 0.7f;        break;
+    case ITEM_SHIELD: rate = 0.4f;        break;
+    case ITEM_ARMOUR: rate = 1.3f * 1.8f; break;
+    default:          return 0;
     }
+    int sum = it->phyDmg + it->magDmg + it->shdDmg
+            + it->phyDef + it->magDef + it->shdPhyDef + it->shdMagDef
+            + it->shdPts + it->speed + it->lifeMax + it->manaMax;
+    float v = rate * (float)sum;
+    return (int)floorf(v + 0.5f);   /* Math.round */
 }
 
 int data_shop_table(int vendor, const int **out)

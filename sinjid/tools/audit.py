@@ -203,8 +203,18 @@ sell = gt('sell.json')
 check('sell', 'data_sell_price' in data, "no data_sell_price")
 fn = data[data.index('int data_sell_price'):]
 fn = fn[:fn.index('\n}\n')]
-check('sell', 'return 3' in fn, "Drink should sell for 3")
-check('sell', 'return 0' in fn, "equipment should sell for 0")
+# The original's sell button computes a price rather than paying a flat rate:
+#     pricegain = 1.3        Head Gear -> 0.7   Shield -> 0.4
+#     Suit      -> pricegain * 1.8
+#     sellprice = round(pricegain * sum of the eleven stat columns)
+# Only a Drink is flat, at 3, and a Herb is on no list at all so it fetches
+# nothing -- which is what makes the leaves-to-medicine trade worth doing.
+check('sell', 'return 3' in fn, "a Drink should sell for 3")
+for rate, what in (('1.3f', 'a weapon'), ('0.7f', 'head gear'),
+                   ('0.4f', 'a shield'), ('1.8f', 'a suit')):
+    check('sell', rate in fn, "the sell rate for %s is missing" % what)
+check('sell', 'ITEM_HERB' in hdr,
+      "a Herb has to be its own type, or leaves sell for a Drink's 3")
 check('sell', '/ 2' not in SRC('ui.c').split('data_sell_price')[0][-400:],
       "a half-price sale path survives in ui.c")
 

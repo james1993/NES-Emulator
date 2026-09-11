@@ -133,7 +133,11 @@ typedef enum {
 
 typedef enum {
     ITEM_NONE, ITEM_WEAPON, ITEM_SHIELD, ITEM_ARMOUR, ITEM_HELM,
-    ITEM_RELIC, ITEM_CONSUMABLE
+    ITEM_RELIC, ITEM_CONSUMABLE,
+    /* The original's 'Herb'.  It is deliberately separate from a Drink: only
+       Drink is on its sell list, so a herb is worth nothing to a merchant and
+       has to go to the herbalist to become one. */
+    ITEM_HERB
 } ItemType;
 
 typedef enum { SLOT_WEAPON, SLOT_SHIELD, SLOT_ARMOUR, SLOT_HELM, SLOT_RELIC, SLOT_COUNT } SlotId;
@@ -335,6 +339,9 @@ typedef struct {
    means "keep the row you walked in on". */
 typedef enum { EX_UP, EX_DOWN, EX_LEFT, EX_RIGHT } ExitDir;
 
+/* Where an item on the cursor was picked up from. */
+typedef enum { DRAG_NONE, DRAG_PACK, DRAG_WORN, DRAG_STOCK } DragSrc;
+
 /* Scenery.  The original furnishes each room with 15-45 placed objects; their
    positions and footprints are reproduced from its display list, and art.c
    draws each kind procedurally.  See src/scenery_table.h. */
@@ -497,6 +504,14 @@ typedef struct {
     /* menus */
     int     menuTab, menuIdx, menuScroll;
     int     shopIdx, shopMode, shopVendor;
+    /* The item riding on the cursor.  The original calls this itempick: an
+       item is taken out of wherever it was, follows the pointer, and is put
+       down somewhere else -- that is how it buys, sells, equips and sorts.
+       dragSrc/dragSlot remember where it came from so it can be put back. */
+    int     dragDef;        /* item def carried, or -1 for nothing          */
+    int     dragCount;      /* how many, for a stack                        */
+    int     dragSrc;        /* DragSrc                                      */
+    int     dragSlot;       /* pack index, worn slot, or stock index         */
     int     dialogNpc;
     int     healSel;      /* the Heal panel's cursor: 0 = accept, 1 = leave */
     int     saveSel;      /* the Save panel's cursor: 0 = save, 1 = rest      */
@@ -575,6 +590,11 @@ void  ui_scene_save(Game *g);
 /* ------------------------------------------------------------- rendering */
 float gfx_scale(void);                  /* device pixels per logical pixel  */
 void  gfx_scissor(Rectangle r);         /* scissor in logical coordinates   */
+Vector2 gfx_mouse(void);                /* pointer in logical coordinates   */
+bool  sj_mouse_pressed(int button);     /* scriptable, like the key wrappers */
+bool  sj_mouse_released(int button);
+#define IsMouseButtonPressed(b)  sj_mouse_pressed(b)
+#define IsMouseButtonReleased(b) sj_mouse_released(b)
 void  gfx_shake_begin(float ox, float oy);  /* world camera, shake included */
 void  gfx_shake_end(void);                  /* back to the plain scale view */
 void  ui_scene_portal(Game *g);
@@ -587,6 +607,7 @@ int   player_add_item(Player *p, int def);
 bool  player_take_item(Player *p, int def);
 int   player_pack_free(const Player *p);
 void  player_equip(Player *p, int invIndex);
+void  player_inv_remove(Player *p, int idx, int n);
 bool  player_can_equip(const Player *p, int def);
 bool  skill_prereqs_met(const Player *p, int id);
 const char *skill_lock_reason(const Player *p, int id);
